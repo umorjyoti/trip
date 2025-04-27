@@ -532,33 +532,35 @@ exports.getWeekendGetaways = async (req, res) => {
       return res.status(500).json({ message: 'Trek model is not defined' });
     }
     
-    // Remove validation temporarily to see if that's causing the 400 error
-    const page = req.query.page ? parseInt(req.query.page) : 1;
     const limit = req.query.limit ? parseInt(req.query.limit) : 10;
     
-    // Build a simple query first
-    const query = { isWeekendGetaway: true };
+    // Build query for weekend getaways
+    const query = { 
+      isWeekendGetaway: true,
+      isEnabled: true 
+    };
     
     console.log('Weekend getaway query:', JSON.stringify(query));
     
-    // Try a simpler query first
-    const weekendGetaways = await Trek.find(query);
+    // Find weekend getaways with limit
+    const weekendGetaways = await Trek.find(query)
+      .limit(limit)
+      .sort({ createdAt: -1 });
     
     console.log(`Found ${weekendGetaways ? weekendGetaways.length : 0} weekend getaways`);
     
     // Return response
     return res.json({
       weekendGetaways: weekendGetaways || [],
-      totalPages: 1,
-      currentPage: 1,
-      totalWeekendGetaways: weekendGetaways ? weekendGetaways.length : 0
+      total: weekendGetaways ? weekendGetaways.length : 0,
+      limit: limit
     });
   } catch (error) {
     console.error('Error getting weekend getaways:', error);
     return res.status(500).json({ 
       message: 'Server error', 
       error: error.message,
-      stack: error.stack // Include stack trace for debugging
+      stack: error.stack
     });
   }
 };
