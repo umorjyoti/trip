@@ -15,8 +15,13 @@ function WeekendGetawaySection() {
       try {
         setLoading(true);
         // Get latest 3 weekend getaways
-        const data = await getWeekendGetaways({ limit: 3 });
-        setWeekendGetaways(data.weekendGetaways);
+        const response = await getWeekendGetaways({ limit: 3 });
+        // Check if response has weekendGetaways property
+        if (response && response.weekendGetaways) {
+          setWeekendGetaways(response.weekendGetaways);
+        } else {
+          setWeekendGetaways([]);
+        }
         setError(null);
       } catch (err) {
         console.error('Error fetching weekend getaways:', err);
@@ -37,7 +42,7 @@ function WeekendGetawaySection() {
     );
   }
 
-  if (error || weekendGetaways.length === 0) {
+  if (error || !weekendGetaways || weekendGetaways.length === 0) {
     return null; // Don't show section if error or no getaways
   }
 
