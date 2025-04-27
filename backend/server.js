@@ -1,0 +1,152 @@
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const morgan = require('morgan');
+const authRoutes = require('./routes/auth.routes');
+const trekRoutes = require('./routes/trek.routes');
+const regionRoutes = require('./routes/regionRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
+const ticketRoutes = require('./routes/ticketRoutes');
+const path = require('path');
+const cookieParser = require('cookie-parser');
+const statsRoutes = require('./routes/statsRoutes');
+const promoRoutes = require('./routes/promoRoutes');
+const offerRoutes = require('./routes/offerRoutes');
+const leadRoutes = require('./routes/leadRoutes');
+const wishlistRoutes = require('./routes/wishlistRoutes');
+const trekSectionRoutes = require('./routes/trekSectionRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const userGroupRoutes = require('./routes/userGroupRoutes');
+const userRoutes = require('./routes/userRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
+const adminBookingRoutes = require('./routes/adminBookingRoutes');
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// Body parsing middleware with increased limits and better error handling
+app.use(express.json({ 
+  limit: '50mb',
+  verify: (req, res, buf) => {
+    // Only verify JSON for non-GET requests
+    if (req.method !== 'GET') {
+      try {
+        JSON.parse(buf);
+      } catch (e) {
+        res.status(400).json({ 
+          message: 'Invalid JSON payload',
+          error: e.message 
+        });
+        throw new Error('Invalid JSON');
+      }
+    }
+  }
+}));
+
+app.use(express.urlencoded({ 
+  limit: '50mb', 
+  extended: true 
+}));
+
+app.use(morgan('dev'));
+app.use(cookieParser());
+
+// Add this middleware to log all incoming requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/user-groups', userGroupRoutes);
+app.use('/api/regions', regionRoutes);
+app.use('/api/treks', trekRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/tickets', ticketRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/promos', promoRoutes);
+app.use('/api/offers', offerRoutes);
+app.use('/api/leads', leadRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/trek-sections', trekSectionRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/admin', adminBookingRoutes);
+
+// Add this after registering the wishlist routes
+console.log('Registered routes:');
+app._router.stack.forEach(function(r){
+  if (r.route && r.route.path){
+    console.log(`${Object.keys(r.route.methods)} ${r.route.path}`);
+  }
+});
+
+// Add this before your regular routes
+app.patch('/api/treks/:id/toggle-status', (req, res) => {
+  console.log('Direct toggle-status route hit');
+  console.log('Params:', req.params);
+  console.log('Body:', req.body);
+  
+  // Forward to the actual controller
+  const { protect, admin } = require('./middleware/authMiddleware');
+  const trekController = require('./controllers/trekController');
+  
+  // Apply middleware manually
+  protect(req, res, () => {
+    admin(req, res, () => {
+      trekController.toggleTrekStatus(req, res);
+    });
+  });
+});
+
+// Database connection
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/trekking-club', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB connected'))
+.catch(err => console.error('MongoDB connection error:', err));
+
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'));
+  });
+}
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Basic route
+app.get('/', (req, res) => {
+  res.send('Trekking Club API is running');
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Error handling middleware for JSON parsing errors
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ 
+      message: 'Invalid JSON payload',
+      error: err.message 
+    });
+  }
+  next(err);
+}); 

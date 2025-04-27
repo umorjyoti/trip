@@ -1,0 +1,313 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { toast } from 'react-toastify';
+import { FaHeart, FaUser, FaSignOutAlt, FaCog, FaClipboardList, FaTicketAlt, FaBars, FaTimes } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+
+function Header() {
+  const { currentUser, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+  const dropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target) && !event.target.closest('[data-testid="mobile-menu-button"]')) {
+         setMobileMenuOpen(false);
+      }
+    }
+
+    if (isDropdownOpen || mobileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDropdownOpen, mobileMenuOpen]);
+
+  const handleLogout = async () => {
+    try {
+      console.log('Logout initiated from Header');
+      await logout();
+      
+      setMobileMenuOpen(false);
+      setIsDropdownOpen(false);
+      
+      navigate('/');
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error in Header:', error);
+      toast.error('Failed to log out');
+    }
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+    if (isDropdownOpen) setIsDropdownOpen(false);
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+    if (mobileMenuOpen) setMobileMenuOpen(false);
+  };
+
+  const dropdownVariants = {
+    hidden: { opacity: 0, scale: 0.95, y: -10 },
+    visible: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.95, y: -10, transition: { duration: 0.15 } }
+  };
+
+  const mobileMenuVariants = {
+    closed: { x: "-100%" },
+    open: { x: 0 }
+  };
+
+  const mobileMenuTransition = {
+    type: "tween",
+    ease: "easeInOut",
+    duration: 0.3
+  };
+
+  return (
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm shadow-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex items-center">
+            <Link to="/" className="flex-shrink-0 flex items-center">
+              <span className="text-2xl font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
+                TrekBooker
+              </span>
+            </Link>
+            <nav className="hidden sm:ml-8 sm:flex sm:space-x-6">
+              <NavLink to="/">Home</NavLink>
+              <NavLink to="/treks">Treks</NavLink>
+              <NavLink to="/weekend-getaways">Weekend Getaways</NavLink>
+              <NavLink to="/about">About</NavLink>
+              <NavLink to="/contact">Contact</NavLink>
+              <NavLink to="/regions">Regions</NavLink>
+            </nav>
+          </div>
+          <div className="flex items-center">
+            {currentUser ? (
+              <div className="relative ml-3" ref={dropdownRef}>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={toggleDropdown}
+                  type="button"
+                  className="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  id="user-menu-button"
+                  aria-expanded={isDropdownOpen}
+                  aria-haspopup="true"
+                >
+                  <span className="sr-only">Open user menu</span>
+                  <div className="h-9 w-9 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold ring-2 ring-white">
+                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <FaUser size={16} />}
+                  </div>
+                </motion.button>
+
+                <AnimatePresence>
+                  {isDropdownOpen && (
+                    <motion.div
+                      initial="hidden"
+                      animate="visible"
+                      exit="exit"
+                      variants={dropdownVariants}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="user-menu-button"
+                    >
+                      <div className="py-1" role="none">
+                        <div className="px-4 py-3 border-b border-gray-200">
+                          <p className="text-sm font-medium text-gray-900 truncate" role="none">
+                            {currentUser.name || 'User'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate" role="none">
+                            {currentUser.email}
+                          </p>
+                        </div>
+                        <DropdownLink to="/profile" icon={FaUser}>Profile</DropdownLink>
+                        <DropdownLink to="/wishlist" icon={FaHeart}>Wishlist</DropdownLink>
+                        <DropdownLink to="/dashboard" icon={FaCog}>Dashboard</DropdownLink>
+                        <DropdownLink to="/my-bookings" icon={FaClipboardList}>My Bookings</DropdownLink>
+                        <DropdownLink to="/tickets" icon={FaTicketAlt}>Support Tickets</DropdownLink>
+                        {currentUser.isAdmin && (
+                           <DropdownLink to="/admin" icon={FaCog}>Admin Dashboard</DropdownLink>
+                        )}
+                        <button
+                          onClick={() => { setIsDropdownOpen(false); handleLogout(); }}
+                          className="flex items-center w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                          role="menuitem"
+                        >
+                          <FaSignOutAlt className="mr-2" aria-hidden="true" /> Sign out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <div className="hidden sm:flex items-center space-x-3 ml-4">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
+
+            <div className="ml-2 flex items-center sm:hidden">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={toggleMobileMenu}
+                data-testid="mobile-menu-button"
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                aria-controls="mobile-menu"
+                aria-expanded={mobileMenuOpen}
+              >
+                <span className="sr-only">Open main menu</span>
+                {mobileMenuOpen ? (
+                  <FaTimes className="block h-6 w-6" aria-hidden="true" />
+                ) : (
+                  <FaBars className="block h-6 w-6" aria-hidden="true" />
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            ref={mobileMenuRef}
+            initial="closed"
+            animate="open"
+            exit="closed"
+            variants={mobileMenuVariants}
+            transition={mobileMenuTransition}
+            className="sm:hidden fixed inset-y-0 left-0 w-64 bg-white shadow-xl z-50 overflow-y-auto"
+            id="mobile-menu"
+          >
+            <div className="pt-5 pb-6 px-2 space-y-1">
+               <div className="flex justify-end px-2 mb-2">
+                 <motion.button
+                   whileTap={{ scale: 0.9 }}
+                   onClick={toggleMobileMenu}
+                   className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                 >
+                   <span className="sr-only">Close menu</span>
+                   <FaTimes className="h-6 w-6" aria-hidden="true" />
+                 </motion.button>
+               </div>
+              <MobileNavLink to="/" onClick={() => setMobileMenuOpen(false)}>Home</MobileNavLink>
+              <MobileNavLink to="/treks" onClick={() => setMobileMenuOpen(false)}>Treks</MobileNavLink>
+              <MobileNavLink to="/weekend-getaways" onClick={() => setMobileMenuOpen(false)}>Weekend Getaways</MobileNavLink>
+              <MobileNavLink to="/about" onClick={() => setMobileMenuOpen(false)}>About</MobileNavLink>
+              <MobileNavLink to="/contact" onClick={() => setMobileMenuOpen(false)}>Contact</MobileNavLink>
+              <MobileNavLink to="/regions" onClick={() => setMobileMenuOpen(false)}>Regions</MobileNavLink>
+            </div>
+            <div className="py-6 px-5 border-t border-gray-200">
+              {currentUser ? (
+                <div className="space-y-1">
+                   <div className="flex items-center mb-4">
+                     <div className="flex-shrink-0 h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold ring-2 ring-white">
+                       {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <FaUser size={18} />}
+                     </div>
+                     <div className="ml-3 min-w-0">
+                       <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name || 'User'}</p>
+                       <p className="text-xs text-gray-500 truncate">{currentUser.email}</p>
+                     </div>
+                   </div>
+                  <MobileNavLink to="/profile" onClick={() => setMobileMenuOpen(false)}>Your Profile</MobileNavLink>
+                  <MobileNavLink to="/wishlist" onClick={() => setMobileMenuOpen(false)}>Wishlist</MobileNavLink>
+                  <MobileNavLink to="/my-bookings" onClick={() => setMobileMenuOpen(false)}>My Bookings</MobileNavLink>
+                  <MobileNavLink to="/tickets" onClick={() => setMobileMenuOpen(false)}>Support Tickets</MobileNavLink>
+                  {currentUser.isAdmin && (
+                    <MobileNavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>Admin Dashboard</MobileNavLink>
+                  )}
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link
+                    to="/register"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors text-center"
+                  >
+                    Sign up
+                  </Link>
+                  <p className="mt-2 text-center text-base font-medium text-gray-500">
+                    Existing customer?{' '}
+                    <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-emerald-600 hover:text-emerald-500 transition-colors">
+                      Log in
+                    </Link>
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
+  );
+}
+
+const NavLink = ({ to, children }) => (
+  <Link
+    to={to}
+    className={({ isActive }) =>
+      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
+        isActive
+          ? 'border-emerald-500 text-gray-900'
+          : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+      }`
+    }
+  >
+    {children}
+  </Link>
+);
+
+const DropdownLink = ({ to, icon: Icon, children, onClick }) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+    role="menuitem"
+  >
+    <Icon className="mr-2 h-4 w-4 text-gray-400" aria-hidden="true" />
+    {children}
+  </Link>
+);
+
+const MobileNavLink = ({ to, children, onClick }) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+  >
+    {children}
+  </Link>
+);
+
+export default Header; 
