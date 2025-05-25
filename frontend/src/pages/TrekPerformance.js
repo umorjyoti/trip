@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { getTrekPerformance, getBatchPerformance } from '../services/api';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -7,6 +7,7 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 
 const TrekPerformance = () => {
   const { trekId } = useParams();
+  const [searchParams] = useSearchParams();
   const [performanceData, setPerformanceData] = useState(null);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [batchDetails, setBatchDetails] = useState(null);
@@ -16,6 +17,17 @@ const TrekPerformance = () => {
   useEffect(() => {
     fetchPerformanceData();
   }, [trekId]);
+
+  useEffect(() => {
+    // Auto-select batch from URL query parameter
+    const batchId = searchParams.get('batchId');
+    if (performanceData && batchId) {
+      const batch = performanceData.batches.find(b => b._id === batchId);
+      if (batch) {
+        handleBatchClick(batch);
+      }
+    }
+  }, [performanceData, searchParams]);
 
   const fetchPerformanceData = async () => {
     try {

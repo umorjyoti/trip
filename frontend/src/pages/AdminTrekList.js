@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getTreks, deleteTrek, toggleTrekStatus } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { FaEye, FaEyeSlash, FaEdit, FaTrash, FaChartLine } from 'react-icons/fa';
 
 function AdminTrekList() {
@@ -13,6 +13,7 @@ function AdminTrekList() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [trekToDelete, setTrekToDelete] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'enabled', 'disabled', 'with-bookings', 'most-booked'
+  const [expandedTreks, setExpandedTreks] = useState(new Set());
 
   useEffect(() => {
     fetchTreks();
@@ -94,6 +95,18 @@ function AdminTrekList() {
     }
 
     return filteredTreks;
+  };
+
+  const toggleTrekExpansion = (trekId) => {
+    setExpandedTreks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(trekId)) {
+        newSet.delete(trekId);
+      } else {
+        newSet.add(trekId);
+      }
+      return newSet;
+    });
   };
 
   if (loading) {
@@ -181,6 +194,15 @@ function AdminTrekList() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => toggleTrekExpansion(trek._id)}
+                        className="p-2 rounded-full hover:bg-gray-100"
+                        title="Show Batches"
+                      >
+                        <ChevronDownIcon 
+                          className={`w-5 h-5 transform transition-transform ${expandedTreks.has(trek._id) ? 'rotate-180' : ''}`}
+                        />
+                      </button>
                       <Link
                         to={`/admin/treks/${trek._id}/performance`}
                         className="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
@@ -217,6 +239,72 @@ function AdminTrekList() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Expanded Batch Information */}
+                  {expandedTreks.has(trek._id) && (
+                    <div className="mt-4 border-t pt-4">
+                      <div className="space-y-4">
+                        {trek.batches && trek.batches.length > 0 ? (
+                          trek.batches.map((batch) => (
+                            <div 
+                              key={batch._id} 
+                              className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+                              onClick={() => {
+                                window.location.href = `/admin/treks/${trek._id}/performance?batchId=${batch._id}`;
+                              }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="text-sm font-medium text-gray-900">
+                                    Batch {new Date(batch.startDate).toLocaleDateString('en-GB', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })} - {new Date(batch.endDate).toLocaleDateString('en-GB', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })}
+                                  </h4>
+                                  <div className="mt-1 text-sm text-gray-500">
+                                    <p>Price: ₹{batch.price}</p>
+                                    <p>Total Slots: {batch.maxParticipants}</p>
+                                    <p>Available Slots: {batch.maxParticipants - (batch.currentParticipants || 0)}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    {batch.currentParticipants || 0} Bookings
+                                  </span>
+                                </div>
+                              </div>
+                              {batch.bookings && batch.bookings.length > 0 && (
+                                <div className="mt-3">
+                                  <h5 className="text-sm font-medium text-gray-900 mb-2">Recent Bookings</h5>
+                                  <div className="space-y-2">
+                                    {batch.bookings.slice(0, 3).map((booking) => (
+                                      <div key={booking._id} className="flex justify-between text-sm">
+                                        <span>{booking.customerName}</span>
+                                        <span>{new Date(booking.bookingDate).toLocaleDateString('en-GB', {
+                                          day: '2-digit',
+                                          month: 'short',
+                                          year: 'numeric'
+                                        })}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center text-gray-500 py-4">
+                            No batches available for this trek
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </li>
             ))
