@@ -68,7 +68,7 @@ exports.getTrekById = async (req, res) => {
     currentDate.setHours(0, 0, 0, 0); // Set to start of day
 
     // Fetch trek with populated batches
-    const trek = await Trek.findById(id);
+    const trek = await Trek.findById(id).select('+gstPercent +gstType +gatewayPercent +gatewayType');
     
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
@@ -87,10 +87,22 @@ exports.getTrekById = async (req, res) => {
       );
     });
     
+    // Ensure GST and gateway details are included in the response
+    const response = trek.toObject();
+    response.gstDetails = {
+      percent: trek.gstPercent || 0,
+      type: trek.gstType || 'excluded'
+    };
+    response.gatewayDetails = {
+      percent: trek.gatewayPercent || 0,
+      type: trek.gatewayType || 'customer'
+    };
+    
     console.log('Trek found:', trek.name);
     console.log('Available future batches:', trek.batches.length);
+    console.log('GST and Gateway details:', { gst: response.gstDetails, gateway: response.gatewayDetails });
     
-    res.json(trek);
+    res.json(response);
   } catch (error) {
     console.error('Error getting trek by ID:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -101,11 +113,17 @@ exports.createTrek = async (req, res) => {
   try {
     console.log('Creating trek with data:', req.body);
     
-    // Ensure itinerary is included in the request body
+    // Ensure required fields are included in the request body
     const trekData = {
       ...req.body,
       itinerary: req.body.itinerary || [],
-      addOns: req.body.addOns || [] // Ensure addOns is included
+      addOns: req.body.addOns || [],
+      highlights: req.body.highlights?.filter(h => h.trim()) || [], // Filter out empty highlights
+      itineraryPdfUrl: req.body.itineraryPdfUrl || '',
+      gstPercent: Number(req.body.gstPercent) || 0,
+      gstType: req.body.gstType || 'excluded',
+      gatewayPercent: Number(req.body.gatewayPercent) || 0,
+      gatewayType: req.body.gatewayType || 'customer'
     };
     
     // Ensure itinerary meals are strings
@@ -115,6 +133,11 @@ exports.createTrek = async (req, res) => {
         meals: typeof day.meals === 'object' ? JSON.stringify(day.meals) : day.meals
       }));
     }
+
+    // Validate highlights
+    if (!trekData.highlights || !trekData.highlights.length) {
+      return res.status(400).json({ message: 'At least one highlight is required' });
+    }
     
     const trek = new Trek(trekData);
     await trek.save();
@@ -123,6 +146,9 @@ exports.createTrek = async (req, res) => {
     res.status(201).json(trek);
   } catch (error) {
     console.error('Error creating trek:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation Error', errors: error.errors });
+    }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -135,25 +161,51 @@ exports.updateTrek = async (req, res) => {
       return res.status(404).json({ message: 'Trek not found' });
     }
 
-    // Extract fields from req.body - Ensure 'category' and 'addOns' are included
+    // Extract fields from req.body
     const {
       name, description, region, difficulty, duration, distance, maxAltitude,
-      basePrice, images, itinerary, inclusions, exclusions, mapUrl,
+      displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
-      category, addOns, // <--- Make sure addOns is extracted from req.body
-      tags,
-      // ... any other fields
+      category, addOns, highlights, batches, faqs, thingsToPack,
+      gstPercent, gstType, gatewayPercent, gatewayType,
+      tags, itineraryPdfUrl
     } = req.body;
 
-    // Prepare the update data object - Ensure 'category' and 'addOns' are included
+    // Filter out empty highlights
+    const filteredHighlights = highlights?.filter(h => h.trim()) || trek.highlights;
+
+    // Validate highlights
+    if (!filteredHighlights || !filteredHighlights.length) {
+      return res.status(400).json({ message: 'At least one highlight is required' });
+    }
+
+    // Prepare the update data object
     const updateData = {
       name, description, region, difficulty, duration, distance, maxAltitude,
-      basePrice, images, itinerary, inclusions, exclusions, mapUrl,
+      displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
-      category, addOns, // <--- Make sure addOns is added to the update object
-      tags,
-      // ... map other fields
+      category, addOns,
+      highlights: filteredHighlights,
+      gstPercent: Number(gstPercent) || trek.gstPercent,
+      gstType: gstType || trek.gstType,
+      gatewayPercent: Number(gatewayPercent) || trek.gatewayPercent,
+      gatewayType: gatewayType || trek.gatewayType,
+      tags, itineraryPdfUrl,
+      faqs: faqs || trek.faqs,
+      thingsToPack: thingsToPack || trek.thingsToPack
     };
+
+    // Handle batches update
+    if (batches && Array.isArray(batches)) {
+      updateData.batches = batches.map(batch => ({
+        _id: batch._id, // Preserve existing batch IDs
+        startDate: batch.startDate,
+        endDate: batch.endDate,
+        price: Number(batch.price),
+        maxParticipants: Number(batch.maxParticipants),
+        currentParticipants: Number(batch.currentParticipants || 0)
+      }));
+    }
 
     // Remove undefined fields to avoid overwriting existing data with undefined
     Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
@@ -162,19 +214,19 @@ exports.updateTrek = async (req, res) => {
 
     const updatedTrek = await Trek.findByIdAndUpdate(
       req.params.id,
-      updateData, // Use the prepared updateData object
+      updateData,
       { new: true, runValidators: true }
     );
 
     if (!updatedTrek) {
-       return res.status(404).json({ message: 'Trek not found during update' });
+      return res.status(404).json({ message: 'Trek not found during update' });
     }
 
     res.json(updatedTrek);
   } catch (error) {
     console.error('Error updating trek:', error);
     if (error.name === 'ValidationError') {
-       return res.status(400).json({ message: 'Validation Error', errors: error.errors });
+      return res.status(400).json({ message: 'Validation Error', errors: error.errors });
     }
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -459,28 +511,40 @@ exports.getTreks = async (req, res) => {
     // Get current date
     const currentDate = new Date();
 
-    // Fetch treks with populated batches
+    // Fetch treks with populated batches and include GST/gateway fields
     let treks = await Trek.find(filter)
+      .select('+gstPercent +gstType +gatewayPercent +gatewayType')
       .populate({
         path: 'batches',
         match: !req.user?.isAdmin ? {
-          // For non-admin users, only show batches that:
-          // 1. Have not ended (endDate is in the future)
-          // 2. Have available spots (currentParticipants < maxParticipants)
           endDate: { $gt: currentDate },
           $expr: { 
             $lt: ["$currentParticipants", "$maxParticipants"] 
           }
-        } : {} // For admin users, show all batches
+        } : {}
       })
-      .sort(sort === 'price' ? { basePrice: 1 } : { createdAt: -1 });
+      .sort(sort === 'price' ? { displayPrice: 1 } : { createdAt: -1 });
 
     // Filter out treks with no available batches for non-admin users
     if (!req.user?.isAdmin) {
       treks = treks.filter(trek => trek.batches.length > 0);
     }
 
-    res.json(treks);
+    // Format response to include GST and gateway details
+    const formattedTreks = treks.map(trek => {
+      const trekObj = trek.toObject();
+      trekObj.gstDetails = {
+        percent: trek.gstPercent || 0,
+        type: trek.gstType || 'excluded'
+      };
+      trekObj.gatewayDetails = {
+        percent: trek.gatewayPercent || 0,
+        type: trek.gatewayType || 'customer'
+      };
+      return trekObj;
+    });
+
+    res.json(formattedTreks);
   } catch (error) {
     console.error('Error in getTreks:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

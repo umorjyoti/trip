@@ -12,6 +12,7 @@ function AdminTrekList() {
   const [error, setError] = useState(null);
   const [deleteModal, setDeleteModal] = useState(false);
   const [trekToDelete, setTrekToDelete] = useState(null);
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'enabled', 'disabled', 'with-bookings', 'most-booked'
 
   useEffect(() => {
     fetchTreks();
@@ -69,6 +70,32 @@ function AdminTrekList() {
     }
   };
 
+  const getFilteredAndSortedTreks = () => {
+    let filteredTreks = [...treks];
+
+    // Apply filters
+    switch (filterStatus) {
+      case 'enabled':
+        filteredTreks = filteredTreks.filter(trek => trek.isEnabled);
+        break;
+      case 'disabled':
+        filteredTreks = filteredTreks.filter(trek => !trek.isEnabled);
+        break;
+      case 'with-bookings':
+        filteredTreks = filteredTreks.filter(trek => trek.bookings && trek.bookings.length > 0);
+        break;
+      case 'most-booked':
+        filteredTreks = filteredTreks.filter(trek => trek.bookings && trek.bookings.length > 0)
+          .sort((a, b) => (b.bookings?.length || 0) - (a.bookings?.length || 0));
+        break;
+      default:
+        // 'all' case - no filtering needed
+        break;
+    }
+
+    return filteredTreks;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -102,19 +129,32 @@ function AdminTrekList() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-extrabold text-gray-900">Manage Treks</h1>
-        <Link
-          to="/admin/treks/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-        >
-          <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-          Add New Trek
-        </Link>
+        <div className="flex items-center space-x-4">
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="block w-48 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+          >
+            <option value="all">All Treks</option>
+            <option value="enabled">Enabled Treks</option>
+            <option value="disabled">Disabled Treks</option>
+            <option value="with-bookings">Treks with Bookings</option>
+            <option value="most-booked">Most Booked Treks</option>
+          </select>
+          <Link
+            to="/admin/treks/new"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+          >
+            <PlusIcon className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
+            Add New Trek
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
         <ul className="divide-y divide-gray-200">
-          {treks?.length > 0 ? (
-            treks.map((trek) => (
+          {getFilteredAndSortedTreks().length > 0 ? (
+            getFilteredAndSortedTreks().map((trek) => (
               <li key={trek._id} className={`${!trek.isEnabled ? 'bg-gray-50' : ''}`}>
                 <div className="px-4 py-4 sm:px-6">
                   <div className="flex items-center justify-between">
@@ -122,7 +162,7 @@ function AdminTrekList() {
                       <div className="flex-shrink-0 h-12 w-12">
                         <img 
                           className={`h-12 w-12 rounded-md object-cover ${!trek.isEnabled ? 'opacity-50' : ''}`}
-                          src={trek.imageUrl || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'} 
+                          src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'} 
                           alt={trek.name} 
                         />
                       </div>
@@ -132,6 +172,11 @@ function AdminTrekList() {
                         </div>
                         <div className="text-sm text-gray-500">
                           {trek.region} • {trek.difficulty} • {trek.duration} days
+                          {trek.bookings && trek.bookings.length > 0 && (
+                            <span className="ml-2 text-emerald-600">
+                              • {trek.bookings.length} {trek.bookings.length === 1 ? 'booking' : 'bookings'}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

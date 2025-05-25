@@ -16,10 +16,10 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Only images are allowed'));
+      cb(new Error('Only images and PDFs are allowed'));
     }
   }
 });
@@ -38,7 +38,7 @@ const uploadToS3 = async (file) => {
 
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
-      Key: `images/${Date.now()}-${file.originalname}`,
+      Key: `${file.s3Folder || 'images'}/${Date.now()}-${file.originalname}`,
       Body: file.buffer,
       ContentType: file.mimetype,
       // ACL: 'public-read'

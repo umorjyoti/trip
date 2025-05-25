@@ -6,7 +6,7 @@ exports.getAllOffers = async (req, res) => {
   try {
     const offers = await Offer.find()
       .populate('createdBy', 'name')
-      .populate('applicableTreks', 'name price')
+      .populate('applicableTreks', 'name displayPrice')
       .sort('-createdAt');
     
     res.json(offers);
@@ -123,7 +123,7 @@ exports.getActiveOffers = async (req, res) => {
       isActive: true,
       startDate: { $lte: now },
       endDate: { $gte: now }
-    }).populate('applicableTreks', 'name price');
+    }).populate('applicableTreks', 'name displayPrice');
     
     res.json(activeOffers);
   } catch (error) {

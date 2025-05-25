@@ -75,7 +75,7 @@ function TrekCard({ trek }) {
   }, [trek.region]);
 
   // Calculate Price and Offer
-  const getPrice = () => trek.basePrice || (trek.batches && trek.batches.length > 0 ? trek.batches[0].price : 0);
+  const getPrice = () => trek.displayPrice || (trek.batches && trek.batches.length > 0 ? trek.batches[0].price : 0);
   const basePrice = getPrice();
 
   const applicableOffer = !loadingOffers && activeOffers.find(offer =>
@@ -126,9 +126,9 @@ function TrekCard({ trek }) {
     >
       <Link to={`/treks/${trek._id}`} className="group flex flex-col h-full">
         <div className="relative h-48 w-full overflow-hidden">
-          {trek.imageUrl ? (
+          {trek.images && trek.images.length > 0 ? (
             <img
-              src={trek.imageUrl}
+              src={trek.images[0]}
               alt={trek.name}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
@@ -184,6 +184,11 @@ function TrekCard({ trek }) {
           <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
             <div className="text-emerald-600 font-bold text-lg">
               {safeFormatCurrency(displayPrice)}
+              {trek.strikedPrice && trek.strikedPrice > displayPrice && (
+                <span className="ml-2 text-sm text-gray-400 line-through">
+                  {safeFormatCurrency(trek.strikedPrice)}
+                </span>
+              )}
               {applicableOffer && basePrice > 0 && displayPrice !== basePrice && (
                 <span className="ml-2 text-sm text-gray-400 line-through">
                   {safeFormatCurrency(basePrice)}

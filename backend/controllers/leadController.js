@@ -156,7 +156,7 @@ exports.getLeads = async (req, res) => {
     }
 
     const leads = await Lead.find(filter)
-      .populate("trekId", "name region")
+      .populate("trekId", "name region imageUrl displayPrice")
       .populate("assignedTo", "name email")
       .sort({ createdAt: -1 });
 
@@ -173,7 +173,7 @@ exports.getLeads = async (req, res) => {
 exports.getLead = async (req, res) => {
   try {
     const lead = await Lead.findById(req.params.id)
-      .populate("trekId", "name region imageUrl price")
+      .populate("trekId", "name region imageUrl displayPrice")
       .populate("assignedTo", "name email");
     
     if (!lead) {
@@ -318,7 +318,7 @@ exports.updateLead = async (req, res) => {
 
     // Fetch the updated lead with populated fields
     const populatedLead = await Lead.findById(updatedLead._id)
-      .populate("trekId", "name region imageUrl price")
+      .populate("trekId", "name region imageUrl displayPrice")
       .populate("assignedTo", "name email");
 
     res.json(populatedLead);
@@ -362,7 +362,7 @@ exports.exportLeads = async (req, res) => {
     // Get all leads with populated fields
     const leads = await Lead.find()
       .populate("assignedTo", "name email")
-      .populate("trekId", "name region");
+      .populate("trekId", "name region imageUrl displayPrice");
 
     if (fileType === "excel") {
       // Create a new Excel workbook

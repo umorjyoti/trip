@@ -190,8 +190,8 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
               >
                 <Link to={`/treks/${trek._id}`} className="group flex flex-col h-full">
                   <div className="relative h-40 w-full overflow-hidden">
-                    {trek.imageUrl ? (
-                      <img src={trek.imageUrl} alt={trek.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"/>
+                    {trek.images && trek.images.length > 0 ? (
+                      <img src={trek.images[0]} alt={trek.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"/>
                     ) : (
                        <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-400"><FaMountain size={30} /></div>
                     )}
@@ -208,8 +208,15 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
                     </div>
                     <div className="flex-grow"></div>
                     <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
-                      <span className="text-md font-bold text-emerald-600">{safeFormatCurrency(trek.displayPrice)}</span>
-                       <span className="text-emerald-500 group-hover:text-emerald-700 transition-transform duration-300 group-hover:translate-x-1"><FaArrowRight size={12}/></span>
+                      <div>
+                        <span className="text-md font-bold text-emerald-600">{safeFormatCurrency(trek.displayPrice)}</span>
+                        {trek.strikedPrice && trek.strikedPrice > trek.displayPrice && (
+                          <span className="ml-2 text-sm text-gray-400 line-through">
+                            {safeFormatCurrency(trek.strikedPrice)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-emerald-500 group-hover:text-emerald-700 transition-transform duration-300 group-hover:translate-x-1"><FaArrowRight size={12}/></span>
                     </div>
                   </div>
                 </Link>

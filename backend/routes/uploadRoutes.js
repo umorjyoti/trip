@@ -12,48 +12,45 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Only images are allowed'));
+      cb(new Error('Only images and PDFs are allowed'));
     }
   }
 });
 
 // Upload endpoint
-router.post('/', upload.single('image'), async (req, res) => {
-  try {
-    console.log('Received upload request:', {
-      file: req.file ? {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      } : 'No file',
-      headers: req.headers
+router.post('/', upload.single('file'), async (req, res) => {
+  console.log('--- /api/upload called ---');
+  console.log('Headers:', req.headers);
+  if (req.file) {
+    console.log('File received:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
     });
-
+  } else {
+    console.log('No file received in request.');
+  }
+  try {
     if (!req.file) {
-      console.error('No file uploaded');
+      console.log('No file uploaded, sending 400.');
       return res.status(400).json({ message: 'No file uploaded' });
     }
-    
-    // Upload to S3
-    console.log('Attempting to upload file to S3');
+    // Determine folder based on file type
+    let folder = 'images';
+    if (req.file.mimetype === 'application/pdf') {
+      folder = 'pdfs';
+    }
+    req.file.s3Folder = folder;
+    console.log('Uploading to S3 folder:', folder);
     const fileUrl = await uploadToS3(req.file);
-    console.log('File uploaded successfully:', fileUrl);
-    
+    console.log('Upload successful, S3 URL:', fileUrl);
     res.json({ url: fileUrl });
   } catch (error) {
-    console.error('Error in upload route:', {
-      message: error.message,
-      stack: error.stack,
-      code: error.code
-    });
-    res.status(500).json({ 
-      message: 'Error uploading file', 
-      error: error.message,
-      code: error.code 
-    });
+    console.error('Error in /api/upload:', error);
+    res.status(500).json({ message: 'Error uploading file', error: error.message });
   }
 });
 

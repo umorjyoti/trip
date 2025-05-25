@@ -249,9 +249,12 @@ const TrekSchema = new mongoose.Schema({
   maxAltitude: {
     type: Number
   },
-  basePrice: {
+  displayPrice: {
     type: Number,
     required: true
+  },
+  strikedPrice: {
+    type: Number
   },
   images: [String],
   itinerary: [{
@@ -338,7 +341,54 @@ const TrekSchema = new mongoose.Schema({
   addOns: {
     type: [AddOnSchema],
     default: []
-  }
+  },
+  itineraryPdfUrl: {
+    type: String
+  },
+  gstPercent: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  gstType: {
+    type: String,
+    enum: ['included', 'excluded'],
+    default: 'excluded'
+  },
+  gatewayPercent: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  gatewayType: {
+    type: String,
+    enum: ['customer', 'self'],
+    default: 'customer'
+  },
+  highlights: {
+    type: [String],
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v.length > 0 && v.every(item => item.trim().length > 0);
+      },
+      message: 'At least one highlight is required'
+    }
+  },
+  faqs: [{
+    question: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    answer: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  }]
 });
 
 module.exports = mongoose.model('Trek', TrekSchema); 

@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaTrash, FaArrowLeft } from 'react-icons/fa';
 import ImageUploader from '../components/ImageUploader';
+import axios from 'axios';
 
 // Helper: FormSection component
 const FormSection = ({ title, children }) => (
@@ -128,7 +129,8 @@ function TrekForm() {
     season: 'Spring',
     startingPoint: '',
     endingPoint: '',
-    basePrice: '',
+    displayPrice: '',
+    strikedPrice: '',
     imageUrl: '',
     images: [],
     isEnabled: true,
@@ -146,7 +148,12 @@ function TrekForm() {
         description: '',
         placeholder: ''
       }
-    ]
+    ],
+    gstPercent: '',
+    gstType: 'excluded',
+    gatewayPercent: '',
+    gatewayType: 'customer',
+    itineraryPdfUrl: ''
   });
   const [batches, setBatches] = useState([{ startDate: '', endDate: '', price: '', maxParticipants: 10, currentParticipants: 0 }]);
   const [itinerary, setItinerary] = useState([{ title: 'Day 1', description: '', accommodation: '', meals: '', activities: [''] }]);
@@ -155,6 +162,7 @@ function TrekForm() {
   const [thingsToPack, setThingsToPack] = useState([{ title: '', description: '', icon: '' }]);
   const [faqs, setFaqs] = useState([{ question: '', answer: '' }]);
   const [formErrors, setFormErrors] = useState({});
+  const [pdfUploading, setPdfUploading] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -174,7 +182,8 @@ function TrekForm() {
             season: trekData.season || 'Spring',
             startingPoint: trekData.startingPoint || '',
             endingPoint: trekData.endingPoint || '',
-            basePrice: trekData.basePrice || '',
+            displayPrice: trekData.displayPrice || '',
+            strikedPrice: trekData.strikedPrice || '',
             imageUrl: trekData.imageUrl || '',
             images: trekData.images || [],
             isEnabled: trekData.isEnabled !== undefined ? trekData.isEnabled : true,
@@ -192,7 +201,12 @@ function TrekForm() {
                 description: '',
                 placeholder: ''
               }
-            ]
+            ],
+            gstPercent: trekData.gstPercent || '',
+            gstType: trekData.gstType || 'excluded',
+            gatewayPercent: trekData.gatewayPercent || '',
+            gatewayType: trekData.gatewayType || 'customer',
+            itineraryPdfUrl: trekData.itineraryPdfUrl || ''
           });
 
           setBatches(trekData.batches?.length > 0 ? trekData.batches.map(b => ({ ...b, startDate: b.startDate?.split('T')[0] || '', endDate: b.endDate?.split('T')[0] || '' })) : [{ startDate: '', endDate: '', price: '', maxParticipants: 10, currentParticipants: 0 }]);
@@ -381,12 +395,36 @@ function TrekForm() {
     if (!formData.region) errors.region = 'Region is required';
     if (!formData.season) errors.season = 'Season is required';
     if (!formData.duration || formData.duration <= 0) errors.duration = 'Duration must be greater than 0';
-    if (!formData.basePrice || formData.basePrice < 0) errors.basePrice = 'Base price must be non-negative';
-    if (!formData.maxAltitude || formData.maxAltitude <= 0) errors.maxAltitude = 'Maximum altitude must be greater than 0';
-    if (!formData.distance || formData.distance <= 0) errors.distance = 'Distance must be greater than 0';
+    if (!formData.displayPrice || formData.displayPrice < 0) errors.displayPrice = 'Display price must be non-negative';
+    if (formData.strikedPrice && (formData.strikedPrice < 0 || formData.strikedPrice < formData.displayPrice)) {
+      errors.strikedPrice = 'Striked price must be non-negative and not less than display price';
+    }
     
-    // Validate highlights
-    if (!formData.highlights || formData.highlights.length === 0 || formData.highlights.some(h => !h?.trim())) {
+    // GST validation
+    if (formData.gstPercent === '') {
+      errors.gstPercent = 'GST percentage is required';
+    } else {
+      const gstPercent = Number(formData.gstPercent);
+      if (isNaN(gstPercent) || gstPercent < 0 || gstPercent > 100) {
+        errors.gstPercent = 'GST percentage must be between 0 and 100';
+      }
+    }
+    if (!formData.gstType) errors.gstType = 'GST type is required';
+
+    // Gateway charges validation
+    if (formData.gatewayPercent === '') {
+      errors.gatewayPercent = 'Gateway percentage is required';
+    } else {
+      const gatewayPercent = Number(formData.gatewayPercent);
+      if (isNaN(gatewayPercent) || gatewayPercent < 0 || gatewayPercent > 100) {
+        errors.gatewayPercent = 'Gateway percentage must be between 0 and 100';
+      }
+    }
+    if (!formData.gatewayType) errors.gatewayType = 'Gateway charge type is required';
+    
+    // Validate highlights - ensure at least one non-empty highlight
+    const validHighlights = formData.highlights.filter(h => h?.trim());
+    if (!validHighlights.length) {
       errors.highlights = 'At least one highlight is required';
     }
 
@@ -434,6 +472,10 @@ function TrekForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (pdfUploading) {
+      toast.error('Please wait for the PDF to finish uploading.');
+      return;
+    }
     if (!validateForm()) {
       toast.error('Please fix the errors in the form.');
       return;
@@ -441,12 +483,25 @@ function TrekForm() {
 
     setLoading(true);
     try {
+      // Filter out empty highlights
+      const validHighlights = formData.highlights.filter(h => h?.trim());
+
       const trekPayload = {
         ...formData,
+        displayPrice: Number(formData.displayPrice),
+        strikedPrice: formData.strikedPrice ? Number(formData.strikedPrice) : undefined,
+        gstPercent: Number(formData.gstPercent) || 0,
+        gstType: formData.gstType || 'excluded',
+        gatewayPercent: Number(formData.gatewayPercent) || 0,
+        gatewayType: formData.gatewayType || 'customer',
+        highlights: validHighlights,
+        itineraryPdfUrl: formData.itineraryPdfUrl || '',
         batches: batches.map(b => ({
           ...b,
+          _id: b._id, // Preserve the batch ID if it exists
           price: Number(b.price),
-          maxParticipants: Number(b.maxParticipants)
+          maxParticipants: Number(b.maxParticipants),
+          currentParticipants: Number(b.currentParticipants || 0)
         })),
         itinerary: itinerary.map(day => ({
           ...day,
@@ -473,7 +528,20 @@ function TrekForm() {
       navigate('/admin/treks');
     } catch (error) {
       console.error('Error saving trek:', error);
-      toast.error(`Error saving trek: ${error.message || 'Please try again.'}`);
+      if (error.response?.data?.errors) {
+        // Handle validation errors from the backend
+        const backendErrors = error.response.data.errors;
+        setFormErrors(prev => ({
+          ...prev,
+          ...Object.keys(backendErrors).reduce((acc, key) => {
+            acc[key] = backendErrors[key].message;
+            return acc;
+          }, {})
+        }));
+        toast.error('Please fix the validation errors.');
+      } else {
+        toast.error(`Error saving trek: ${error.message || 'Please try again.'}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -520,9 +588,44 @@ function TrekForm() {
             <SelectField label="Best Season" id="season" value={formData.season} onChange={handleInputChange}>
               <option>Spring</option> <option>Summer</option> <option>Monsoon</option> <option>Autumn</option> <option>Winter</option> <option>Year-round</option>
             </SelectField>
-            <InputField label="Base Price (INR)" id="basePrice" type="number" min="0" step="0.01" value={formData.basePrice} onChange={handleInputChange} required error={formErrors.basePrice} placeholder="e.g., 50000" />
+            <InputField label="Display Price (INR)" id="displayPrice" type="number" min="0" step="0.01" value={formData.displayPrice} onChange={handleInputChange} required error={formErrors.displayPrice} placeholder="e.g., 26999" />
+            <InputField label="Striked Price (INR)" id="strikedPrice" type="number" min="0" step="0.01" value={formData.strikedPrice} onChange={handleInputChange} error={formErrors.strikedPrice} placeholder="e.g., 29999" />
             <InputField label="Starting Point" id="startingPoint" value={formData.startingPoint} onChange={handleInputChange} placeholder="e.g., Lukla" />
             <InputField label="Ending Point" id="endingPoint" value={formData.endingPoint} onChange={handleInputChange} placeholder="e.g., Lukla" />
+            {/* GST Section */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                GST <span title="Goods and Services Tax" className="text-xs text-gray-400">&#9432;</span>
+              </label>
+              <div className="flex flex-col gap-2">
+                <InputField label="GST %" id="gstPercent" type="number" min="0" max="100" value={formData.gstPercent} onChange={handleInputChange} placeholder="e.g., 5" style={{maxWidth: '120px'}} />
+                <div className="flex gap-4 mt-1">
+                  <label className={`flex items-center border rounded-xl px-6 py-3 cursor-pointer text-base font-medium transition-all duration-150 ${formData.gstType === 'included' ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200' : 'border-gray-300 bg-white'}`}> 
+                    <input type="radio" name="gstType" value="included" checked={formData.gstType === 'included'} onChange={handleInputChange} className="mr-2 accent-emerald-600" /> Price includes GST
+                  </label>
+                  <label className={`flex items-center border rounded-xl px-6 py-3 cursor-pointer text-base font-medium transition-all duration-150 ${formData.gstType === 'excluded' ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200' : 'border-gray-300 bg-white'}`}> 
+                    <input type="radio" name="gstType" value="excluded" checked={formData.gstType === 'excluded'} onChange={handleInputChange} className="mr-2 accent-emerald-600" /> Price excludes GST
+                  </label>
+                </div>
+              </div>
+            </div>
+            {/* Gateway Charges Section */}
+            <div className="md:col-span-2 mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                Gateway Charges <span title="Payment gateway charges" className="text-xs text-gray-400">&#9432;</span>
+              </label>
+              <div className="flex flex-col gap-2">
+                <InputField label="Gateway %" id="gatewayPercent" type="number" min="0" max="100" value={formData.gatewayPercent} onChange={handleInputChange} placeholder="e.g., 2" style={{maxWidth: '120px'}} />
+                <div className="flex gap-4 mt-1">
+                  <label className={`flex items-center border rounded-xl px-6 py-3 cursor-pointer text-base font-medium transition-all duration-150 ${formData.gatewayType === 'customer' ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200' : 'border-gray-300 bg-white'}`}> 
+                    <input type="radio" name="gatewayType" value="customer" checked={formData.gatewayType === 'customer'} onChange={handleInputChange} className="mr-2 accent-emerald-600" /> Collect from customer
+                  </label>
+                  <label className={`flex items-center border rounded-xl px-6 py-3 cursor-pointer text-base font-medium transition-all duration-150 ${formData.gatewayType === 'self' ? 'border-emerald-600 bg-emerald-50 ring-2 ring-emerald-200' : 'border-gray-300 bg-white'}`}> 
+                    <input type="radio" name="gatewayType" value="self" checked={formData.gatewayType === 'self'} onChange={handleInputChange} className="mr-2 accent-emerald-600" /> I will pay
+                  </label>
+                </div>
+              </div>
+            </div>
             
             {/* Add new fields for altitude, distance, and highlights */}
             <InputField 
@@ -626,6 +729,75 @@ function TrekForm() {
               {formErrors.imageUrl && (
                 <p className="mt-1 text-xs text-red-600">{formErrors.imageUrl}</p>
               )}
+            </div>
+            {/* Itinerary PDF Upload */}
+            <div className="form-group md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Itinerary PDF
+              </label>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-4">
+                  <label htmlFor="itineraryPdfUpload" className="inline-flex items-center px-4 py-2 border border-emerald-600 text-emerald-700 bg-emerald-50 rounded-md shadow-sm text-sm font-medium cursor-pointer hover:bg-emerald-100 transition-colors">
+                    <svg className="h-5 w-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    {formData.itineraryPdfUrl ? 'Replace PDF' : 'Upload PDF'}
+                    <input
+                      id="itineraryPdfUpload"
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        console.log('[PDF UPLOAD] File selected:', file);
+                        setPdfUploading(true);
+                        try {
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          console.log('[PDF UPLOAD] FormData created, sending POST to /api/upload');
+                          const response = await axios.post('/api/upload', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                          });
+                          console.log('[PDF UPLOAD] Response:', response);
+                          setFormData(prev => ({ ...prev, itineraryPdfUrl: response.data.url }));
+                          toast.success('PDF uploaded successfully!');
+                        } catch (err) {
+                          console.error('[PDF UPLOAD] PDF upload failed', err);
+                          toast.error('Failed to upload PDF. Please try again.');
+                        } finally {
+                          setPdfUploading(false);
+                        }
+                      }}
+                    />
+                  </label>
+                  {pdfUploading && (
+                    <span className="ml-2 text-emerald-600 flex items-center text-xs"><svg className="animate-spin h-4 w-4 mr-1" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Uploading...</span>
+                  )}
+                  {formData.itineraryPdfUrl && !pdfUploading && (
+                    <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded px-3 py-2">
+                      <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm2 2h4v2H8V4zm-2 4h8v8H6V8z" /></svg>
+                      <a href={formData.itineraryPdfUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline text-sm font-medium">
+                        View Itinerary PDF
+                      </a>
+                      <button type="button" onClick={async () => {
+                        if (!formData.itineraryPdfUrl) return;
+                        try {
+                          // Extract the S3 key from the URL
+                          const urlParts = formData.itineraryPdfUrl.split('.com/');
+                          if (urlParts.length !== 2) throw new Error('Invalid S3 URL format');
+                          const key = encodeURIComponent(urlParts[1]);
+                          await axios.delete(`/api/upload/${key}`);
+                          setFormData(prev => ({ ...prev, itineraryPdfUrl: '' }));
+                          toast.success('PDF deleted successfully!');
+                        } catch (err) {
+                          toast.error('Failed to delete PDF.');
+                          console.error('Error deleting PDF:', err);
+                        }
+                      }} className="text-red-500 hover:underline text-xs ml-2">Remove</button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Only PDF files allowed. Max size: 5MB.</p>
+              </div>
             </div>
             <div className="mb-4">
               <label htmlFor="category" className="block text-sm font-medium text-gray-700">Category</label>

@@ -38,10 +38,9 @@ const trekSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  basePrice: {
+  displayPrice: {
     type: Number,
-    required: true,
-    min: 0
+    required: true
   },
   imageUrl: {
     type: String,

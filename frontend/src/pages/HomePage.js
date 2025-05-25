@@ -103,7 +103,7 @@ function HomePage() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {offer.treks.slice(0, 3).map((trek) => {
-                      const originalPrice = trek.price || 0;
+                      const originalPrice = trek.displayPrice || 0;
                       const discountedPrice = offer.discountType === 'percentage'
                         ? originalPrice - (originalPrice * offer.discountValue / 100)
                         : Math.max(0, originalPrice - offer.discountValue);
@@ -116,7 +116,7 @@ function HomePage() {
                         >
                           <div className="aspect-w-16 aspect-h-9 overflow-hidden">
                             <img 
-                              src={trek.imageUrl || 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'} 
+                              src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1501555088652-021faa106b9b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'} 
                               alt={trek.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
@@ -134,7 +134,10 @@ function HomePage() {
                                   ₹{Math.round(discountedPrice).toLocaleString('en-IN')}
                                 </span>
                                 <span className="ml-2 text-sm text-gray-500 line-through">
-                                  ₹{Math.round(originalPrice).toLocaleString('en-IN')}
+                                  {trek.strikedPrice ? 
+                                    `₹${Math.round(trek.strikedPrice).toLocaleString('en-IN')}` :
+                                    `₹${Math.round(originalPrice).toLocaleString('en-IN')}`
+                                  }
                                 </span>
                               </div>
                               <div className="bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded">
