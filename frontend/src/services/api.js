@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-console.log('API_URL:', process.env.REACT_APP_API_URL, 'Final API_URL:', API_URL);
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+console.log('Environment:', process.env.NODE_ENV);
+console.log('REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+console.log('Final API_URL:', API_URL);
 
 // Create axios instance with base URL and credentials
 const api = axios.create({
@@ -1044,10 +1046,34 @@ export const exportBookings = async (options) => {
 // Payment API endpoints
 export const getRazorpayKey = async () => {
   try {
-    const response = await api.get('/payments/get-key');
+    console.log('Fetching Razorpay key from:', `${API_URL}/payments/get-key`);
+    const response = await api.get('/payments/get-key', {
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'If-None-Match': '',
+        'If-Modified-Since': '',
+        'Accept': 'application/json'
+      },
+      params: {
+        _t: new Date().getTime() // Add timestamp to prevent caching
+      },
+      withCredentials: true
+    });
+    console.log('Razorpay key response:', response.data);
     return response.data.key;
   } catch (error) {
-    console.error('Error fetching Razorpay key:', error);
+    console.error('Error fetching Razorpay key:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    });
     throw error;
   }
 };

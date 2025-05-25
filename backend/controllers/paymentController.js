@@ -140,6 +140,13 @@ exports.getRazorpayKey = (req, res) => {
       });
     }
 
+    // Set no-cache headers
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+
     res.status(200).json({
       success: true,
       key: key

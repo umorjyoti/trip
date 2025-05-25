@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
-import { getTrekById, getAuthHeader, createBooking } from "../services/api";
+import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../contexts/AuthContext";
@@ -32,15 +32,8 @@ function BookingPage() {
   useEffect(() => {
     const fetchRazorpayKey = async () => {
       try {
-        const response = await fetch("/api/payments/get-key", {
-          headers: getAuthHeader()
-        });
-        const data = await response.json();
-        
-        if (!data.key) {
-          throw new Error('Invalid API key received');
-        }  
-        setRazorpayKey(data.key);
+        const key = await getRazorpayKey();
+        setRazorpayKey(key);
       } catch (error) {
         console.error('Error fetching Razorpay key:', error);
         if (error.message === 'Please log in to proceed with booking') {
@@ -175,25 +168,8 @@ function BookingPage() {
 
       const booking = await createBooking(bookingData);
       
-      // Create Razorpay order
-      const orderResponse = await fetch('/api/payments/create-order', {
-        method: 'POST',
-        headers: {
-          ...getAuthHeader(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: booking.totalPrice,
-          bookingId: booking._id,
-        }),
-      });
-
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.message || 'Failed to create payment order');
-      }
-
-      const { order } = await orderResponse.json();
+      // Create Razorpay order using the API service
+      const { order } = await createPaymentOrder(booking.totalPrice, booking._id);
 
       // Initialize Razorpay
       const options = {
@@ -210,25 +186,13 @@ function BookingPage() {
               this.modal.hide();
             }
 
-            // Verify payment on backend
-            const verifyResponse = await fetch('/api/payments/verify', {
-              method: 'POST',
-              headers: {
-                ...getAuthHeader(),
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                bookingId: booking._id,
-              }),
+            // Verify payment using the API service
+            await verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId: booking._id,
             });
-
-            if (!verifyResponse.ok) {
-              const errorData = await verifyResponse.json();
-              throw new Error(errorData.message || 'Payment verification failed');
-            }
 
             toast.success('Payment successful! Please fill in participant details.');
             

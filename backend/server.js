@@ -33,7 +33,18 @@ app.use(cors({
   origin: [process.env.FRONTEND_URL || 'http://localhost:3000', 'https://trip-ctuq.onrender.com'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'Pragma',
+    'If-None-Match',
+    'If-Modified-Since'
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range']
 }));
 
 // Session configuration - MUST be before passport.initialize()
