@@ -8,34 +8,30 @@ const createBooking = async (req, res) => {
     const {
       trekId,
       batchId,
-      participants,
-      participantDetails,
-      emergencyContact,
-      additionalNotes,
+      numberOfParticipants,
+      addOns,
+      userDetails,
       totalPrice,
     } = req.body;
 
     // Validate required fields
-    if (!trekId || !batchId || !participants || !participantDetails) {
+    if (!trekId || !batchId || !numberOfParticipants || !userDetails) {
       return res
         .status(400)
         .json({ message: "Please provide all required fields" });
     }
 
-    // Ensure participants is a number
-    const participantsCount = Number(participants);
-    if (isNaN(participantsCount)) {
-      return res.status(400).json({ message: "Participants must be a number" });
-    }
-
-    // Validate participantDetails array length matches participants count
-    if (participantDetails.length !== participantsCount) {
+    // Validate user details
+    if (!userDetails.name || !userDetails.email || !userDetails.phone) {
       return res
         .status(400)
-        .json({
-          message:
-            "Number of participant details does not match participants count",
-        });
+        .json({ message: "Please provide all user details" });
+    }
+
+    // Ensure numberOfParticipants is a number
+    const participantsCount = Number(numberOfParticipants);
+    if (isNaN(participantsCount) || participantsCount < 1) {
+      return res.status(400).json({ message: "Invalid number of participants" });
     }
 
     // Find the trek and check if it exists
@@ -64,16 +60,25 @@ const createBooking = async (req, res) => {
         .json({ message: "Not enough spots available in this batch" });
     }
 
+    // Validate add-ons if provided
+    if (addOns && addOns.length > 0) {
+      const validAddOns = trek.addOns.filter(addOn => addOn.isEnabled).map(addOn => addOn._id.toString());
+      const invalidAddOns = addOns.filter(addOnId => !validAddOns.includes(addOnId.toString()));
+      
+      if (invalidAddOns.length > 0) {
+        return res.status(400).json({ message: "Invalid add-ons selected" });
+      }
+    }
+
     // Create booking
     const booking = new Booking({
       user: req.user._id,
       trek: trekId,
       batch: batchId,
-      participants: participantsCount,
-      participantDetails,
-      emergencyContact,
-      additionalNotes,
-      totalPrice: totalPrice || batch.price * participantsCount,
+      numberOfParticipants: participantsCount,
+      addOns: addOns || [],
+      userDetails,
+      totalPrice,
       status: "pending",
     });
 
@@ -650,6 +655,48 @@ const exportBookings = async (req, res) => {
   }
 };
 
+// Update participant details after payment
+const updateParticipantDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { participants, pickupLocation, dropLocation, additionalRequests } = req.body;
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Check if the booking belongs to the logged-in user
+    if (booking.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+      return res.status(403).json({ message: "Not authorized to update this booking" });
+    }
+
+    // Validate number of participants
+    if (participants.length !== booking.numberOfParticipants) {
+      return res.status(400).json({ 
+        message: "Number of participants does not match the booking" 
+      });
+    }
+
+    // Update booking with participant details
+    booking.participantDetails = participants;
+    booking.pickupLocation = pickupLocation;
+    booking.dropLocation = dropLocation;
+    booking.additionalRequests = additionalRequests;
+    booking.status = 'confirmed'; // Update status to confirmed after collecting details
+
+    await booking.save();
+
+    res.json({ 
+      message: "Participant details updated successfully",
+      booking 
+    });
+  } catch (error) {
+    console.error("Error updating participant details:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -662,5 +709,6 @@ module.exports = {
   cancelParticipant,
   restoreParticipant,
   updateBooking,
-  exportBookings
+  exportBookings,
+  updateParticipantDetails
 };

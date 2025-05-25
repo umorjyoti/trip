@@ -78,6 +78,9 @@ router.put('/:id',
   bookingController.updateBooking
 );
 
+// Update participant details after payment
+router.put('/:id/participants', protect, bookingController.updateParticipantDetails);
+
 // Export bookings
 router.get('/admin/export', protect, admin, bookingController.exportBookings);
 

@@ -33,7 +33,7 @@ import TrekFAQs from '../components/TrekFAQs';
 import { format, parseISO, addMonths, isSameMonth } from 'date-fns';
 
 // Add this new component at the top level of the file
-const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled }) => {
+const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, navigate, trekId }) => {
   // Group batches by month
   const batchesByMonth = batches.reduce((acc, batch) => {
     const startDate = parseISO(batch.startDate);
@@ -72,6 +72,12 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled }) => {
   };
 
   const handleBookNow = () => {
+    if (!currentUser) {
+      toast.info("Please log in to book this trek");
+      navigate("/login", { state: { from: `/treks/${trekId}/book` } });
+      return;
+    }
+
     if (selectedBatch) {
       onBatchSelect(selectedBatch);
     }
@@ -1569,6 +1575,9 @@ function TrekDetail() {
               batches={trek.batches}
               onBatchSelect={handleBatchSelect}
               isTrekDisabled={isTrekDisabled}
+              currentUser={currentUser}
+              navigate={navigate}
+              trekId={id}
             />
           </div>
         )}

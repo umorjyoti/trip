@@ -60,6 +60,8 @@ import PaymentPage from './pages/PaymentPage';
 import BlogList from './pages/BlogList';
 import BlogDetail from './pages/BlogDetail';
 import BlogManagement from './pages/admin/BlogManagement';
+import LoginSuccess from './pages/LoginSuccess';
+import ParticipantDetailsPage from "./pages/ParticipantDetailsPage";
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -170,6 +172,18 @@ function App() {
                 element={
                   <PrivateRoute>
                     <BookingDetail />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/booking-detail/:id/participants"
+                element={<ParticipantDetailsPage />}
+              />
+              <Route
+                path="/booking/:id/participant-details"
+                element={
+                  <PrivateRoute>
+                    <ParticipantDetailsPage />
                   </PrivateRoute>
                 }
               />
@@ -488,6 +502,9 @@ function App() {
                   </ProtectedRoutes>
                 }
               />
+
+              {/* Login Success Route */}
+              <Route path="/login/success" element={<LoginSuccess />} />
 
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />

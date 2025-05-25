@@ -10,8 +10,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add an email'],
     unique: true,
-    trim: true,
-    lowercase: true
+    match: [
+      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+      'Please add a valid email'
+    ]
   },
   username: {
     type: String,
@@ -21,7 +23,14 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Please add a password']
+    required: [true, 'Please add a password'],
+    minlength: 6,
+    select: false
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
   },
   isAdmin: {
     type: Boolean,
@@ -65,6 +74,8 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UserGroup'
   }
+}, {
+  timestamps: true
 });
 
 // Encrypt password using bcrypt

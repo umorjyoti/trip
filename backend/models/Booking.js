@@ -1,9 +1,18 @@
 const mongoose = require('mongoose');
 
-const EmergencyContactSchema = new mongoose.Schema({
-  name: String,
-  relationship: String,
-  phone: String
+const UserDetailsSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  email: {
+    type: String,
+    required: true
+  },
+  phone: {
+    type: String,
+    required: true
+  }
 }, { _id: false });
 
 // Schema for custom field responses
@@ -27,7 +36,11 @@ const ParticipantDetailSchema = new mongoose.Schema({
     enum: ['Male', 'Female', 'Other']
   },
   contactNumber: String,
-  emergencyContact: EmergencyContactSchema,
+  emergencyContact: {
+    name: String,
+    relationship: String,
+    phone: String
+  },
   medicalConditions: String,
   specialRequests: String,
   customFieldResponses: [CustomFieldResponseSchema],
@@ -86,13 +99,19 @@ const BookingSchema = new mongoose.Schema({
     ref: 'Batch',
     required: true
   },
-  participants: {
+  numberOfParticipants: {
     type: Number,
     required: true,
     min: 1
   },
-  participantDetails: [ParticipantDetailSchema],
-  contactInfo: ContactInfoSchema,
+  addOns: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AddOn'
+  }],
+  userDetails: {
+    type: UserDetailsSchema,
+    required: true
+  },
   totalPrice: {
     type: Number,
     required: true,
@@ -119,12 +138,39 @@ const BookingSchema = new mongoose.Schema({
   refundDate: {
     type: Date
   },
-  specialRequirements: {
-    type: String,
-    default: ''
-  },
   // Add payment details field
-  paymentDetails: PaymentDetailsSchema
+  paymentDetails: PaymentDetailsSchema,
+  // This will be filled after payment success
+  participantDetails: [{
+    name: String,
+    age: Number,
+    gender: {
+      type: String,
+      enum: ['Male', 'Female', 'Other']
+    },
+    medicalConditions: String,
+    specialRequests: String,
+    customFieldResponses: [{
+      fieldId: String,
+      fieldName: String,
+      fieldType: String,
+      value: mongoose.Schema.Types.Mixed,
+      options: [String]
+    }]
+  }],
+  // Add pickup and drop location fields
+  pickupLocation: {
+    type: String,
+    trim: true
+  },
+  dropLocation: {
+    type: String,
+    trim: true
+  },
+  additionalRequests: {
+    type: String,
+    trim: true
+  }
 }, { 
   timestamps: true,
   toJSON: { virtuals: true },

@@ -1,15 +1,20 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { FcGoogle } from 'react-icons/fc';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { login, setCurrentUser } = useAuth();
+
+  // Get the redirect path from location state
+  const from = location.state?.from || '/';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,12 +27,89 @@ function Login() {
     try {
       setLoading(true);
       await login(email, password);
-      navigate('/');
+      navigate(from);
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error.response?.data?.message || 'Failed to login');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
+    try {
+      // Calculate popup window dimensions
+      const width = 500;
+      const height = 600;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2.5;
+
+      // Open Google OAuth URL in a popup window
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const googleAuthUrl = baseUrl.endsWith('/api') 
+        ? `${baseUrl.slice(0, -4)}/api/auth/google`  // Remove trailing /api if it exists
+        : `${baseUrl}/api/auth/google`;
+      
+      console.log('Base URL:', baseUrl);
+      console.log('Final Google Auth URL:', googleAuthUrl);
+      
+      const popup = window.open(
+        googleAuthUrl,
+        'Google Sign In',
+        `toolbar=no, menubar=no, width=${width}, height=${height}, left=${left}, top=${top}`
+      );
+
+      if (!popup) {
+        toast.error('Popup was blocked. Please allow popups for this site.');
+        return;
+      }
+
+      // Handle popup window events
+      const checkPopup = setInterval(() => {
+        try {
+          if (!popup || popup.closed) {
+            clearInterval(checkPopup);
+            return;
+          }
+        } catch (error) {
+          // Ignore cross-origin frame access errors
+          if (!error.message.includes('cross-origin')) {
+            console.error('Popup error:', error);
+            clearInterval(checkPopup);
+            toast.error('Failed to sign in with Google');
+            if (popup) popup.close();
+          }
+        }
+      }, 1000);
+
+      // Listen for messages from the popup
+      const handleMessage = (event) => {
+        if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+          const { data } = event.data;
+          // Store the token
+          localStorage.setItem('token', data.token);
+          // Update auth context with user data
+          setCurrentUser(data.user);
+          // Show success message
+          toast.success('Successfully signed in with Google');
+          // Navigate to the redirect path
+          navigate(from);
+        } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+          toast.error(event.data.error || 'Failed to sign in with Google');
+        }
+      };
+
+      // Add message listener
+      window.addEventListener('message', handleMessage);
+
+      // Cleanup
+      return () => {
+        clearInterval(checkPopup);
+        window.removeEventListener('message', handleMessage);
+      };
+    } catch (error) {
+      console.error('Google sign-in error:', error);
+      toast.error('Failed to sign in with Google. Please try again or use email/password.');
     }
   };
 
@@ -43,7 +125,28 @@ function Login() {
             </Link>
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+
+        {/* Google Sign-In Button */}
+        <div>
+          <button
+            onClick={handleGoogleSignIn}
+            className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+          >
+            <FcGoogle className="w-5 h-5 mr-2" />
+            Sign in with Google
+          </button>
+        </div>
+
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+          </div>
+        </div>
+
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email-address" className="sr-only">

@@ -388,4 +388,71 @@ exports.updateUserRole = async (req, res) => {
       error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error' 
     });
   }
-}; 
+};
+
+// Google OAuth callback
+exports.googleCallback = async (req, res) => {
+  try {
+    console.log('Google callback received:', {
+      user: req.user,
+      session: req.session,
+      headers: req.headers
+    });
+
+    if (!req.user) {
+      console.error('No user data received from Google');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_user`);
+    }
+
+    // Generate token
+    const token = generateToken(req.user._id);
+    console.log('Generated token for user:', req.user._id);
+    
+    // Set cookie
+    sendTokenCookie(res, token);
+
+    // Get user data with populated group
+    const user = await User.findById(req.user._id).populate('group');
+    console.log('Found user after Google auth:', user ? user._id : 'not found');
+    
+    if (!user) {
+      console.error('User not found after Google authentication');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=user_not_found`);
+    }
+
+    // Prepare user data
+    const userObj = user.toObject();
+    const isAdmin = userObj.role === 'admin' ? true : !!userObj.isAdmin;
+
+    // Create response data
+    const responseData = {
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: isAdmin,
+        role: userObj.role,
+        group: user.group
+      }
+    };
+
+    console.log('Sending response data:', {
+      userId: responseData.user._id,
+      email: responseData.user.email,
+      hasToken: !!responseData.token
+    });
+
+    // Encode the response data
+    const encodedData = encodeURIComponent(JSON.stringify(responseData));
+
+    // Redirect to success page with data
+    res.redirect(`${process.env.FRONTEND_URL}/login/success?data=${encodedData}`);
+  } catch (error) {
+    console.error('Google callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=${encodeURIComponent(error.message)}`);
+  }
+};
+
+// Get current user profile
+exports.getMe = exports.getCurrentUser; 
