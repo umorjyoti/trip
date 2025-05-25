@@ -45,7 +45,7 @@ function Login() {
       const top = window.screenY + (window.outerHeight - height) / 2.5;
 
       // Open Google OAuth URL in a popup window
-      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const baseUrl = process.env.REACT_APP_API_URL ;
       const googleAuthUrl = baseUrl.endsWith('/api') 
         ? `${baseUrl.slice(0, -4)}/api/auth/google`  // Remove trailing /api if it exists
         : `${baseUrl}/api/auth/google`;

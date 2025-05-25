@@ -79,7 +79,7 @@ exports.login = async (req, res) => {
     console.log('Login attempt:', { email });
 
     // Check if user exists and populate group
-    const user = await User.findOne({ email }).populate('group');
+    const user = await User.findOne({ email }).select('+password').populate('group');
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });

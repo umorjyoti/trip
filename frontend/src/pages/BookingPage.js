@@ -205,6 +205,11 @@ function BookingPage() {
         order_id: order.id,
         handler: async function (response) {
           try {
+            // Close Razorpay modal immediately
+            if (this.modal) {
+              this.modal.hide();
+            }
+
             // Verify payment on backend
             const verifyResponse = await fetch('/api/payments/verify', {
               method: 'POST',
