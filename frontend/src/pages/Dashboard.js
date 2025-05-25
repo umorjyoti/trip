@@ -43,8 +43,11 @@ import {
   FaArrowRight,
   FaExclamationTriangle,
   FaInfoCircle,
+  FaNewspaper,
+  FaHeadset,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
+import RichTextEditor from "../components/RichTextEditor";
 
 // Register ChartJS components
 ChartJS.register(
@@ -516,9 +519,17 @@ function Dashboard() {
       permissionKey: "manageUsers",
     },
     {
+      title: "Manage Blogs",
+      description: "Create and manage blog posts",
+      icon: FaNewspaper,
+      link: "/admin/blogs",
+      color: "indigo",
+      permissionKey: "manageBlogs",
+    },
+    {
       title: "Support Tickets",
       description: "Respond to customer inquiries",
-      icon: FaTicketAlt,
+      icon: FaHeadset,
       link: "/admin/support",
       color: "indigo",
       permissionKey: "supportTickets",
@@ -546,7 +557,7 @@ function Dashboard() {
       link: "/admin/trek-sections",
       color: "teal",
       permissionKey: "trekSections",
-    },
+    }
   ];
 
   if (loading) {

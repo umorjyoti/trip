@@ -11,6 +11,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import AdminRoute from "./components/AdminRoute";
 import LoadingSpinner from "./components/LoadingSpinner";
 import AdminLayout from "./components/AdminLayout";
+import ProtectedRoutes from "./routes/ProtectedRoutes";
 
 // Pages
 import Home from "./pages/Home";
@@ -56,12 +57,14 @@ import UserGroups from "./pages/UserGroups";
 import LeadDetails from "./pages/LeadDetails";
 import UserDashboard from './pages/UserDashboard';
 import PaymentPage from './pages/PaymentPage';
+import BlogList from './pages/BlogList';
+import BlogDetail from './pages/BlogDetail';
+import BlogManagement from './pages/admin/BlogManagement';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
 import LeadsManagement from "./pages/admin/LeadsManagement";
 import WeekendGetawayManager from "./components/admin/WeekendGetawayManager";
-import ProtectedRoutes from "./routes/ProtectedRoutes";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 
 function App() {
@@ -468,6 +471,22 @@ function App() {
               <Route
                 path="/weekend-getaways/:id"
                 element={<WeekendGetawayDetail />}
+              />
+
+              {/* Blog Routes */}
+              <Route path="/blogs" element={<BlogList />} />
+              <Route path="/blogs/:slug" element={<BlogDetail />} />
+              <Route
+                path="/admin/blogs"
+                element={
+                  <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                    <AdminRoute>
+                      <AdminLayout>
+                        <BlogManagement />
+                      </AdminLayout>
+                    </AdminRoute>
+                  </ProtectedRoutes>
+                }
               />
 
               {/* 404 Route */}

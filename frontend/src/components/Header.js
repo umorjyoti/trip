@@ -4,14 +4,31 @@ import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { FaHeart, FaUser, FaSignOutAlt, FaCog, FaClipboardList, FaTicketAlt, FaBars, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getRegions } from '../services/api';
 
 function Header() {
   const { currentUser, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [regions, setRegions] = useState([]);
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   const mobileMenuRef = useRef(null);
+
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const data = await getRegions();
+        // Only show active regions
+        const activeRegions = data.filter(region => region.isActive);
+        setRegions(activeRegions);
+      } catch (error) {
+        console.error('Error fetching regions:', error);
+      }
+    };
+    
+    fetchRegions();
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -87,11 +104,87 @@ function Header() {
             </Link>
             <nav className="hidden sm:ml-8 sm:flex sm:space-x-6">
               <NavLink to="/">Home</NavLink>
-              <NavLink to="/treks">Treks</NavLink>
+              <div className="relative group">
+                <button
+                  className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
+                >
+                  Treks
+                  <svg
+                    className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div className="py-1" role="menu" aria-orientation="vertical">
+                    <Link
+                      to="/treks?duration=1-1"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                    >
+                      One Day Treks
+                    </Link>
+                    <Link
+                      to="/treks?duration=2-2"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                    >
+                      Two Day Treks
+                    </Link>
+                    <Link
+                      to="/treks"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      role="menuitem"
+                    >
+                      All Treks
+                    </Link>
+                  </div>
+                </div>
+              </div>
               <NavLink to="/weekend-getaways">Weekend Getaways</NavLink>
               <NavLink to="/about">About</NavLink>
               <NavLink to="/contact">Contact</NavLink>
-              <NavLink to="/regions">Regions</NavLink>
+              <div className="relative group">
+                <button
+                  className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
+                >
+                  Regions
+                  <svg
+                    className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                  <div className="py-1 max-h-60 overflow-y-auto" role="menu" aria-orientation="vertical">
+                    {regions.map(region => (
+                      <Link
+                        key={region._id}
+                        to={`/regions/${region._id}`}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        {region.name}
+                      </Link>
+                    ))}
+                    <Link
+                      to="/regions"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-100"
+                      role="menuitem"
+                    >
+                      View All Regions
+                    </Link>
+                  </div>
+                </div>
+              </div>
+              <NavLink to="/blogs">Blogs</NavLink>
+            
             </nav>
           </div>
           <div className="flex items-center">

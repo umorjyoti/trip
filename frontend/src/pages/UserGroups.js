@@ -45,7 +45,8 @@ function UserGroups() {
         salesDashboard: false,
         manageLeads: false,
         trekSections: false,
-        manageUserGroups: false
+        manageUserGroups: false,
+        manageBlogs: false
       }
     }
   });
@@ -90,7 +91,8 @@ function UserGroups() {
             salesDashboard: data.permissions?.actions?.salesDashboard || false,
             manageLeads: data.permissions?.actions?.manageLeads || false,
             trekSections: data.permissions?.actions?.trekSections || false,
-            manageUserGroups: data.permissions?.actions?.manageUserGroups || false
+            manageUserGroups: data.permissions?.actions?.manageUserGroups || false,
+            manageBlogs: data.permissions?.actions?.manageBlogs || false
           }
         }
       });

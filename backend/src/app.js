@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 require('dotenv').config();
 
 const leadsRoutes = require('./routes/leads.routes');
+const blogRoutes = require('./routes/blogRoutes');
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/leads', leadsRoutes);
+app.use('/api/blogs', blogRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

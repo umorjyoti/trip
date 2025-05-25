@@ -440,7 +440,20 @@ exports.getTreks = async (req, res) => {
 
     if (region) filter.region = region;
     if (season) filter.season = season;
-    if (duration) filter.duration = duration;
+    if (duration) {
+      // Parse duration range
+      const [min, max] = duration.split('-').map(Number);
+      if (min === max) {
+        // For exact matches (e.g., "1-1", "2-2")
+        filter.duration = min;
+      } else if (max) {
+        // For ranges (e.g., "2-5", "15-100")
+        filter.duration = { $gte: min, $lte: max };
+      } else {
+        // Fallback case
+        filter.duration = { $gte: min };
+      }
+    }
     if (category) filter.category = category;
 
     // Get current date

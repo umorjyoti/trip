@@ -33,7 +33,8 @@ function SearchResults() {
     region: '',
     season: '',
     category: '',
-    sort: 'name-asc'
+    sort: 'name-asc',
+    duration: ''
   });
   const [showFilters, setShowFilters] = useState(false);
 
@@ -59,6 +60,7 @@ function SearchResults() {
       region: params.get('region') || '',
       season: params.get('season') || '',
       category: params.get('category') || '',
+      duration: params.get('duration') || '',
       sort: 'name-asc'
     };
     setFilters(searchParams);
@@ -68,9 +70,32 @@ function SearchResults() {
   const fetchTreks = async (searchParams) => {
     try {
       setLoading(true);
-      const data = await getTreks({ ...searchParams, includeDisabled: false });
-      console.log('API Response:', data); // Debug log
-      setTreks(Array.isArray(data) ? data : (data.treks || []));
+      // Format the duration parameter if it exists
+      const apiParams = {
+        ...searchParams,
+        includeDisabled: false
+      };
+
+      // Format duration parameter for API call
+      if (apiParams.duration) {
+        if (apiParams.duration === '15+') {
+          apiParams.duration = '15-100';
+        } else if (apiParams.duration === '1' || apiParams.duration === '2') {
+          apiParams.duration = `${apiParams.duration}-${apiParams.duration}`;
+        }
+      }
+      
+      // Log the parameters being sent to the API
+      console.log('Fetching treks with params:', apiParams);
+      
+      const data = await getTreks(apiParams);
+      console.log('API Response:', data);
+      
+      // Ensure we're getting an array of treks
+      const trekArray = Array.isArray(data) ? data : (data.treks || []);
+      console.log('Processed treks:', trekArray);
+      
+      setTreks(trekArray);
       setError(null);
     } catch (err) {
       console.error('Error fetching treks:', err);
@@ -89,9 +114,29 @@ function SearchResults() {
   const applyFilters = () => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.append(key, value);
+      if (value) {
+        // Special handling for duration to ensure proper format
+        if (key === 'duration') {
+          if (value === '15+') {
+            params.append(key, '15-100'); // Set a reasonable upper limit
+          } else if (value === '1' || value === '2') {
+            // For single days, send as exact match (e.g., "1-1", "2-2")
+            params.append(key, `${value}-${value}`);
+          } else {
+            params.append(key, value);
+          }
+        } else {
+          params.append(key, value);
+        }
+      }
     });
-    window.history.pushState({}, '', `/treks?${params.toString()}`);
+    
+    const newUrl = `/treks?${params.toString()}`;
+    console.log('Updating URL to:', newUrl);
+    window.history.pushState({}, '', newUrl);
+    
+    // Log the filters being applied
+    console.log('Applying filters:', filters);
     fetchTreks(filters);
   };
 
@@ -153,6 +198,26 @@ function SearchResults() {
               </div>
             </div>
             
+            <div className="flex-1">
+              <div className="flex items-center bg-gray-50 rounded-lg px-4 py-3">
+                <FaCalendarAlt className="text-gray-400 mr-3" />
+                <select
+                  className="bg-transparent w-full focus:outline-none"
+                  name="duration"
+                  value={filters.duration}
+                  onChange={handleFilterChange}
+                >
+                  <option value="">Any Duration</option>
+                  <option value="1">1 Day</option>
+                  <option value="2">2 Days</option>
+                  <option value="2-5">2-5 Days</option>
+                  <option value="6-10">6-10 Days</option>
+                  <option value="11-15">11-15 Days</option>
+                  <option value="15+">15+ Days</option>
+                </select>
+              </div>
+            </div>
+            
             <button
               onClick={applyFilters}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300"
@@ -179,6 +244,7 @@ function SearchResults() {
                   Showing {treks.length} {treks.length === 1 ? 'trek' : 'treks'}
                   {filters.region && ` in ${regions.find(r => r._id === filters.region)?.name || filters.region}`}
                   {filters.season && ` during ${filters.season}`}
+                  {filters.duration && ` of ${filters.duration} duration`}
                 </p>
               </div>
               
@@ -212,9 +278,11 @@ function SearchResults() {
                         region: '',
                         season: '',
                         category: '',
+                        duration: '',
                         sort: 'name-asc'
                       });
                       window.history.pushState({}, '', '/treks');
+                      fetchTreks({});
                     }}
                     className="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors"
                   >

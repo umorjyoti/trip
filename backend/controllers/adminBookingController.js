@@ -27,7 +27,7 @@ exports.cancelBooking = async (req, res) => {
       if (refund) {
         // Calculate per-participant price
         const perPrice = booking.totalPrice / booking.participantDetails.length;
-        refundAmount = getRefundAmount(perPrice, booking.batch.startDate, new Date(), refundType);
+        refundAmount = booking.batch ? getRefundAmount(perPrice, booking.batch.startDate, new Date(), refundType) : perPrice;
         if (refundAmount > 0 && paymentId) {
           participant.refundStatus = 'processing';
           const razorpayRes = await refundPayment(paymentId, refundAmount * 100);
@@ -49,7 +49,7 @@ exports.cancelBooking = async (req, res) => {
       booking.cancelledAt = new Date();
 
       if (refund) {
-        refundAmount = getRefundAmount(booking.totalPrice, booking.batch.startDate, new Date(), refundType);
+        refundAmount = booking.batch ? getRefundAmount(booking.totalPrice, booking.batch.startDate, new Date(), refundType) : booking.totalPrice;
         if (refundAmount > 0 && paymentId) {
           booking.refundStatus = 'processing';
           const razorpayRes = await refundPayment(paymentId, refundAmount * 100);
@@ -64,6 +64,7 @@ exports.cancelBooking = async (req, res) => {
           booking.refundStatus = 'not_applicable';
         }
       }
+      
       // Mark all participants as cancelled
       booking.participantDetails.forEach(p => {
         p.isCancelled = true;

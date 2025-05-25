@@ -1,18 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const leadsController = require('../controllers/leads.controller');
-const { authenticateToken, isAdmin } = require('../middleware/auth');
+const { protect, admin } = require('../../middleware/authMiddleware');
 
 // Public routes
 router.post('/', leadsController.createLead);
 
 // Protected routes
-router.get('/', authenticateToken, leadsController.getAllLeads);
-router.get('/:id', authenticateToken, leadsController.getLead);
-router.put('/:id', authenticateToken, leadsController.updateLead);
-router.delete('/:id', authenticateToken, isAdmin, leadsController.deleteLead);
-router.patch('/:id/status', authenticateToken, leadsController.updateLeadStatus);
-router.patch('/:id/assign', authenticateToken, leadsController.assignLead);
-router.patch('/:id/callback', authenticateToken, leadsController.updateCallbackStatus);
+router.get('/', protect, leadsController.getAllLeads);
+router.get('/:id', protect, leadsController.getLead);
+router.put('/:id', protect, leadsController.updateLead);
+router.delete('/:id', protect, admin, leadsController.deleteLead);
+router.patch('/:id/status', protect, leadsController.updateLeadStatus);
+router.patch('/:id/assign', protect, leadsController.assignLead);
+router.patch('/:id/callback', protect, leadsController.updateCallbackStatus);
 
 module.exports = router; 

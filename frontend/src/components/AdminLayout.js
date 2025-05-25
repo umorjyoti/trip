@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { 
   FaHiking, FaMapMarkedAlt, FaCalendarAlt, FaUsers, 
   FaChartLine, FaHeadset, FaLayerGroup, FaUserFriends,
-  FaUmbrellaBeach, FaUsersCog
+  FaUmbrellaBeach, FaUsersCog, FaHome, FaBookmark, FaTicketAlt, FaCog, FaNewspaper
 } from 'react-icons/fa';
 import { MdDashboard } from 'react-icons/md';
 
@@ -18,132 +18,97 @@ function AdminLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
 
   const menuPermissionsMap = {
-    'Manage Treks': 'manageTreks',
-    'Manage Regions': 'manageRegions',
-    'Manage Bookings': 'manageBookings',
-    'Manage Users': 'manageUsers',
-    'Sales Dashboard': 'salesDashboard',
-    'Support': 'supportTickets',
+    'Dashboard': null,
+    'Users': 'manageUsers',
+    'Bookings': 'manageBookings',
+    'Treks': 'manageTreks',
+    'Support Tickets': 'supportTickets',
+    'Blogs': 'manageBlogs',
+    'Regions': 'manageRegions',
+    'Sales': 'salesDashboard',
     'Trek Sections': 'trekSections',
     'Weekend Getaways': 'manageWeekendGetaways',
     'User Groups': 'manageUserGroups',
-    'Manage Leads': 'manageLeads',
-    'Dashboard': null
+    'Leads': 'manageLeads',
+    'Settings': null
   };
 
-    // Define all possible menu items
-    const allMenuItems = [
-      {
-        name: 'Dashboard',
-        path: '/admin/dashboard',
-        icon: MdDashboard
-      },
-      {
-        name: 'Manage Treks',
-        path: '/admin/treks',
-        icon: FaHiking
-      },
-      {
-        name: 'Manage Regions',
-        path: '/admin/regions',
-        icon: FaMapMarkedAlt
-      },
-      {
-        name: 'Manage Bookings',
-        path: '/admin/bookings',
-        icon: FaCalendarAlt
-      },
-      {
-        name: 'Manage Users',
-        path: '/admin/users',
-        icon: FaUsers
-      },
-      {
-        name: 'Sales Dashboard',
-        path: '/admin/sales',
-        icon: FaChartLine
-      },
-      {
-        name: 'Support',
-        path: '/admin/support',
-        icon: FaHeadset
-      },
-      {
-        name: 'Trek Sections',
-        path: '/admin/trek-sections',
-        icon: FaLayerGroup
-      },
-      {
-        name: 'Weekend Getaways',
-        path: '/admin/weekend-getaways',
-        icon: FaUmbrellaBeach
-      },
-      {
-        name: 'User Groups',
-        path: '/admin/user-groups',
-        icon: FaUserFriends
-      },
-      {
-        name: 'Manage Leads',
-        path: '/admin/leads',
-        icon: FaUsersCog
-      }
-    ];
-  
+  // Define all menu items
+  const allMenuItems = [
+    {
+      name: 'Dashboard',
+      path: '/admin/dashboard',
+      icon: FaHome
+    },
+    {
+      name: 'Users',
+      path: '/admin/users',
+      icon: FaUsers
+    },
+    {
+      name: 'Bookings',
+      path: '/admin/bookings',
+      icon: FaCalendarAlt
+    },
+    {
+      name: 'Treks',
+      path: '/admin/treks',
+      icon: FaBookmark
+    },
+    {
+      name: 'Support Tickets',
+      path: '/admin/support',
+      icon: FaTicketAlt
+    },
+    {
+      name: 'Blogs',
+      path: '/admin/blogs',
+      icon: FaNewspaper
+    },
+    {
+      name: 'Regions',
+      path: '/admin/regions',
+      icon: FaMapMarkedAlt
+    },
+    {
+      name: 'Sales',
+      path: '/admin/sales',
+      icon: FaChartLine
+    },
+    {
+      name: 'Trek Sections',
+      path: '/admin/trek-sections',
+      icon: FaLayerGroup
+    },
+    {
+      name: 'Weekend Getaways',
+      path: '/admin/weekend-getaways',
+      icon: FaUmbrellaBeach
+    },
+    {
+      name: 'User Groups',
+      path: '/admin/user-groups',
+      icon: FaUsersCog
+    },
+    {
+      name: 'Leads',
+      path: '/admin/leads',
+      icon: FaHeadset
+    },
+    {
+      name: 'Settings',
+      path: '/admin/settings',
+      icon: FaCog
+    }
+  ];
 
-  const allMenuItemsWithPermissions = allMenuItems.map(item => {
-    const permissionKey = menuPermissionsMap[item.name];
-    const isAllowed = permissionKey ? permissions.actions[permissionKey] : true;
-  
-    return {
-      ...item,
-      isAllowed
-    };
-  });
-
-
-  const filteredMenuItems = allMenuItemsWithPermissions.filter(item => item.isAllowed);
-
-  // Filter menu items based on user role and permissions
+  // Filter menu items based on permissions
   const menuItems = React.useMemo(() => {
-    // Always show dashboard for admin users
-    const dashboardItem = filteredMenuItems.find(item => item.name === 'Dashboard');
-    const otherItems = filteredMenuItems.filter(item => item.name !== 'Dashboard');
-
-    // Get user permissions from their group
-    const userPermissions = currentUser?.group?.permissions;
-    if (!userPermissions) return [dashboardItem];
-
-    // Filter other menu items based on permissions
-    const allowedItems = otherItems.filter(item => {
-      switch (item.name) {
-        case 'Manage Treks':
-          return userPermissions.actions?.manageTreks;
-        case 'Manage Regions':
-          return userPermissions.actions?.manageRegions;
-        case 'Manage Bookings':
-          return userPermissions.actions?.manageBookings;
-        case 'Manage Users':
-          return userPermissions.actions?.manageUsers;
-        case 'Sales Dashboard':
-          return userPermissions.actions?.salesDashboard;
-        case 'Support':
-          return userPermissions.actions?.supportTickets;
-        case 'Trek Sections':
-          return userPermissions.actions?.trekSections;
-        case 'Weekend Getaways':
-          return userPermissions.actions?.manageWeekendGetaways;
-        case 'User Groups':
-          return userPermissions.actions?.manageUserGroups;
-        case 'Manage Leads':
-          return userPermissions.actions?.manageLeads;
-        default:
-          return false;
-      }
+    return allMenuItems.filter(item => {
+      const permissionKey = menuPermissionsMap[item.name];
+      return permissionKey ? permissions?.actions?.[permissionKey] : true;
     });
-
-    return [dashboardItem, ...allowedItems];
-  }, [currentUser]);
+  }, [permissions]);
 
   const sidebarVariants = {
     closed: { x: "-100%" },

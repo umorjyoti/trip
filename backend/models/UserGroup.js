@@ -26,7 +26,8 @@ const userGroupSchema = new mongoose.Schema({
       salesDashboard: Boolean,
       manageLeads: Boolean,
       trekSections: Boolean,
-      manageUserGroups: Boolean
+      manageUserGroups: Boolean,
+      manageBlogs: Boolean
     }
   },
   createdAt: {

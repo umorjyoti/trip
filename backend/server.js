@@ -21,6 +21,7 @@ const userGroupRoutes = require('./routes/userGroupRoutes');
 const userRoutes = require('./routes/userRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminBookingRoutes = require('./routes/adminBookingRoutes');
+const blogRoutes = require('./src/routes/blogRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -92,6 +93,7 @@ app.use('/api/trek-sections', trekSectionRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminBookingRoutes);
+app.use('/api/blogs', blogRoutes);
 
 // Add this after registering the wishlist routes
 console.log('Registered routes:');

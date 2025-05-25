@@ -92,6 +92,7 @@ function TrekList() {
                   {filters.category && ` in ${filters.category} category`}
                   {filters.region && ` in ${filters.region}`}
                   {filters.season && ` during ${filters.season}`}
+                  {filters.duration && ` of ${filters.duration === '15+' ? '15+ days' : `${filters.duration} days`}`}
                 </p>
               </div>
               

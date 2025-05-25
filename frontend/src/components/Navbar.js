@@ -8,6 +8,7 @@ function Navbar() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isTreksMenuOpen, setIsTreksMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -28,6 +29,15 @@ function Navbar() {
     setIsProfileMenuOpen(!isProfileMenuOpen);
   };
 
+  const toggleTreksMenu = () => {
+    setIsTreksMenuOpen(!isTreksMenuOpen);
+  };
+
+  const handleTrekClick = (duration) => {
+    navigate(`/treks?duration=${duration}`);
+    setIsTreksMenuOpen(false);
+  };
+
   return (
     <nav className="bg-emerald-600">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -46,12 +56,46 @@ function Navbar() {
                 >
                   Home
                 </Link>
-                <Link
-                  to="/treks"
-                  className="text-white hover:bg-emerald-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Treks
-                </Link>
+                <div className="relative group">
+                  <button
+                    className="text-white hover:bg-emerald-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  >
+                    Treks
+                    <svg
+                      className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <div className="py-1" role="menu" aria-orientation="vertical">
+                      <button
+                        onClick={() => handleTrekClick('1-1')}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        One Day Treks
+                      </button>
+                      <button
+                        onClick={() => handleTrekClick('2-2')}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        Two Day Treks
+                      </button>
+                      <Link
+                        to="/treks"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        role="menuitem"
+                      >
+                        All Treks
+                      </Link>
+                    </div>
+                  </div>
+                </div>
                 <Link
                   to="/about"
                   className="text-white hover:bg-emerald-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
@@ -63,6 +107,12 @@ function Navbar() {
                   className="text-white hover:bg-emerald-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Contact
+                </Link>
+                <Link
+                  to="/blogs"
+                  className="text-white hover:bg-emerald-500 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Blogs
                 </Link>
                 {currentUser && currentUser.isAdmin && (
                   <Link
@@ -220,12 +270,46 @@ function Navbar() {
             >
               Home
             </Link>
-            <Link
-              to="/treks"
-              className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
-            >
-              Treks
-            </Link>
+            <div className="relative group">
+              <button
+                className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium flex items-center"
+              >
+                Treks
+                <svg
+                  className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <div className="py-1" role="menu" aria-orientation="vertical">
+                  <button
+                    onClick={() => handleTrekClick('1-1')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                  >
+                    One Day Treks
+                  </button>
+                  <button
+                    onClick={() => handleTrekClick('2-2')}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                  >
+                    Two Day Treks
+                  </button>
+                  <Link
+                    to="/treks"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    role="menuitem"
+                  >
+                    All Treks
+                  </Link>
+                </div>
+              </div>
+            </div>
             <Link
               to="/about"
               className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
@@ -237,6 +321,12 @@ function Navbar() {
               className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
             >
               Contact
+            </Link>
+            <Link
+              to="/blogs"
+              className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
+            >
+              Blogs
             </Link>
             {currentUser && currentUser.isAdmin && (
               <Link
