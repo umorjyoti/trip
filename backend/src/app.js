@@ -5,16 +5,21 @@ require('dotenv').config();
 
 const leadsRoutes = require('./routes/leads.routes');
 const blogRoutes = require('./routes/blogRoutes');
+const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true
+}));
 app.use(express.json());
 
 // Routes
 app.use('/api/leads', leadsRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/auth', authRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

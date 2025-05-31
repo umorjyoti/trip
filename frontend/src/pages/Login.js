@@ -11,7 +11,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, setCurrentUser } = useAuth();
+  const { login, currentUser, setCurrentUser } = useAuth();
 
   // Get the redirect path from location state
   const from = location.state?.from || '/';
@@ -26,7 +26,8 @@ function Login() {
     
     try {
       setLoading(true);
-      await login(email, password);
+      const userData = await login(email, password);
+      setCurrentUser(userData);
       navigate(from);
     } catch (error) {
       console.error('Login error:', error);
@@ -38,6 +39,7 @@ function Login() {
 
   const handleGoogleSignIn = () => {
     try {
+      setLoading(true);
       // Calculate popup window dimensions
       const width = 500;
       const height = 600;
@@ -45,13 +47,10 @@ function Login() {
       const top = window.screenY + (window.outerHeight - height) / 2.5;
 
       // Open Google OAuth URL in a popup window
-      const baseUrl = process.env.REACT_APP_API_URL ;
-      const googleAuthUrl = baseUrl.endsWith('/api') 
-        ? `${baseUrl.slice(0, -4)}/api/auth/google`  // Remove trailing /api if it exists
-        : `${baseUrl}/api/auth/google`;
+      const baseUrl = process.env.REACT_APP_API_URL;
+      const googleAuthUrl = `${baseUrl}/auth/google`;
       
-      console.log('Base URL:', baseUrl);
-      console.log('Final Google Auth URL:', googleAuthUrl);
+      console.log('Opening Google auth URL:', googleAuthUrl);
       
       const popup = window.open(
         googleAuthUrl,
@@ -61,6 +60,7 @@ function Login() {
 
       if (!popup) {
         toast.error('Popup was blocked. Please allow popups for this site.');
+        setLoading(false);
         return;
       }
 
@@ -69,14 +69,15 @@ function Login() {
         try {
           if (!popup || popup.closed) {
             clearInterval(checkPopup);
+            setLoading(false);
             return;
           }
         } catch (error) {
-          // Ignore cross-origin frame access errors
           if (!error.message.includes('cross-origin')) {
             console.error('Popup error:', error);
             clearInterval(checkPopup);
             toast.error('Failed to sign in with Google');
+            setLoading(false);
             if (popup) popup.close();
           }
         }
@@ -84,6 +85,9 @@ function Login() {
 
       // Listen for messages from the popup
       const handleMessage = (event) => {
+        // Only process messages from our popup
+        if (event.source !== popup) return;
+
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
           const { data } = event.data;
           // Store the token
@@ -94,22 +98,38 @@ function Login() {
           toast.success('Successfully signed in with Google');
           // Navigate to the redirect path
           navigate(from);
+          setLoading(false);
+          // Close popup and cleanup
+          popup.close();
+          window.removeEventListener('message', handleMessage);
+          clearInterval(checkPopup);
         } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-          toast.error(event.data.error || 'Failed to sign in with Google');
+          const errorMessage = event.data.error || 'Failed to sign in with Google';
+          toast.error(errorMessage);
+          setLoading(false);
+          // Close popup and cleanup
+          popup.close();
+          window.removeEventListener('message', handleMessage);
+          clearInterval(checkPopup);
         }
       };
 
       // Add message listener
       window.addEventListener('message', handleMessage);
 
-      // Cleanup
-      return () => {
-        clearInterval(checkPopup);
+      // Cleanup function
+      const cleanup = () => {
         window.removeEventListener('message', handleMessage);
+        clearInterval(checkPopup);
+        setLoading(false);
       };
+
+      // Add cleanup on component unmount
+      return cleanup;
     } catch (error) {
       console.error('Google sign-in error:', error);
       toast.error('Failed to sign in with Google. Please try again or use email/password.');
+      setLoading(false);
     }
   };
 
@@ -130,10 +150,17 @@ function Login() {
         <div>
           <button
             onClick={handleGoogleSignIn}
-            className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            disabled={loading}
+            className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <FcGoogle className="w-5 h-5 mr-2" />
-            Sign in with Google
+            {loading ? (
+              <LoadingSpinner />
+            ) : (
+              <>
+                <FcGoogle className="w-5 h-5 mr-2" />
+                Sign in with Google
+              </>
+            )}
           </button>
         </div>
 
@@ -206,30 +233,13 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:bg-emerald-400"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <LoadingSpinner />
-                </span>
+                <LoadingSpinner />
               ) : (
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <svg
-                    className="h-5 w-5 text-emerald-500 group-hover:text-emerald-400"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </span>
+                'Sign in'
               )}
-              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>

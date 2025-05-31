@@ -404,6 +404,12 @@ exports.googleCallback = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_user`);
     }
 
+    // Check if email exists
+    if (!req.user.email) {
+      console.error('No email provided by Google');
+      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_email`);
+    }
+
     // Generate token
     const token = generateToken(req.user._id);
     console.log('Generated token for user:', req.user._id);
@@ -433,14 +439,23 @@ exports.googleCallback = async (req, res) => {
         email: user.email,
         isAdmin: isAdmin,
         role: userObj.role,
-        group: user.group
+        group: user.group || null,
+        username: user.username,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+        country: user.country,
+        profileImage: user.profileImage
       }
     };
 
     console.log('Sending response data:', {
       userId: responseData.user._id,
       email: responseData.user.email,
-      hasToken: !!responseData.token
+      hasToken: !!responseData.token,
+      userData: responseData.user
     });
 
     // Encode the response data
@@ -450,7 +465,17 @@ exports.googleCallback = async (req, res) => {
     res.redirect(`${process.env.FRONTEND_URL}/login/success?data=${encodedData}`);
   } catch (error) {
     console.error('Google callback error:', error);
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=${encodeURIComponent(error.message)}`);
+    let errorReason = 'unknown';
+    
+    if (error.name === 'ValidationError') {
+      errorReason = 'validation_error';
+    } else if (error.name === 'CastError') {
+      errorReason = 'invalid_id';
+    } else if (error.code === 11000) {
+      errorReason = 'duplicate_email';
+    }
+    
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=${errorReason}`);
   }
 };
 
