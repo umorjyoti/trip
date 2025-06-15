@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
-import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment } from "../services/api";
+import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../contexts/AuthContext";
@@ -28,6 +28,11 @@ function BookingPage() {
       phone: currentUser?.phone || "",
     }
   });
+
+  // Add new state for coupon code
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponError, setCouponError] = useState(null);
 
   useEffect(() => {
     const fetchRazorpayKey = async () => {
@@ -120,6 +125,43 @@ function BookingPage() {
     });
   };
 
+  const handleCouponCodeChange = (e) => {
+    setCouponCode(e.target.value);
+    setCouponError(null);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!currentUser) {
+      toast.info("Please log in to apply coupon");
+      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      return;
+    }
+
+    if (!couponCode.trim()) {
+      setCouponError("Please enter a coupon code");
+      return;
+    }
+
+    try {
+      // Calculate base price for order value
+      const basePrice = calculateBasePrice();
+      
+      // Validate coupon with order value
+      const response = await validateCoupon(couponCode, id, basePrice);
+      setAppliedCoupon(response);
+      setCouponError(null);
+    } catch (error) {
+      setCouponError(error.message || "Invalid coupon code");
+      setAppliedCoupon(null);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponError(null);
+  };
+
   const validateForm = () => {
     // Validate user details
     if (!formData.userDetails.name || !formData.userDetails.email || !formData.userDetails.phone) {
@@ -157,19 +199,28 @@ function BookingPage() {
     }
 
     try {
+      // Validate add-ons
+      const validAddOns = formData.addOns.filter(addOnId => {
+        const addOn = trek.addOns.find(a => a._id === addOnId);
+        return addOn && addOn.isEnabled;
+      });
+
       const bookingData = {
         trekId: id,
         batchId: selectedBatch._id,
         numberOfParticipants: formData.numberOfParticipants,
-        addOns: formData.addOns,
+        addOns: validAddOns,
         userDetails: formData.userDetails,
         totalPrice: calculateTotalPrice(),
+        couponCode: appliedCoupon?.code || null,
+        discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.discountPercent / 100) : 0,
+        originalPrice: calculateBasePrice()
       };
 
       const booking = await createBooking(bookingData);
       
       // Create Razorpay order using the API service
-      const { order } = await createPaymentOrder(booking.totalPrice, booking._id);
+      const { order } = await createPaymentOrder(Math.round(booking.totalPrice), booking._id);
 
       // Initialize Razorpay
       const options = {
@@ -177,15 +228,11 @@ function BookingPage() {
         amount: order.amount,
         currency: order.currency,
         name: 'Trek Booking',
-        description: 'Trek Booking Payment',
+        description: `Trek Booking Payment${appliedCoupon ? ` (with ${appliedCoupon.discountPercent}% discount)` : ''}`,
         order_id: order.id,
         handler: async function (response) {
           try {
-            // Close Razorpay modal immediately
-            if (this.modal) {
-              this.modal.hide();
-            }
-
+            // Razorpay closes the modal automatically; no need to call this.modal.hide()
             // Verify payment using the API service
             await verifyPayment({
               razorpay_payment_id: response.razorpay_payment_id,
@@ -244,10 +291,9 @@ function BookingPage() {
     }
   };
 
-  const calculateTotalPrice = () => {
+  const calculateBasePrice = () => {
     if (!selectedBatch) return 0;
 
-    // Calculate base price
     let basePrice = selectedBatch.price * formData.numberOfParticipants;
 
     // Add prices for selected add-ons
@@ -258,16 +304,26 @@ function BookingPage() {
       }
     });
 
-    // Calculate GST
-    const gstAmount = basePrice * (taxInfo.gstPercent / 100);
+    return basePrice;
+  };
 
-    // Calculate payment gateway charges
-    const gatewayCharges = basePrice * (taxInfo.gatewayPercent / 100);
+  const calculateDiscountedPrice = (basePrice) => {
+    if (!appliedCoupon || !appliedCoupon.promoCode) return basePrice;
+    const { discountType, discountValue } = appliedCoupon.promoCode;
+    if (discountType === 'percentage') {
+      return basePrice * (1 - discountValue / 100);
+    } else if (discountType === 'fixed') {
+      return Math.max(0, basePrice - discountValue);
+    }
+    return basePrice;
+  };
 
-    // Calculate total including GST and gateway charges
-    const totalPrice = basePrice + gstAmount + gatewayCharges;
-
-    return totalPrice;
+  const calculateTotalPrice = () => {
+    const basePrice = calculateBasePrice();
+    const discountedPrice = calculateDiscountedPrice(basePrice);
+    const gstAmount = discountedPrice * (taxInfo.gstPercent / 100);
+    const gatewayCharges = discountedPrice * (taxInfo.gatewayPercent / 100);
+    return discountedPrice + gstAmount + gatewayCharges;
   };
 
   if (loading) {
@@ -505,6 +561,50 @@ function BookingPage() {
                 </div>
               )}
 
+              {/* Add Coupon Code Section before the Proceed to Payment button */}
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-md font-medium text-gray-900 mb-4">
+                  Apply Coupon Code
+                </h4>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={handleCouponCodeChange}
+                    placeholder="Enter coupon code"
+                    className="flex-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyCoupon}
+                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {couponError && (
+                  <p className="mt-2 text-sm text-red-600">{couponError}</p>
+                )}
+                {appliedCoupon && (
+                  <div className="mt-2 p-2 bg-green-50 rounded-md flex justify-between items-center">
+                    <p className="text-sm text-green-700">
+                      Coupon applied: {appliedCoupon.promoCode.code} (
+                      {appliedCoupon.promoCode.discountType === 'percentage'
+                        ? `${appliedCoupon.promoCode.discountValue}% off`
+                        : `₹${appliedCoupon.promoCode.discountValue} off`}
+                      )
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-sm text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end">
                 <button
                   type="submit"
@@ -564,31 +664,30 @@ function BookingPage() {
                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Base Amount</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    ₹{(selectedBatch?.price * formData.numberOfParticipants + 
-                      formData.addOns.reduce((total, addOnId) => {
-                        const addOn = trek.addOns.find((a) => a._id === addOnId);
-                        return total + (addOn?.price || 0) * formData.numberOfParticipants;
-                      }, 0)).toFixed(2)}
+                    {appliedCoupon && appliedCoupon.promoCode ? (
+                      <div>
+                        <span className="line-through text-gray-500">
+                          ₹{calculateBasePrice().toFixed(2)}
+                        </span>
+                        <span className="ml-2">
+                          ₹{calculateDiscountedPrice(calculateBasePrice()).toFixed(2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span>₹{calculateBasePrice().toFixed(2)}</span>
+                    )}
                   </dd>
                 </div>
                 <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">GST ({taxInfo.gstPercent}%)</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    ₹{((selectedBatch?.price * formData.numberOfParticipants + 
-                      formData.addOns.reduce((total, addOnId) => {
-                        const addOn = trek.addOns.find((a) => a._id === addOnId);
-                        return total + (addOn?.price || 0) * formData.numberOfParticipants;
-                      }, 0)) * (taxInfo.gstPercent / 100)).toFixed(2)}
+                    ₹{(calculateDiscountedPrice(calculateBasePrice()) * (taxInfo.gstPercent / 100)).toFixed(2)}
                   </dd>
                 </div>
                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Payment Gateway Charges ({taxInfo.gatewayPercent}%)</dt>
                   <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    ₹{((selectedBatch?.price * formData.numberOfParticipants + 
-                      formData.addOns.reduce((total, addOnId) => {
-                        const addOn = trek.addOns.find((a) => a._id === addOnId);
-                        return total + (addOn?.price || 0) * formData.numberOfParticipants;
-                      }, 0)) * (taxInfo.gatewayPercent / 100)).toFixed(2)}
+                    ₹{(calculateDiscountedPrice(calculateBasePrice()) * (taxInfo.gatewayPercent / 100)).toFixed(2)}
                   </dd>
                 </div>
                 <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 font-semibold">

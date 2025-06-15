@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
+import { debounce } from 'lodash';
 
 function BlogList() {
   const [blogs, setBlogs] = useState([]);
@@ -9,15 +10,18 @@ function BlogList() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('-publishedAt');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     fetchBlogs();
-  }, [currentPage]);
+  }, [currentPage, search, sort]);
 
   const fetchBlogs = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/blogs?page=${currentPage}`);
+      const response = await axios.get(`/blogs?page=${currentPage}&search=${search}&sort=${sort}`);
       setBlogs(response.data.blogs);
       setTotalPages(response.data.totalPages);
       setError(null);
@@ -26,7 +30,20 @@ function BlogList() {
       console.error('Error fetching blogs:', err);
     } finally {
       setLoading(false);
+      setIsSearching(false);
     }
+  };
+
+  const handleSearch = debounce((value) => {
+    setIsSearching(true);
+    setSearch(value);
+    setCurrentPage(1); // Reset to first page when searching
+  }, 500);
+
+  const handleSort = (value) => {
+    setIsSearching(true);
+    setSort(value);
+    setCurrentPage(1); // Reset to first page when changing sort
   };
 
   return (
@@ -42,14 +59,45 @@ function BlogList() {
         </div>
       </div>
 
-      {/* Blog Grid Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Search and Sort Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
+          <div className="w-full md:w-96">
+            <input
+              type="text"
+              placeholder="Search blogs..."
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            />
+          </div>
+          <div className="w-full md:w-48">
+            <select
+              value={sort}
+              onChange={(e) => handleSort(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            >
+              <option value="-publishedAt">Newest First</option>
+              <option value="publishedAt">Oldest First</option>
+              <option value="title">Title A-Z</option>
+              <option value="-title">Title Z-A</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Blog Grid Section */}
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
           </div>
         ) : error ? (
           <div className="text-center text-red-600">{error}</div>
+        ) : blogs.length === 0 ? (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No blogs found</h3>
+            <p className="text-gray-500">
+              {search ? 'Try adjusting your search or filters' : 'Check back later for new content'}
+            </p>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -86,7 +134,7 @@ function BlogList() {
                 <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
+                    disabled={currentPage === 1 || isSearching}
                     className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                   >
                     Previous
@@ -95,18 +143,19 @@ function BlogList() {
                     <button
                       key={index + 1}
                       onClick={() => setCurrentPage(index + 1)}
+                      disabled={isSearching}
                       className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                         currentPage === index + 1
                           ? 'z-10 bg-emerald-50 border-emerald-500 text-emerald-600'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
+                      } disabled:opacity-50`}
                     >
                       {index + 1}
                     </button>
                   ))}
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
+                    disabled={currentPage === totalPages || isSearching}
                     className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
                   >
                     Next

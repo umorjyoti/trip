@@ -61,9 +61,19 @@ const createBooking = async (req, res) => {
     }
 
     // Validate add-ons if provided
-    if (addOns && addOns.length > 0) {
-      const validAddOns = trek.addOns.filter(addOn => addOn.isEnabled).map(addOn => addOn._id.toString());
-      const invalidAddOns = addOns.filter(addOnId => !validAddOns.includes(addOnId.toString()));
+    if (addOns && Array.isArray(addOns) && addOns.length > 0) {
+      const validAddOns = trek.addOns
+        .filter(addOn => addOn && addOn.isEnabled)
+        .map(addOn => addOn._id.toString());
+      
+      const invalidAddOns = addOns.filter(addOnId => {
+        if (!addOnId) return true;
+        try {
+          return !validAddOns.includes(addOnId.toString());
+        } catch (error) {
+          return true;
+        }
+      });
       
       if (invalidAddOns.length > 0) {
         return res.status(400).json({ message: "Invalid add-ons selected" });
@@ -76,7 +86,7 @@ const createBooking = async (req, res) => {
       trek: trekId,
       batch: batchId,
       numberOfParticipants: participantsCount,
-      addOns: addOns || [],
+      addOns: Array.isArray(addOns) ? addOns : [],
       userDetails,
       totalPrice,
       status: "pending",
@@ -163,8 +173,7 @@ const getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate("user", "name email")
-      .populate("trek", "name imageUrl")
-      .populate("batch", "startDate endDate price");
+      .populate("trek", "name imageUrl batches");
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
@@ -181,19 +190,32 @@ const getBookingById = async (req, res) => {
         .json({ message: "Not authorized to view this booking" });
     }
 
+    // Extract batch data from trek.batches array
+    let batchData = null;
+    if (booking.trek && booking.trek.batches && booking.batch) {
+      batchData = booking.trek.batches.find(
+        batch => batch._id.toString() === booking.batch.toString()
+      );
+    }
+
     // Format the response data
     const responseData = {
       _id: booking._id,
       user: booking.user,
-      trek: booking.trek,
-      batch: booking.batch,
-      participants: booking.participants,
+      trek: {
+        _id: booking.trek._id,
+        name: booking.trek.name,
+        imageUrl: booking.trek.imageUrl
+      },
+      batch: batchData,
+      participants: booking.numberOfParticipants,
+      participantDetails: booking.participantDetails,
       totalPrice: booking.totalPrice,
       status: booking.status,
       createdAt: booking.createdAt,
       cancelledAt: booking.cancelledAt,
-      contactInfo: booking.contactInfo,
-      participantDetails: booking.participantDetails,
+      userDetails: booking.userDetails,
+      addOns: booking.addOns,
     };
 
     res.json(responseData);
@@ -447,16 +469,43 @@ const restoreParticipant = async (req, res) => {
 const updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    const { participants, totalPrice, specialRequirements } = req.body;
+    const { 
+      participants, 
+      participantDetails, 
+      totalPrice, 
+      specialRequirements, 
+      batch,
+      numberOfParticipants,
+      userDetails,
+      addOns,
+      status
+    } = req.body;
 
     const booking = await Booking.findById(id);
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Check if user is authorized (either admin or the booking owner)
+    if (
+      booking.user.toString() !== req.user._id.toString() &&
+      !req.user.isAdmin &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({ message: "Not authorized to update this booking" });
+    }
+
     // Update booking details
     if (participants !== undefined) {
-      booking.participants = participants;
+      booking.numberOfParticipants = participants;
+    }
+    
+    if (numberOfParticipants !== undefined) {
+      booking.numberOfParticipants = numberOfParticipants;
+    }
+
+    if (participantDetails !== undefined) {
+      booking.participantDetails = participantDetails;
     }
 
     if (totalPrice !== undefined) {
@@ -467,9 +516,53 @@ const updateBooking = async (req, res) => {
       booking.specialRequirements = specialRequirements;
     }
 
+    if (batch !== undefined) {
+      booking.batch = batch;
+    }
+
+    if (userDetails !== undefined) {
+      booking.userDetails = userDetails;
+    }
+
+    if (addOns !== undefined) {
+      booking.addOns = addOns;
+    }
+
+    if (status !== undefined) {
+      booking.status = status;
+    }
+
     await booking.save();
 
-    res.json({ message: "Booking updated successfully", booking });
+    // Return the updated booking with populated fields
+    const updatedBooking = await Booking.findById(id)
+      .populate("user", "name email")
+      .populate("trek", "name imageUrl batches");
+
+    // Extract batch data from trek.batches array
+    let batchData = null;
+    if (updatedBooking.trek && updatedBooking.trek.batches && updatedBooking.batch) {
+      batchData = updatedBooking.trek.batches.find(
+        batch => batch._id.toString() === updatedBooking.batch.toString()
+      );
+    }
+
+    // Format the response
+    const responseData = {
+      ...updatedBooking.toObject(),
+      trek: {
+        _id: updatedBooking.trek._id,
+        name: updatedBooking.trek.name,
+        imageUrl: updatedBooking.trek.imageUrl
+      },
+      batch: batchData,
+      participants: updatedBooking.numberOfParticipants
+    };
+
+    res.json({ 
+      message: "Booking updated successfully", 
+      booking: responseData 
+    });
   } catch (error) {
     console.error("Error updating booking:", error);
     res.status(500).json({ message: "Server error", error: error.message });

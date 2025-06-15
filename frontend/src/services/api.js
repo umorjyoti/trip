@@ -444,13 +444,16 @@ export const deletePromoCode = async (id) => {
   }
 };
 
-export const validatePromoCode = async (code, trekId, orderValue) => {
+export const validateCoupon = async (couponCode, trekId, orderValue) => {
   try {
-    const response = await api.post('/promos/validate', { code, trekId, orderValue });
+    const response = await api.post('/promos/validate', { 
+      code: couponCode, 
+      trekId: trekId,
+      orderValue: orderValue 
+    });
     return response.data;
   } catch (error) {
-    console.error('Error validating promo code:', error);
-    throw error;
+    throw new Error(error.response?.data?.message || 'Failed to validate coupon');
   }
 };
 

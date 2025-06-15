@@ -34,8 +34,11 @@ const RichTextEditor = ({ value, onChange, onImageUpload }) => {
                   if (file && onImageUpload) {
                     try {
                       const imageUrl = await onImageUpload(file);
-                      const range = quill.getSelection(true);
+                      // Get current selection or use end of document
+                      const range = quill.getSelection() || { index: quill.getLength() };
                       quill.insertEmbed(range.index, 'image', imageUrl);
+                      // Move cursor after the image
+                      quill.setSelection(range.index + 1, 0);
                     } catch (error) {
                       console.error('Error uploading image:', error);
                     }

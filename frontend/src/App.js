@@ -62,6 +62,8 @@ import BlogDetail from './pages/BlogDetail';
 import BlogManagement from './pages/admin/BlogManagement';
 import LoginSuccess from './pages/LoginSuccess';
 import ParticipantDetailsPage from "./pages/ParticipantDetailsPage";
+import BlogEditor from './pages/admin/BlogEditor';
+import BookingPreviewPage from './pages/BookingPreviewPage';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -180,12 +182,12 @@ function App() {
                 element={<ParticipantDetailsPage />}
               />
               <Route
-                path="/booking/:id/participant-details"
-                element={
-                  <PrivateRoute>
-                    <ParticipantDetailsPage />
-                  </PrivateRoute>
-                }
+                path="/booking/:bookingId/participant-details"
+                element={<ParticipantDetailsPage />}
+              />
+              <Route
+                path="/booking/:bookingId/preview"
+                element={<BookingPreviewPage />}
               />
               <Route
                 path="/wishlist"
@@ -450,6 +452,31 @@ function App() {
                           }
                         />
                         <Route path="unauthorized" element={<UnauthorizedPage />} />
+
+                        <Route
+                          path="blogs"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                              <BlogManagement />
+                            </ProtectedRoutes>
+                          }
+                        />
+                        <Route
+                          path="blogs/new"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                              <BlogEditor />
+                            </ProtectedRoutes>
+                          }
+                        />
+                        <Route
+                          path="blogs/:id"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                              <BlogEditor />
+                            </ProtectedRoutes>
+                          }
+                        />
                       </Routes>
                     </AdminLayout>
                   </AdminRoute>
@@ -490,18 +517,6 @@ function App() {
               {/* Blog Routes */}
               <Route path="/blogs" element={<BlogList />} />
               <Route path="/blogs/:slug" element={<BlogDetail />} />
-              <Route
-                path="/admin/blogs"
-                element={
-                  <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
-                    <AdminRoute>
-                      <AdminLayout>
-                        <BlogManagement />
-                      </AdminLayout>
-                    </AdminRoute>
-                  </ProtectedRoutes>
-                }
-              />
 
               {/* Login Success Route */}
               <Route path="/login/success" element={<LoginSuccess />} />

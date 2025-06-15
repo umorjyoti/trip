@@ -881,10 +881,19 @@ exports.getBatchPerformance = async (req, res) => {
   try {
     const { trekId, batchId } = req.params;
 
+    // Validate input parameters
+    if (!trekId || !batchId) {
+      return res.status(400).json({ message: 'Trek ID and Batch ID are required' });
+    }
+
     // Find the trek and the specific batch
     const trek = await Trek.findById(trekId);
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
+    }
+
+    if (!trek.batches || !Array.isArray(trek.batches)) {
+      return res.status(404).json({ message: 'No batches found for this trek' });
     }
 
     const batch = trek.batches.id(batchId);
@@ -898,52 +907,70 @@ exports.getBatchPerformance = async (req, res) => {
       batch: batchId
     }).populate('user', 'name email phone');
 
-    // Calculate performance metrics
+    // Safely filter bookings
+    const safeBookings = bookings.filter(booking => booking != null);
+
+    // Calculate performance metrics with null safety
     const performanceData = {
       batchDetails: {
-        startDate: batch.startDate,
-        endDate: batch.endDate,
-        price: batch.price,
-        maxParticipants: batch.maxParticipants,
-        status: batch.status
+        startDate: batch.startDate || null,
+        endDate: batch.endDate || null,
+        price: batch.price || 0,
+        maxParticipants: batch.maxParticipants || 0,
+        status: batch.status || 'unknown'
       },
       bookings: {
-        total: bookings.length,
-        confirmed: bookings.filter(b => b.status === 'confirmed').length,
-        cancelled: bookings.filter(b => b.status === 'cancelled').length,
-        completed: bookings.filter(b => b.status === 'completed').length
+        total: safeBookings.length,
+        confirmed: safeBookings.filter(b => b && b.status === 'confirmed').length,
+        cancelled: safeBookings.filter(b => b && b.status === 'cancelled').length,
+        completed: safeBookings.filter(b => b && b.status === 'completed').length
       },
       revenue: {
-        total: bookings.reduce((sum, booking) => sum + booking.totalPrice, 0),
-        confirmed: bookings
-          .filter(b => b.status === 'confirmed')
-          .reduce((sum, booking) => sum + booking.totalPrice, 0),
-        cancelled: bookings
-          .filter(b => b.status === 'cancelled')
-          .reduce((sum, booking) => sum + booking.totalPrice, 0)
+        total: safeBookings.reduce((sum, booking) => {
+          return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+        }, 0),
+        confirmed: safeBookings
+          .filter(b => b && b.status === 'confirmed')
+          .reduce((sum, booking) => {
+            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+          }, 0),
+        cancelled: safeBookings
+          .filter(b => b && b.status === 'cancelled')
+          .reduce((sum, booking) => {
+            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+          }, 0)
       },
       participants: {
-        total: bookings.reduce((sum, booking) => sum + booking.participants, 0),
-        confirmed: bookings
-          .filter(b => b.status === 'confirmed')
-          .reduce((sum, booking) => sum + booking.participants, 0),
-        cancelled: bookings
-          .filter(b => b.status === 'cancelled')
-          .reduce((sum, booking) => sum + booking.participants, 0)
+        total: safeBookings.reduce((sum, booking) => {
+          return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+        }, 0),
+        confirmed: safeBookings
+          .filter(b => b && b.status === 'confirmed')
+          .reduce((sum, booking) => {
+            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+          }, 0),
+        cancelled: safeBookings
+          .filter(b => b && b.status === 'cancelled')
+          .reduce((sum, booking) => {
+            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+          }, 0)
       },
-      bookingDetails: bookings.map(booking => ({
-        bookingId: booking._id,
-        user: {
-          name: booking.user.name,
-          email: booking.user.email,
-          phone: booking.user.phone
-        },
-        participants: booking.participants,
-        totalPrice: booking.totalPrice,
-        status: booking.status,
-        bookingDate: booking.createdAt
-      })),
-      feedback: batch.feedback
+      bookingDetails: safeBookings.map(booking => {
+        if (!booking) return null;
+        return {
+          bookingId: booking._id || null,
+          user: {
+            name: booking.user?.name || 'N/A',
+            email: booking.user?.email || 'N/A',
+            phone: booking.user?.phone || 'N/A'
+          },
+          participants: booking.numberOfParticipants || 0,
+          totalPrice: booking.totalPrice || 0,
+          status: booking.status || 'unknown',
+          bookingDate: booking.createdAt || null
+        };
+      }).filter(detail => detail !== null),
+      feedback: batch.feedback || []
     };
 
     res.json(performanceData);
@@ -961,7 +988,12 @@ exports.getTrekPerformance = async (req, res) => {
   try {
     console.log('Getting trek performance for ID:', req.params.id);
     
-    const trek = await Trek.findById(req.params.id).populate('batches');
+    // Validate input parameter
+    if (!req.params.id) {
+      return res.status(400).json({ message: 'Trek ID is required' });
+    }
+    
+    const trek = await Trek.findById(req.params.id);
     
     if (!trek) {
       console.log('Trek not found with ID:', req.params.id);
@@ -969,49 +1001,127 @@ exports.getTrekPerformance = async (req, res) => {
     }
 
     console.log('Found trek:', trek.name);
+    
+    // Check if trek has batches
+    if (!trek.batches || !Array.isArray(trek.batches)) {
+      console.log('No batches found for trek');
+      return res.json({
+        trek: {
+          _id: trek._id,
+          name: trek.name
+        },
+        totalRevenue: 0,
+        totalBookings: 0,
+        averageRating: trek.averageRating || 0,
+        batches: []
+      });
+    }
+
     console.log('Number of batches:', trek.batches.length);
 
-    // Get all bookings for this trek's batches
+    // Get all bookings for this trek's batches - with null safety
+    const batchIds = trek.batches
+      .filter(batch => batch && batch._id)
+      .map(batch => batch._id);
+    
+    if (batchIds.length === 0) {
+      console.log('No valid batch IDs found');
+      return res.json({
+        trek: {
+          _id: trek._id,
+          name: trek.name
+        },
+        totalRevenue: 0,
+        totalBookings: 0,
+        averageRating: trek.averageRating || 0,
+        batches: []
+      });
+    }
+
     const bookings = await Booking.find({
-      batch: { $in: trek.batches.map(batch => batch._id) }
+      batch: { $in: batchIds }
     }).populate('user', 'name email');
 
     console.log('Number of bookings found:', bookings.length);
 
-    // Calculate total revenue and bookings
-    const totalRevenue = bookings.reduce((sum, booking) => sum + booking.amount, 0);
-    const totalBookings = bookings.length;
+    // Safely filter bookings
+    const safeBookings = bookings.filter(booking => booking != null);
 
-    // Calculate batch-specific metrics
-    const batchPerformance = trek.batches.map(batch => {
-      const batchBookings = bookings.filter(booking => booking.batch.toString() === batch._id.toString());
-      const revenue = batchBookings.reduce((sum, booking) => sum + booking.amount, 0);
-      const currentParticipants = batchBookings.reduce((sum, booking) => sum + booking.participants, 0);
+    // Calculate total revenue and bookings with null safety
+    const totalRevenue = safeBookings.reduce((sum, booking) => {
+      return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+    }, 0);
+    const totalBookings = safeBookings.length;
 
-      let status = 'upcoming';
-      const now = new Date();
-      if (new Date(batch.endDate) < now) {
-        status = 'completed';
-      } else if (new Date(batch.startDate) <= now) {
-        status = 'ongoing';
-      }
+    // Calculate batch-specific metrics with comprehensive null checks
+    const batchPerformance = trek.batches
+      .filter(batch => batch != null && batch._id != null)
+      .map(batch => {
+        try {
+          const batchBookings = safeBookings.filter(booking => {
+            if (!booking || !booking.batch || !batch || !batch._id) {
+              return false;
+            }
+            
+            // Safe string comparison
+            const bookingBatchId = booking.batch.toString ? booking.batch.toString() : String(booking.batch);
+            const batchId = batch._id.toString ? batch._id.toString() : String(batch._id);
+            
+            return bookingBatchId === batchId;
+          });
+          
+          const revenue = batchBookings.reduce((sum, booking) => {
+            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+          }, 0);
+          
+          const currentParticipants = batchBookings.reduce((sum, booking) => {
+            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+          }, 0);
 
-      return {
-        _id: batch._id,
-        startDate: batch.startDate,
-        endDate: batch.endDate,
-        price: batch.price,
-        maxParticipants: batch.maxParticipants,
-        currentParticipants,
-        revenue,
-        status
-      };
-    });
+          let status = 'upcoming';
+          try {
+            const now = new Date();
+            if (batch.endDate && new Date(batch.endDate) < now) {
+              status = 'completed';
+            } else if (batch.startDate && new Date(batch.startDate) <= now) {
+              status = 'ongoing';
+            }
+          } catch (dateError) {
+            console.log('Date parsing error:', dateError);
+            status = 'unknown';
+          }
+
+          return {
+            _id: batch._id,
+            startDate: batch.startDate || null,
+            endDate: batch.endDate || null,
+            price: batch.price || 0,
+            maxParticipants: batch.maxParticipants || 0,
+            currentParticipants,
+            revenue,
+            status,
+            bookingsCount: batchBookings.length
+          };
+        } catch (batchError) {
+          console.error('Error processing batch:', batchError);
+          return {
+            _id: batch._id || null,
+            startDate: null,
+            endDate: null,
+            price: 0,
+            maxParticipants: 0,
+            currentParticipants: 0,
+            revenue: 0,
+            status: 'error',
+            bookingsCount: 0
+          };
+        }
+      });
 
     const response = {
       trek: {
         _id: trek._id,
-        name: trek.name
+        name: trek.name || 'Unknown Trek'
       },
       totalRevenue,
       totalBookings,

@@ -191,4 +191,15 @@ exports.validatePromoCode = async (req, res) => {
     console.error('Error validating promo code:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+};
+
+const calculateDiscountedPrice = (basePrice) => {
+  if (!appliedCoupon) return basePrice;
+  const { discountType, discountValue } = appliedCoupon;
+  if (discountType === 'percentage') {
+    return basePrice * (1 - discountValue / 100);
+  } else if (discountType === 'fixed') {
+    return Math.max(0, basePrice - discountValue);
+  }
+  return basePrice;
 }; 
