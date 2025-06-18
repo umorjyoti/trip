@@ -10,15 +10,24 @@ const generateToken = (id) => {
 };
 
 
-// Set cookie with JWT token
+// Send JWT token as HTTP-only cookie
 const sendTokenCookie = (res, token) => {
+  const isProd = process.env.NODE_ENV === 'production';
+
+  // In production we often serve the frontend from a different origin
+  // (e.g. a separate domain or different port). For the browser to accept
+  // the cookie in that cross-site scenario we must:
+  //   1. set `Secure` so it's only sent via HTTPS
+  //   2. set `SameSite=None` so the cookie can be included in cross-site requests
+  // For local development we keep the more permissive defaults so that we
+  // can develop over http://localhost without any special setup.
   const cookieOptions = {
     expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Lax'
+    secure: isProd, // only transmit over HTTPS in production
+    sameSite: isProd ? 'None' : 'Lax'
   };
-  
+
   res.cookie('jwt', token, cookieOptions);
 };
 
@@ -191,12 +200,15 @@ exports.getUserProfile = async (req, res) => {
 // @access  Public
 exports.logout = async (req, res) => {
   try {
-    // Clear the JWT cookie
+    const isProd = process.env.NODE_ENV === 'production';
+    // Clear the JWT cookie – we must use the same Site/ Secure attributes that
+    // were used when setting the cookie, otherwise some browsers will ignore
+    // the delete request.
     res.cookie('jwt', '', {
       httpOnly: true,
       expires: new Date(0),
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Lax'
+      secure: isProd,
+      sameSite: isProd ? 'None' : 'Lax'
     });
     
     res.status(200).json({ message: 'Logged out successfully' });

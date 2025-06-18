@@ -28,6 +28,14 @@ const session = require('express-session');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// When running behind a proxy (e.g. Render, Heroku, Vercel) we need to tell
+// Express to trust the first proxy hop so that `req.secure` is accurate. This
+// is required for the `secure` cookie flag and other HTTPS related behaviour
+// to work correctly.
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Middleware
 app.use(cors({
   origin: [process.env.FRONTEND_URL || 'http://localhost:5001', 'https://trip-ctuq.onrender.com',"89.117.157.153","https://bengalurutrekkers.in"],
