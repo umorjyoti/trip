@@ -30,7 +30,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: [process.env.FRONTEND_URL || 'http://localhost:3000', 'https://trip-ctuq.onrender.com'],
+  origin: [process.env.FRONTEND_URL || 'http://localhost:5001', 'https://trip-ctuq.onrender.com',"89.117.157.153"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
@@ -38,7 +38,7 @@ app.use(cors({
     'Authorization', 
     'X-Requested-With',
     'Accept',
-    'Origin',
+    'Origin', 
     'Cache-Control',
     'Pragma',
     'If-None-Match',
