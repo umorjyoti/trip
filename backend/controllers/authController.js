@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
+const { sendEmail } = require('../utils/email');
+const crypto = require('crypto');
 
 // Generate JWT
 const generateToken = (id) => {
@@ -31,95 +33,150 @@ const sendTokenCookie = (res, token) => {
   res.cookie('jwt', token, cookieOptions);
 };
 
-// Register a new user
+// Register a new user with OTP
 exports.register = async (req, res) => {
   try {
-    console.log(req.body)
     const { username, name, email, password } = req.body;
-    
     // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
-    
-    // Create new user
+    // Create new user (inactive, with OTP)
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    console.log(`Register OTP for ${email}:`, otp);
     const user = await User.create({
-      username, 
+      username,
       name,
       email,
       password,
-      role: 'user' // Default role
+      role: 'user',
+      otp: { code: otp, expiresAt }
     });
-    
-    if (user) {
-      // Generate token
-      const token = generateToken(user._id);
-      
-      // Set cookie
-      sendTokenCookie(res, token);
-
-      const userObj = user.toObject();
-      
-      // Return user data
-      res.status(201).json({
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          isAdmin: false, // New users are not admins by default
-          role: userObj.role
-        }
-      });
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
-    }
+    await sendOtpEmail(user, otp);
+    res.status(201).json({
+      message: 'OTP sent to your email. Please verify to activate your account.',
+      userId: user._id
+    });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
-// Login user
+// Verify OTP for registration
+exports.verifyRegisterOtp = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+    const user = await User.findById(userId);
+    if (!user || !user.otp || !user.otp.code) {
+      return res.status(400).json({ message: 'OTP not found. Please register again.' });
+    }
+    if (user.otp.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
+    }
+    if (user.otp.code !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+    // OTP valid, clear OTP
+    user.otp = undefined;
+    await user.save();
+    // Send successful registration email
+    await sendEmail({
+      to: user.email,
+      subject: 'Registration Successful',
+      text: `Hi ${user.name || user.username},\n\nYour registration was successful! Welcome to our platform.\n\nThank you for joining us!`
+    });
+    const token = generateToken(user._id);
+    sendTokenCookie(res, token);
+    const userObj = user.toObject();
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: false,
+        role: userObj.role
+      }
+    });
+  } catch (error) {
+    console.error('OTP verification error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Resend OTP for registration
+exports.resendRegisterOtp = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.otp = { code: otp, expiresAt };
+    await user.save();
+    await sendOtpEmail(user, otp);
+    res.json({ message: 'OTP resent successfully' });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Login user with OTP
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    console.log('Login attempt:', { email });
-
-    // Check if user exists and populate group
     const user = await User.findOne({ email }).select('+password').populate('group');
-
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-    
-    // Check if password matches
     const isMatch = await bcrypt.compare(password, user.password);
-    
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
-    
-    // Generate token
-    const token = generateToken(user._id);
-    
-    // Set cookie
-    sendTokenCookie(res, token);
+    // Generate OTP and save
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    console.log(`Login OTP for ${email}:`, otp);
+    user.otp = { code: otp, expiresAt };
+    await user.save();
+    await sendOtpEmail(user, otp);
+    res.json({
+      message: 'OTP sent to your email. Please verify to login.',
+      userId: user._id
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
 
-    // Always prioritize role field for admin check
+// Verify OTP for login
+exports.verifyLoginOtp = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+    const user = await User.findById(userId).populate('group');
+    if (!user || !user.otp || !user.otp.code) {
+      return res.status(400).json({ message: 'OTP not found. Please login again.' });
+    }
+    if (user.otp.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
+    }
+    if (user.otp.code !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+    // OTP valid, clear OTP
+    user.otp = undefined;
+    await user.save();
+    const token = generateToken(user._id);
+    sendTokenCookie(res, token);
     const userObj = user.toObject();
     const isAdmin = userObj.role === 'admin' ? true : !!userObj.isAdmin;
-    
-    console.log('User login successful:', {
-      _id: user._id,
-      email: user.email,
-      role: userObj.role,
-      isAdmin: isAdmin,
-      group: user.group
-    });
-
-    // Return user data with isAdmin field and group
     res.json({
       token,
       user: {
@@ -132,7 +189,27 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('OTP verification error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Resend OTP for login
+exports.resendLoginOtp = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.otp = { code: otp, expiresAt };
+    await user.save();
+    await sendOtpEmail(user, otp);
+    res.json({ message: 'OTP resent successfully' });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -402,7 +479,21 @@ exports.updateUserRole = async (req, res) => {
   }
 };
 
-// Google OAuth callback
+// Helper to generate a 6-digit OTP
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Helper to send OTP email
+async function sendOtpEmail(user, otp) {
+  await sendEmail({
+    to: user.email,
+    subject: 'Your OTP for Login',
+    text: `Your OTP for login is: ${otp}`
+  });
+}
+
+// Google OAuth callback with OTP
 exports.googleCallback = async (req, res) => {
   try {
     console.log('Google callback received:', {
@@ -422,28 +513,52 @@ exports.googleCallback = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_email`);
     }
 
-    // Generate token
-    const token = generateToken(req.user._id);
-    console.log('Generated token for user:', req.user._id);
-    
-    // Set cookie
-    sendTokenCookie(res, token);
+    // Generate OTP and save to user
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min expiry
+    await User.findByIdAndUpdate(req.user._id, {
+      otp: { code: otp, expiresAt }
+    });
+    await sendOtpEmail(req.user, otp);
 
-    // Get user data with populated group
-    const user = await User.findById(req.user._id).populate('group');
-    console.log('Found user after Google auth:', user ? user._id : 'not found');
-    
-    if (!user) {
-      console.error('User not found after Google authentication');
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=user_not_found`);
+    // Redirect to frontend for OTP verification
+    return res.redirect(`${process.env.FRONTEND_URL}/verify-otp?userId=${req.user._id}`);
+  } catch (error) {
+    console.error('Google callback error:', error);
+    let errorReason = 'unknown';
+    if (error.name === 'ValidationError') {
+      errorReason = 'validation_error';
+    } else if (error.name === 'CastError') {
+      errorReason = 'invalid_id';
+    } else if (error.code === 11000) {
+      errorReason = 'duplicate_email';
     }
+    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=${errorReason}`);
+  }
+};
 
-    // Prepare user data
+// Verify OTP endpoint
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+    const user = await User.findById(userId);
+    if (!user || !user.otp || !user.otp.code) {
+      return res.status(400).json({ message: 'OTP not found. Please login again.' });
+    }
+    if (user.otp.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
+    }
+    if (user.otp.code !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+    // OTP valid, clear OTP and log in user
+    user.otp = undefined;
+    await user.save();
+    const token = generateToken(user._id);
+    sendTokenCookie(res, token);
     const userObj = user.toObject();
     const isAdmin = userObj.role === 'admin' ? true : !!userObj.isAdmin;
-
-    // Create response data
-    const responseData = {
+    res.json({
       token,
       user: {
         _id: user._id,
@@ -461,33 +576,30 @@ exports.googleCallback = async (req, res) => {
         country: user.country,
         profileImage: user.profileImage
       }
-    };
-
-    console.log('Sending response data:', {
-      userId: responseData.user._id,
-      email: responseData.user.email,
-      hasToken: !!responseData.token,
-      userData: responseData.user
     });
-
-    // Encode the response data
-    const encodedData = encodeURIComponent(JSON.stringify(responseData));
-
-    // Redirect to success page with data
-    res.redirect(`${process.env.FRONTEND_URL}/login/success?data=${encodedData}`);
   } catch (error) {
-    console.error('Google callback error:', error);
-    let errorReason = 'unknown';
-    
-    if (error.name === 'ValidationError') {
-      errorReason = 'validation_error';
-    } else if (error.name === 'CastError') {
-      errorReason = 'invalid_id';
-    } else if (error.code === 11000) {
-      errorReason = 'duplicate_email';
+    console.error('OTP verification error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Resend OTP endpoint
+exports.resendOtp = async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-    
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=${errorReason}`);
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.otp = { code: otp, expiresAt };
+    await user.save();
+    await sendOtpEmail(user, otp);
+    res.json({ message: 'OTP resent successfully' });
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

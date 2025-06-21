@@ -38,6 +38,9 @@ router.get('/google/callback',
   authController.googleCallback
 );
 
+router.post('/verify-otp', authController.verifyOtp);
+router.post('/resend-otp', authController.resendOtp);
+
 // Protected routes
 router.get('/me', protect, authController.getCurrentUser);
 router.put('/updatedetails', protect, authController.updateUserProfile);
@@ -46,5 +49,10 @@ router.put('/updatepassword', protect, authController.updateUserProfile);
 // Admin routes
 router.get('/users', protect, admin, authController.getUsers);
 router.patch('/users/:id/role', protect, admin, authController.updateUserRole);
+
+router.post('/verify-register-otp', authController.verifyRegisterOtp);
+router.post('/resend-register-otp', authController.resendRegisterOtp);
+router.post('/verify-login-otp', authController.verifyLoginOtp);
+router.post('/resend-login-otp', authController.resendLoginOtp);
 
 module.exports = router; 

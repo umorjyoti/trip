@@ -57,6 +57,11 @@ const userSchema = new mongoose.Schema({
   profileImage: {
     type: String
   },
+  // OTP fields for Google Auth
+  otp: {
+    code: { type: String },
+    expiresAt: { type: Date }
+  },
   wishlist: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Trek'

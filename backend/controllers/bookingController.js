@@ -1,6 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
+const { sendEmail } = require('../utils/email');
 
 // Create a new booking
 const createBooking = async (req, res) => {
@@ -98,6 +99,13 @@ const createBooking = async (req, res) => {
     // Update batch participants count
     batch.currentParticipants += participantsCount;
     await trek.save();
+
+    // Send successful booking email
+    await sendEmail({
+      to: userDetails.email,
+      subject: 'Booking Confirmed',
+      text: `Hi ${userDetails.name},\n\nYour booking for ${trek.name} is confirmed!\n\nBatch: ${batch.startDate ? new Date(batch.startDate).toLocaleDateString() : ''} to ${batch.endDate ? new Date(batch.endDate).toLocaleDateString() : ''}\nParticipants: ${participantsCount}\nTotal Price: ₹${totalPrice}\n\nThank you for booking with us!`
+    });
 
     res.status(201).json(booking);
   } catch (error) {
@@ -790,6 +798,16 @@ const updateParticipantDetails = async (req, res) => {
   }
 };
 
+// Booking reminder email (to be called by a scheduler)
+const sendBookingReminderEmail = async (booking, trek, batch) => {
+  if (!booking || !trek || !batch) return;
+  await sendEmail({
+    to: booking.userDetails.email,
+    subject: 'Booking Reminder',
+    text: `Hi ${booking.userDetails.name},\n\nThis is a reminder for your upcoming trek: ${trek.name}.\nBatch: ${batch.startDate ? new Date(batch.startDate).toLocaleDateString() : ''} to ${batch.endDate ? new Date(batch.endDate).toLocaleDateString() : ''}\nParticipants: ${booking.numberOfParticipants}\n\nWe look forward to seeing you!\n\nSafe travels!`
+  });
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -803,5 +821,6 @@ module.exports = {
   restoreParticipant,
   updateBooking,
   exportBookings,
-  updateParticipantDetails
+  updateParticipantDetails,
+  sendBookingReminderEmail
 };
