@@ -43,6 +43,7 @@ router.post('/resend-otp', authController.resendOtp);
 
 // Protected routes
 router.get('/me', protect, authController.getCurrentUser);
+router.put('/profile', protect, authController.updateUserProfile);
 router.put('/updatedetails', protect, authController.updateUserProfile);
 router.put('/updatepassword', protect, authController.updateUserProfile);
 

@@ -1,10 +1,22 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
+function logEmailConfig() {
+  console.log('--- EMAIL CONFIG ---');
+  console.log('EMAIL_HOST:', process.env.EMAIL_HOST);
+  console.log('EMAIL_PORT:', process.env.EMAIL_PORT);
+  console.log('EMAIL_USER:', process.env.EMAIL_USER);
+  console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'SET' : 'NOT SET');
+  console.log('--------------------');
+}
+
 async function createTransporter() {
+  logEmailConfig();
   try {
     const transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE || 'gmail',
+      host: process.env.EMAIL_HOST || 'smtp.hostinger.com',
+      port: process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT) : 587,
+      secure: process.env.EMAIL_PORT === '465', // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -14,12 +26,13 @@ async function createTransporter() {
       }
     });
 
+    console.log('Verifying transporter...');
     await transporter.verify();
     console.log('Email transporter verified and ready.');
     return transporter;
   } catch (err) {
-    console.error('Failed to verify email transporter:', err.message);
-    console.error('Ensure App Password is used and 2FA is enabled for Gmail.');
+    console.error('Failed to verify email transporter:', err);
+    console.error('Ensure Hostinger email credentials are correct and SMTP is enabled.');
     return null;
   }
 }
@@ -52,11 +65,19 @@ const sendEmail = async ({ to, subject, text, html }) => {
       html
     };
 
+    console.log('--- SENDING EMAIL ---');
+    console.log('To:', to);
+    console.log('Subject:', subject);
+    console.log('Text:', text);
+    if (html) console.log('HTML: [provided]');
+    else console.log('HTML: [not provided]');
+    console.log('---------------------');
+
     const info = await transporter.sendMail(mailOptions);
     console.log('Email sent:', info.messageId);
     return info;
   } catch (error) {
-    console.error('Error sending email:', error.message);
+    console.error('Error sending email:', error);
     return null;
   }
 };
