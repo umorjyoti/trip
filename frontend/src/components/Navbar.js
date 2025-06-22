@@ -9,6 +9,7 @@ function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isTreksMenuOpen, setIsTreksMenuOpen] = useState(false);
+  const [isMobileTreksOpen, setIsMobileTreksOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -23,6 +24,10 @@ function Navbar() {
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+    // Close mobile treks menu when main menu is toggled
+    if (isMenuOpen) {
+      setIsMobileTreksOpen(false);
+    }
   };
 
   const toggleProfileMenu = () => {
@@ -33,9 +38,19 @@ function Navbar() {
     setIsTreksMenuOpen(!isTreksMenuOpen);
   };
 
+  const toggleMobileTreksMenu = () => {
+    setIsMobileTreksOpen(!isMobileTreksOpen);
+  };
+
   const handleTrekClick = (duration) => {
     navigate(`/treks?duration=${duration}`);
     setIsTreksMenuOpen(false);
+  };
+
+  const handleMobileTrekClick = (duration) => {
+    navigate(`/treks?duration=${duration}`);
+    setIsMobileTreksOpen(false);
+    setIsMenuOpen(false);
   };
 
   return (
@@ -267,16 +282,20 @@ function Navbar() {
             <Link
               to="/"
               className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsMenuOpen(false)}
             >
               Home
             </Link>
-            <div className="relative group">
+            
+            {/* Mobile Treks Dropdown */}
+            <div className="relative">
               <button
-                className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium flex items-center"
+                onClick={toggleMobileTreksMenu}
+                className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium flex items-center justify-between w-full"
               >
-                Treks
+                <span>Treks</span>
                 <svg
-                  className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180"
+                  className={`ml-1 h-4 w-4 transition-transform ${isMobileTreksOpen ? 'rotate-180' : ''}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -284,47 +303,52 @@ function Navbar() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                <div className="py-1" role="menu" aria-orientation="vertical">
+              {isMobileTreksOpen && (
+                <div className="bg-emerald-700 rounded-md mt-1">
                   <button
-                    onClick={() => handleTrekClick('1-1')}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
+                    onClick={() => handleMobileTrekClick('1-1')}
+                    className="block w-full text-left px-6 py-2 text-sm text-white hover:bg-emerald-600"
                   >
                     One Day Treks
                   </button>
                   <button
-                    onClick={() => handleTrekClick('2-2')}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
+                    onClick={() => handleMobileTrekClick('2-2')}
+                    className="block w-full text-left px-6 py-2 text-sm text-white hover:bg-emerald-600"
                   >
                     Two Day Treks
                   </button>
                   <Link
                     to="/treks"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    role="menuitem"
+                    className="block px-6 py-2 text-sm text-white hover:bg-emerald-600"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      setIsMobileTreksOpen(false);
+                    }}
                   >
                     All Treks
                   </Link>
                 </div>
-              </div>
+              )}
             </div>
+            
             <Link
               to="/about"
               className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsMenuOpen(false)}
             >
               About
             </Link>
             <Link
               to="/contact"
               className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsMenuOpen(false)}
             >
               Contact
             </Link>
             <Link
               to="/blogs"
               className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
+              onClick={() => setIsMenuOpen(false)}
             >
               Blogs
             </Link>
@@ -332,6 +356,7 @@ function Navbar() {
               <Link
                 to="/admin/dashboard"
                 className="text-white hover:bg-emerald-500 block px-3 py-2 rounded-md text-base font-medium"
+                onClick={() => setIsMenuOpen(false)}
               >
                 Dashboard
               </Link>
@@ -359,12 +384,14 @@ function Navbar() {
                   <Link
                     to="/dashboard"
                     className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-emerald-500"
+                    onClick={() => setIsMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
                     to="/profile"
                     className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-emerald-500"
+                    onClick={() => setIsMenuOpen(false)}
                   >
                     Your Profile
                   </Link>
@@ -372,6 +399,7 @@ function Navbar() {
                     <Link
                       to="/admin/dashboard"
                       className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-emerald-500"
+                      onClick={() => setIsMenuOpen(false)}
                     >
                       Admin Dashboard
                     </Link>
@@ -389,12 +417,14 @@ function Navbar() {
                 <Link
                   to="/login"
                   className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-emerald-500"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
                   className="block px-3 py-2 rounded-md text-base font-medium text-white hover:bg-emerald-500"
+                  onClick={() => setIsMenuOpen(false)}
                 >
                   Register
                 </Link>

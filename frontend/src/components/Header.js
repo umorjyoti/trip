@@ -6,6 +6,16 @@ import { FaHeart, FaUser, FaSignOutAlt, FaCog, FaClipboardList, FaTicketAlt, FaB
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRegions } from '../services/api';
 
+const MobileNavLink = ({ to, children, onClick }) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+  >
+    {children}
+  </Link>
+);
+
 function Header() {
   const { currentUser, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -294,7 +304,7 @@ function Header() {
             exit="closed"
             variants={mobileMenuVariants}
             transition={mobileMenuTransition}
-            className="sm:hidden fixed inset-y-0 left-0 w-64 bg-white shadow-xl z-50 overflow-y-auto"
+            className="sm:hidden fixed  left-0 w-64 bg-white shadow-xl z-50 overflow-y-auto"
             id="mobile-menu"
           >
             <div className="pt-5 pb-6 px-2 space-y-1">
@@ -389,16 +399,6 @@ const DropdownLink = ({ to, icon: Icon, children, onClick }) => (
     role="menuitem"
   >
     <Icon className="mr-2 h-4 w-4 text-gray-400" aria-hidden="true" />
-    {children}
-  </Link>
-);
-
-const MobileNavLink = ({ to, children, onClick }) => (
-  <Link
-    to={to}
-    onClick={onClick}
-    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-  >
     {children}
   </Link>
 );
