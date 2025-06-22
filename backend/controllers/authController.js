@@ -4,6 +4,9 @@ const bcrypt = require('bcryptjs');
 const { sendEmail } = require('../utils/email');
 const crypto = require('crypto');
 
+// Temporary storage for pending registrations (in production, use Redis)
+const pendingRegistrations = new Map();
+
 // Generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -36,31 +39,82 @@ const sendTokenCookie = (res, token) => {
 // Register a new user with OTP
 exports.register = async (req, res) => {
   try {
-    const { username, name, email, password } = req.body;
-    // Check if user already exists
-    // const userExists = await User.findOne({ email });
-    // if (userExists) {
-    //   return res.status(400).json({ message: 'User already exists' });
-    // }
-    // Create new user (inactive, with OTP)
+    const { username, name, email, password, phone } = req.body;
+    
+    // Check if user already exists in database
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ 
+        message: 'An account with this email already exists. Please try logging in instead.' 
+      });
+    }
+
+    // Check if username already exists in database
+    const usernameExists = await User.findOne({ username });
+    if (usernameExists) {
+      return res.status(400).json({ 
+        message: 'This username is already taken. Please choose a different username.' 
+      });
+    }
+
+    // Check if email is already in pending registrations
+    if (pendingRegistrations.has(email)) {
+      return res.status(400).json({ 
+        message: 'Registration already in progress for this email. Please check your email for OTP.' 
+      });
+    }
+
+    // Generate OTP
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    console.log(`Register OTP for ${email}:`, otp);
-    const user = await User.create({
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Store registration data temporarily
+    const registrationData = {
       username,
       name,
       email,
       password,
-      role: 'user',
-      otp: { code: otp, expiresAt }
-    });
-    await sendOtpEmail(user, otp);
+      phone,
+      otp,
+      expiresAt,
+      createdAt: new Date()
+    };
+    
+    pendingRegistrations.set(email, registrationData);
+    
+    // Clean up expired registrations
+    setTimeout(() => {
+      if (pendingRegistrations.has(email)) {
+        pendingRegistrations.delete(email);
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+    
+    console.log(`Register OTP for ${email}:`, otp);
+    
+    // Send OTP email
+    await sendOtpEmail({ email, name }, otp);
+    
     res.status(201).json({
-      message: 'OTP sent to your email. Please verify to activate your account.',
-      userId: user._id
+      message: 'OTP sent to your email. Please verify to complete registration.',
+      email: email
     });
   } catch (error) {
     console.error('Register error:', error);
+    
+    // Handle MongoDB duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      if (field === 'email') {
+        return res.status(400).json({ 
+          message: 'An account with this email already exists. Please try logging in instead.' 
+        });
+      } else if (field === 'username') {
+        return res.status(400).json({ 
+          message: 'This username is already taken. Please choose a different username.' 
+        });
+      }
+    }
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -69,27 +123,277 @@ exports.register = async (req, res) => {
 exports.verifyRegisterOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    const user = await User.findOne({ email });
-    if (!user || !user.otp || !user.otp.code) {
-      return res.status(400).json({ message: 'OTP not found. Please register again.' });
+    
+    // Get registration data from temporary storage
+    const registrationData = pendingRegistrations.get(email);
+    
+    if (!registrationData) {
+      return res.status(400).json({ message: 'Registration not found or expired. Please register again.' });
     }
-    if (user.otp.expiresAt < new Date()) {
-      return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
+    
+    if (registrationData.expiresAt < new Date()) {
+      pendingRegistrations.delete(email);
+      return res.status(400).json({ message: 'OTP expired. Please register again.' });
     }
-    if (user.otp.code !== otp) {
+    
+    if (registrationData.otp !== otp) {
       return res.status(400).json({ message: 'Invalid OTP.' });
     }
-    // OTP valid, clear OTP
-    user.otp = undefined;
-    await user.save();
+    
+    // OTP is valid, create user in database
+    const user = await User.create({
+      username: registrationData.username,
+      name: registrationData.name,
+      email: registrationData.email,
+      password: registrationData.password,
+      phone: registrationData.phone,
+      role: 'user',
+      isVerified: true
+    });
+    
+    // Remove from pending registrations
+    pendingRegistrations.delete(email);
+    
     // Send successful registration email
     await sendEmail({
       to: user.email,
-      subject: 'Registration Successful',
-      text: `Hi ${user.name || user.username},\n\nYour registration was successful! Welcome to our platform.\n\nThank you for joining us!`
+      subject: '🎉 Welcome to Trek Adventures - Registration Successful!',
+      text: `Hi ${user.name || user.username},
+
+🎉 CONGRATULATIONS! Your registration is complete!
+
+Welcome to Trek Adventures - your gateway to amazing outdoor experiences and unforgettable adventures.
+
+ACCOUNT DETAILS:
+Username: ${user.username}
+Email: ${user.email}
+Status: Verified ✅
+
+WHAT'S NEXT?
+1. Explore our exciting trek destinations
+2. Book your first adventure
+3. Join our community of outdoor enthusiasts
+4. Stay updated with our latest offers and events
+
+GETTING STARTED:
+• Browse our trek catalog to find your perfect adventure
+• Check out our upcoming batches and availability
+• Read trek reviews and experiences from fellow adventurers
+• Follow us on social media for updates and inspiration
+
+SAFETY & SUPPORT:
+• All our treks are led by experienced guides
+• Safety equipment is provided for all activities
+• 24/7 support available for any questions
+• Emergency contact information provided before each trek
+
+We're excited to have you join our community of adventure seekers!
+
+Happy Trekking!
+The Trek Adventures Team
+
+---
+Need help? Contact our support team anytime.
+This is an automated message. Please do not reply to this email.`,
+      html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Trek Adventures!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 18px;
+        }
+        .success-banner {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            padding: 10px 0;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .info-list li:before {
+            content: "✅";
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        .account-details {
+            background-color: #e0f2fe;
+            border: 1px solid #0284c7;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background-color: #059669;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+
+        <div class="success-banner">
+            <h1 style="margin: 0; font-size: 28px;">🎉 Welcome to Trek Adventures!</h1>
+            <p style="margin: 10px 0 0 0; font-size: 18px;">Your registration is complete and you're ready to start your journey!</p>
+        </div>
+
+        <h2>Hi ${user.name || user.username},</h2>
+        
+        <p>Welcome to Trek Adventures - your gateway to amazing outdoor experiences and unforgettable adventures. We're thrilled to have you join our community of adventure seekers!</p>
+
+        <div class="account-details">
+            <div class="section-title">📋 Account Details</div>
+            <p><strong>Username:</strong> ${user.username}</p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Status:</strong> <span style="color: #10b981; font-weight: bold;">✅ Verified</span></p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🚀 What's Next?</div>
+            <ul class="info-list">
+                <li>Explore our exciting trek destinations</li>
+                <li>Book your first adventure</li>
+                <li>Join our community of outdoor enthusiasts</li>
+                <li>Stay updated with our latest offers and events</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🎯 Getting Started</div>
+            <ul class="info-list">
+                <li>Browse our trek catalog to find your perfect adventure</li>
+                <li>Check out our upcoming batches and availability</li>
+                <li>Read trek reviews and experiences from fellow adventurers</li>
+                <li>Follow us on social media for updates and inspiration</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🛡️ Safety & Support</div>
+            <ul class="info-list">
+                <li>All our treks are led by experienced guides</li>
+                <li>Safety equipment is provided for all activities</li>
+                <li>24/7 support available for any questions</li>
+                <li>Emergency contact information provided before each trek</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="#" class="btn">Explore Treks</a>
+            <a href="#" class="btn">View Profile</a>
+        </div>
+
+        <p style="text-align: center; font-size: 18px; color: #10b981; margin: 30px 0;">
+            🏔️ We're excited to have you join our community of adventure seekers!
+        </p>
+
+        <div class="footer">
+            <p><strong>Happy Trekking!</strong><br>
+            The Trek Adventures Team</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                Need help? Contact our support team anytime.<br>
+                This is an automated message. Please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`
     });
+    
+    // Generate JWT token
     const token = generateToken(user._id);
     sendTokenCookie(res, token);
+    
     const userObj = user.toObject();
     res.json({
       token,
@@ -98,11 +402,27 @@ exports.verifyRegisterOtp = async (req, res) => {
         name: user.name,
         email: user.email,
         isAdmin: false,
-        role: userObj.role
+        role: userObj.role,
+        isVerified: userObj.isVerified
       }
     });
   } catch (error) {
     console.error('OTP verification error:', error);
+    
+    // Handle MongoDB duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      if (field === 'email') {
+        return res.status(400).json({ 
+          message: 'An account with this email already exists. Please try logging in instead.' 
+        });
+      } else if (field === 'username') {
+        return res.status(400).json({ 
+          message: 'This username is already taken. Please choose a different username.' 
+        });
+      }
+    }
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -111,15 +431,35 @@ exports.verifyRegisterOtp = async (req, res) => {
 exports.resendRegisterOtp = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+    
+    // Get registration data from temporary storage
+    const registrationData = pendingRegistrations.get(email);
+    
+    if (!registrationData) {
+      return res.status(404).json({ message: 'Registration not found. Please register again.' });
     }
+    
+    // Generate new OTP
     const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    user.otp = { code: otp, expiresAt };
-    await user.save();
-    await sendOtpEmail(user, otp);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Update registration data with new OTP
+    registrationData.otp = otp;
+    registrationData.expiresAt = expiresAt;
+    pendingRegistrations.set(email, registrationData);
+    
+    // Clean up expired registrations
+    setTimeout(() => {
+      if (pendingRegistrations.has(email)) {
+        pendingRegistrations.delete(email);
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+    
+    console.log(`Resend Register OTP for ${email}:`, otp);
+    
+    // Send OTP email
+    await sendOtpEmail({ email, name: registrationData.name }, otp);
+    
     res.json({ message: 'OTP resent successfully' });
   } catch (error) {
     console.error('Resend OTP error:', error);
@@ -132,13 +472,23 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select('+password').populate('group');
+    
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
+    
+    // Check if user is verified
+    if (!user.isVerified) {
+      return res.status(401).json({ 
+        message: 'Please verify your email before logging in. Check your email for verification instructions.' 
+      });
+    }
+    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
+    
     // Generate OTP and save
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -185,6 +535,7 @@ exports.verifyLoginOtp = async (req, res) => {
         email: user.email,
         isAdmin: isAdmin,
         role: userObj.role,
+        isVerified: userObj.isVerified,
         group: user.group
       }
     });
@@ -486,10 +837,266 @@ function generateOTP() {
 
 // Helper to send OTP email
 async function sendOtpEmail(user, otp) {
+  const userName = user.name || user.username || 'there';
+  const isRegistration = !user._id; // If no _id, it's a registration OTP
+  
+  const emailSubject = isRegistration 
+    ? 'Complete Your Registration - Verify Your Email' 
+    : 'Secure Login - Your Verification Code';
+  
+  const emailContent = `
+Dear ${userName},
+
+${isRegistration ? 
+  'Thank you for choosing to join our trekking community! To complete your registration, please verify your email address.' :
+  'You\'ve requested to log in to your account. To ensure your security, please use the verification code below.'
+}
+
+🔐 YOUR VERIFICATION CODE:
+${otp}
+
+⏰ VALIDITY:
+This code will expire in 10 minutes for security reasons.
+
+📱 HOW TO USE:
+1. Copy the 6-digit code above
+2. Enter it in the verification page
+3. Complete your ${isRegistration ? 'registration' : 'login'} process
+
+🔒 SECURITY REMINDERS:
+• Never share this code with anyone
+• Our team will never ask for this code via phone or email
+• If you didn't request this code, please ignore this email
+• For security, this code can only be used once
+
+❓ NEED HELP?
+If you're having trouble:
+• Check your spam/junk folder
+• Ensure you're using the correct email address
+• Contact our support team if issues persist
+
+⏳ EXPIRY NOTICE:
+This verification code expires in 10 minutes. If it expires, you can request a new one.
+
+${isRegistration ? 
+  'Welcome to our trekking community! We\'re excited to have you join us for amazing adventures.' :
+  'Thank you for using our secure login system. We\'re committed to keeping your account safe.'
+}
+
+Best regards,
+The Trek Team
+Your Adventure Awaits!
+
+---
+This is an automated message. Please do not reply to this email.
+For support, contact us through our website or mobile app.
+  `;
+
+  // HTML version for better visual appeal
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${emailSubject}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .otp-container {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .otp-code {
+            font-size: 48px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 10px 5px;
+        }
+        .btn:hover {
+            background-color: #059669;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .otp-code {
+                font-size: 36px;
+                letter-spacing: 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+
+        <h2>Dear ${userName},</h2>
+        
+        <p>${isRegistration ? 
+          'Thank you for choosing to join our trekking community! To complete your registration, please verify your email address.' :
+          'You\'ve requested to log in to your account. To ensure your security, please use the verification code below.'
+        }</p>
+
+        <div class="otp-container">
+            <div class="section-title">🔐 YOUR VERIFICATION CODE</div>
+            <div class="otp-code">${otp}</div>
+            <p><strong>⏰ Valid for 10 minutes</strong></p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📱 How to Use</div>
+            <ol>
+                <li>Copy the 6-digit code above</li>
+                <li>Enter it in the verification page</li>
+                <li>Complete your ${isRegistration ? 'registration' : 'login'} process</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🔒 Security Reminders</div>
+            <ul class="info-list">
+                <li>✅ Never share this code with anyone</li>
+                <li>✅ Our team will never ask for this code via phone or email</li>
+                <li>✅ If you didn't request this code, please ignore this email</li>
+                <li>✅ For security, this code can only be used once</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>⏳ Expiry Notice:</strong> This verification code expires in 10 minutes. If it expires, you can request a new one.
+        </div>
+
+        <div class="section">
+            <div class="section-title">❓ Need Help?</div>
+            <p>If you're having trouble:</p>
+            <ul class="info-list">
+                <li>📧 Check your spam/junk folder</li>
+                <li>📧 Ensure you're using the correct email address</li>
+                <li>📧 Contact our support team if issues persist</li>
+            </ul>
+        </div>
+
+        <p style="text-align: center; font-size: 18px; color: #10b981; margin: 30px 0;">
+            ${isRegistration ? 
+              '🎉 Welcome to our trekking community! We\'re excited to have you join us for amazing adventures.' :
+              '🔐 Thank you for using our secure login system. We\'re committed to keeping your account safe.'
+            }
+        </p>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Trek Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+
   await sendEmail({
     to: user.email,
-    subject: 'Your OTP for Login',
-    text: `Your OTP for login is: ${otp}`
+    subject: emailSubject,
+    text: emailContent,
+    html: htmlContent
   });
 }
 

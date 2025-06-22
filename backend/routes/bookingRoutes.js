@@ -23,10 +23,6 @@ router.get('/',
 // Get booking by ID
 router.get('/:id', 
   protect, 
-  checkMultiplePermissions([
-    { category: 'stats', name: 'bookings' },
-    { category: 'actions', name: 'manageBookings' }
-  ]), 
   bookingController.getBookingById
 );
 
@@ -36,14 +32,12 @@ router.post('/', protect, bookingController.createBooking);
 // Update booking status
 router.put('/:id/status', 
   protect, 
-  checkPermission('actions', 'manageBookings'), 
   bookingController.updateBookingStatus
 );
 
 // Cancel booking
 router.put('/:id/cancel', 
   protect, 
-  checkPermission('actions', 'manageBookings'), 
   bookingController.cancelBooking
 );
 
@@ -60,21 +54,18 @@ router.delete('/:id', protect, admin, bookingController.deleteBooking);
 // Cancel a participant from a booking
 router.put('/:id/participants/:participantId/cancel', 
   protect, 
-  checkPermission('actions', 'manageBookings'), 
   bookingController.cancelParticipant
 );
 
 // Restore a cancelled participant
 router.put('/:id/participants/:participantId/restore', 
   protect, 
-  checkPermission('actions', 'manageBookings'), 
   bookingController.restoreParticipant
 );
 
 // Update booking details
 router.put('/:id', 
   protect, 
-  checkPermission('actions', 'manageBookings'), 
   bookingController.updateBooking
 );
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { updateBooking, getTrekById, getBookingById } from "../services/api";
+import { updateParticipantDetails, getTrekById, getBookingById } from "../services/api";
 import { toast } from "react-toastify";
 
 function ParticipantDetailsPage() {
@@ -77,10 +77,11 @@ function ParticipantDetailsPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await updateBooking(bookingId, { 
-        participantDetails: participants, 
-        batch: batch?._id || batchId,
-        numberOfParticipants: participants.length
+      await updateParticipantDetails(bookingId, { 
+        participants: participants,
+        pickupLocation: "To be confirmed", // Default value, can be updated later
+        dropLocation: "To be confirmed", // Default value, can be updated later
+        additionalRequests: "" // Default empty value
       });
       toast.success("Participant details saved!");
       navigate(`/booking/${bookingId}/preview`);

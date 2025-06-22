@@ -34,7 +34,11 @@ export function AuthProvider({ children }) {
       setLoading(true);
       const data = await apiLogin({ email, password });
       
-      if (data.user) {
+      // For OTP-based login, we don't immediately get user data
+      // The user data will be returned after OTP verification
+      if (data.message) {
+        return data; // Return the response for OTP flow
+      } else if (data.user) {
         setCurrentUser(data.user);
         toast.success('Logged in successfully!');
         return data.user;
@@ -62,7 +66,14 @@ export function AuthProvider({ children }) {
       }
       
       const response = await apiRegister(userData);
-      return response.data;
+      
+      // For OTP-based registration, we don't immediately get user data
+      // The user data will be returned after OTP verification
+      if (response.message) {
+        return response; // Return the response for OTP flow
+      } else {
+        return response.data;
+      }
     } catch (error) {
       console.error('Registration error in AuthContext:', error);
       if (error.response && error.response.data) {
@@ -96,6 +107,19 @@ export function AuthProvider({ children }) {
     return currentUser?.role === 'admin';
   };
 
+  const setUserAfterOTPVerification = (userData, token) => {
+    if (token) {
+      localStorage.setItem('token', token);
+      sessionStorage.setItem('token', token);
+    }
+    
+    if (userData) {
+      setCurrentUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      sessionStorage.setItem('user', JSON.stringify(userData));
+    }
+  };
+
   const value = {
     currentUser,
     setCurrentUser,
@@ -105,7 +129,8 @@ export function AuthProvider({ children }) {
     logout,
     refreshUser,
     hasPermission,
-    isAdmin
+    isAdmin,
+    setUserAfterOTPVerification
   };
 
   console.log("current",currentUser)

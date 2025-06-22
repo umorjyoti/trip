@@ -26,9 +26,19 @@ function Login() {
     
     try {
       setLoading(true);
-      const userData = await login(email, password);
-      setCurrentUser(userData);
-      navigate(from);
+      const response = await login(email, password);
+      
+      // Show success message and redirect to OTP verification
+      toast.success('Login initiated! Please check your email for OTP.');
+      
+      // Navigate to OTP verification page
+      navigate('/verify-otp', {
+        state: {
+          email,
+          type: 'login',
+          redirectPath: from
+        }
+      });
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error.response?.data?.message || 'Failed to login');

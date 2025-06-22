@@ -262,6 +262,12 @@ export const updateBooking = async (bookingId, data) => {
   return response.data;
 };
 
+// Update participant details after payment
+export const updateParticipantDetails = async (bookingId, data) => {
+  const response = await api.put(`/bookings/${bookingId}/participants`, data);
+  return response.data;
+};
+
 // Batch APIs
 export const addBatch = async (trekId, batchData) => {
   const response = await api.post(`/treks/${trekId}/batches`, batchData);

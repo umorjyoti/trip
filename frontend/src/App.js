@@ -12,6 +12,7 @@ import AdminRoute from "./components/AdminRoute";
 import LoadingSpinner from "./components/LoadingSpinner";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoutes from "./routes/ProtectedRoutes";
+import OTPVerification from "./components/OTPVerification";
 
 // Pages
 import Home from "./pages/Home";
@@ -520,6 +521,9 @@ function App() {
 
               {/* Login Success Route */}
               <Route path="/login/success" element={<LoginSuccess />} />
+
+              {/* OTP Verification Route */}
+              <Route path="/verify-otp" element={<OTPVerification />} />
 
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />

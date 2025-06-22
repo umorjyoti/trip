@@ -1,6 +1,7 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
+const { sendEmail, sendPaymentReceivedEmail } = require('../utils/email');
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -86,7 +87,10 @@ exports.verifyPayment = async (req, res) => {
 
     // Update booking status if signature is valid
     if (bookingId) {
-      const booking = await Booking.findById(bookingId);
+      const booking = await Booking.findById(bookingId)
+        .populate('trek')
+        .populate('user', 'name email');
+      
       if (booking) {
         booking.status = 'confirmed';
         booking.paymentDetails = {
@@ -100,6 +104,23 @@ exports.verifyPayment = async (req, res) => {
           status: payment.status
         };
         await booking.save();
+
+        // Send payment confirmation email with invoice
+        try {
+          const trek = booking.trek;
+          const user = booking.user;
+          
+          const paymentDetails = {
+            id: razorpay_payment_id,
+            amount: payment.amount,
+            method: payment.method
+          };
+
+          await sendPaymentReceivedEmail(booking, trek, user, paymentDetails);
+        } catch (emailError) {
+          console.error('Error sending payment confirmation email:', emailError);
+          // Don't fail the payment verification if email fails
+        }
       }
     }
 

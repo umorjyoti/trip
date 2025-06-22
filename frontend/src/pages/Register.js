@@ -131,10 +131,19 @@ function Register() {
 
     try {
       setLoading(true);
-      const userData = await register({ name, email, password, username, phone });
-      setCurrentUser(userData);
-      toast.success('Registration successful!');
-      navigate(redirectPath);
+      const response = await register({ name, email, password, username, phone });
+      
+      // Show success message and redirect to OTP verification
+      toast.success('Registration initiated! Please check your email for OTP.');
+      
+      // Navigate to OTP verification page
+      navigate('/verify-otp', {
+        state: {
+          email,
+          type: 'register',
+          redirectPath
+        }
+      });
     } catch (error) {
       toast.error(error.message || 'Registration failed');
     } finally {

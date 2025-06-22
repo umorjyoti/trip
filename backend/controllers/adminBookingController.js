@@ -76,12 +76,59 @@ exports.cancelBooking = async (req, res) => {
 
     // Send email notification
     try {
+      const emailContent = `
+Dear ${booking.contactInfo?.name || 'Valued Customer'},
+
+We regret to inform you that your booking has been cancelled as requested.
+
+BOOKING DETAILS:
+Booking ID: ${booking._id}
+Trek: ${booking.trek?.name || 'N/A'}
+${participantId ? 'Cancelled Participant: ' + booking.participantDetails.find(p => p._id === participantId)?.name : 'All participants cancelled'}
+
+CANCELLATION DETAILS:
+Cancellation Date: ${new Date().toLocaleDateString()}
+Cancellation Time: ${new Date().toLocaleTimeString()}
+
+REFUND INFORMATION:
+${refund ? 
+  (refundAmount > 0 ? 
+    `✅ Refund Processed Successfully
+Amount: ₹${refundAmount}
+Refund Method: ${booking.paymentDetails?.method || 'Original payment method'}
+Expected Credit: 5-7 business days` :
+    '❌ No refund applicable (within cancellation policy)'
+  ) : 
+  '❌ No refund requested'
+}
+
+NEXT STEPS:
+${refund && refundAmount > 0 ? 
+  '• Your refund will be processed to your original payment method\n• You will receive a confirmation email once the refund is completed\n• Please allow 5-7 business days for the refund to appear in your account' :
+  '• No further action is required from your side'
+}
+
+FUTURE BOOKINGS:
+We hope to see you on another adventure soon! Feel free to browse our other exciting treks and book again when you're ready.
+
+If you have any questions about this cancellation or would like to book another trek, please don't hesitate to contact our support team.
+
+We appreciate your understanding.
+
+Best regards,
+The Trek Adventures Team
+
+---
+This is an automated message. Please do not reply to this email.
+For support, contact us through our website or mobile app.`;
+
       await sendEmail({
         to: booking.contactInfo.email,
-        subject: 'Booking Cancellation & Refund',
-        text: `Your booking has been cancelled. Refund status: ${refund ? (refundAmount > 0 ? 'Processed' : 'No refund') : 'No refund requested'}. Amount: ₹${refundAmount}`,
+        subject: 'Booking Cancellation Confirmation',
+        text: emailContent
       });
     } catch (e) {
+      console.error('Error sending cancellation email:', e);
       // log email error, but don't fail the request
     }
 

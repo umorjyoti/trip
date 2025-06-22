@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail } = require('../utils/email');
 
 // Create a new booking
 const createBooking = async (req, res) => {
@@ -100,13 +100,6 @@ const createBooking = async (req, res) => {
     batch.currentParticipants += participantsCount;
     await trek.save();
 
-    // Send successful booking email
-    await sendEmail({
-      to: userDetails.email,
-      subject: 'Booking Confirmed',
-      text: `Hi ${userDetails.name},\n\nYour booking for ${trek.name} is confirmed!\n\nBatch: ${batch.startDate ? new Date(batch.startDate).toLocaleDateString() : ''} to ${batch.endDate ? new Date(batch.endDate).toLocaleDateString() : ''}\nParticipants: ${participantsCount}\nTotal Price: ₹${totalPrice}\n\nThank you for booking with us!`
-    });
-
     res.status(201).json(booking);
   } catch (error) {
     console.error("Error creating booking:", error);
@@ -190,6 +183,7 @@ const getBookingById = async (req, res) => {
     // Check if the booking belongs to the logged-in user or user is admin
     if (
       booking.user._id.toString() !== req.user._id.toString() &&
+      booking.user.toString() !== req.user._id.toString() &&
       !req.user.isAdmin &&
       req.user.role !== "admin"
     ) {
@@ -244,6 +238,7 @@ const cancelBooking = async (req, res) => {
 
     // Check if user is authorized (either admin or the booking owner)
     if (
+      booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
       !req.user.isAdmin
     ) {
@@ -312,6 +307,11 @@ const updateBookingStatus = async (req, res) => {
     const validStatuses = ["pending", "confirmed", "cancelled", "completed"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
+    }
+
+    // Check if user is authorized (admin only)
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to update booking status" });
     }
 
     const booking = await Booking.findById(req.params.id);
@@ -385,6 +385,7 @@ const cancelParticipant = async (req, res) => {
 
     // Check if user is authorized (either admin or the booking owner)
     if (
+      booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
       !req.user.isAdmin
     ) {
@@ -438,6 +439,15 @@ const restoreParticipant = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    // Check if user is authorized (either admin or the booking owner)
+    if (
+      booking.user._id.toString() !== req.user._id.toString() &&
+      booking.user.toString() !== req.user._id.toString() &&
+      !req.user.isAdmin
+    ) {
+      return res.status(401).json({ message: "Not authorized" });
+    }
+
     // Find the participant
     const participant = booking.participantDetails.find(
       (p) => p._id === participantId
@@ -477,7 +487,7 @@ const restoreParticipant = async (req, res) => {
 const updateBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
+    const {
       participants, 
       participantDetails, 
       totalPrice, 
@@ -489,19 +499,38 @@ const updateBooking = async (req, res) => {
       status
     } = req.body;
 
-    const booking = await Booking.findById(id);
+    console.log('updateBooking called for booking:', id);
+    console.log('Request body:', { participants, participantDetails, status });
+
+    const booking = await Booking.findById(id)
+      .populate('trek')
+      .populate('user', 'name email');
+    
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Check if user is authorized (either admin or the booking owner)
+    console.log('Booking found in updateBooking:', {
+      id: booking._id,
+      status: booking.status,
+      user: booking.user?.email,
+      trek: booking.trek?.name
+    });
+
+    // Check if the booking belongs to the logged-in user
     if (
+      booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
-      !req.user.isAdmin &&
-      req.user.role !== "admin"
+      !req.user.isAdmin
     ) {
       return res.status(403).json({ message: "Not authorized to update this booking" });
     }
+
+    // Track if participant details are being updated
+    const isUpdatingParticipantDetails = participantDetails !== undefined && Array.isArray(participantDetails) && participantDetails.length > 0;
+
+    console.log('isUpdatingParticipantDetails:', isUpdatingParticipantDetails);
+    console.log('booking.status:', booking.status);
 
     // Update booking details
     if (participants !== undefined) {
@@ -541,6 +570,29 @@ const updateBooking = async (req, res) => {
     }
 
     await booking.save();
+
+    // Send booking confirmation email if participant details are being updated
+    if (isUpdatingParticipantDetails && booking.status === 'confirmed') {
+      console.log('Sending booking confirmation email from updateBooking');
+      try {
+        const trek = booking.trek;
+        const user = booking.user;
+        const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+        
+        // Get pickup/drop locations and additional requests from booking if available
+        const pickupLocation = booking.pickupLocation || 'To be confirmed';
+        const dropLocation = booking.dropLocation || 'To be confirmed';
+        const additionalRequests = booking.additionalRequests || 'None';
+
+        await sendBookingConfirmationEmail(booking, trek, user, participantDetails, batch, pickupLocation, dropLocation, additionalRequests);
+        console.log('Booking confirmation email sent successfully from updateBooking');
+      } catch (emailError) {
+        console.error('Error sending booking confirmation email:', emailError);
+        // Don't fail the booking update if email fails
+      }
+    } else {
+      console.log('Not sending booking confirmation email. isUpdatingParticipantDetails:', isUpdatingParticipantDetails, 'booking.status:', booking.status);
+    }
 
     // Return the updated booking with populated fields
     const updatedBooking = await Booking.findById(id)
@@ -762,13 +814,30 @@ const updateParticipantDetails = async (req, res) => {
     const { id } = req.params;
     const { participants, pickupLocation, dropLocation, additionalRequests } = req.body;
 
-    const booking = await Booking.findById(id);
+    console.log('updateParticipantDetails called for booking:', id);
+    console.log('Request body:', { participants, pickupLocation, dropLocation, additionalRequests });
+
+    const booking = await Booking.findById(id)
+      .populate('trek')
+      .populate('user', 'name email');
+    
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    console.log('Booking found:', {
+      id: booking._id,
+      status: booking.status,
+      user: booking.user?.email,
+      trek: booking.trek?.name
+    });
+
     // Check if the booking belongs to the logged-in user
-    if (booking.user.toString() !== req.user._id.toString() && !req.user.isAdmin) {
+    if (
+      booking.user._id.toString() !== req.user._id.toString() &&
+      booking.user.toString() !== req.user._id.toString() &&
+      !req.user.isAdmin
+    ) {
       return res.status(403).json({ message: "Not authorized to update this booking" });
     }
 
@@ -787,6 +856,24 @@ const updateParticipantDetails = async (req, res) => {
     booking.status = 'confirmed'; // Update status to confirmed after collecting details
 
     await booking.save();
+
+    console.log('Booking updated successfully, status:', booking.status);
+
+    // Send booking confirmation email
+    try {
+      const trek = booking.trek;
+      const user = booking.user;
+      const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+      
+      console.log('Sending booking confirmation email to:', user.email);
+
+      await sendBookingConfirmationEmail(booking, trek, user, participants, batch, pickupLocation, dropLocation, additionalRequests);
+      
+      console.log('Booking confirmation email sent successfully');
+    } catch (emailError) {
+      console.error('Error sending booking confirmation email:', emailError);
+      // Don't fail the participant details update if email fails
+    }
 
     res.json({ 
       message: "Participant details updated successfully",
