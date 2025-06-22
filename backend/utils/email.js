@@ -1,13 +1,30 @@
 const nodemailer = require('nodemailer');
+require('dotenv').config();
 
-// Create a transporter using Gmail SMTP
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD // Use App Password for Gmail
+async function createTransporter() {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE || 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      tls: {
+        rejectUnauthorized: false // useful for local development
+      }
+    });
+
+    await transporter.verify();
+    console.log('Email transporter verified and ready.');
+    return transporter;
+  } catch (err) {
+    console.error('Failed to verify email transporter:', err.message);
+    console.error('Ensure App Password is used and 2FA is enabled for Gmail.');
+    return null;
   }
-});
+}
+
+const transporterPromise = createTransporter();
 
 /**
  * Send an email using the configured transporter
@@ -16,17 +33,19 @@ const transporter = nodemailer.createTransport({
  * @param {string} options.subject - Email subject
  * @param {string} options.text - Email text content
  * @param {string} [options.html] - Email HTML content (optional)
- * @returns {Promise} - Promise that resolves when email is sent
+ * @returns {Promise<object|null>} - Info object or null
  */
 const sendEmail = async ({ to, subject, text, html }) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      console.warn('Email credentials not configured. Skipping email send.');
+    const transporter = await transporterPromise;
+
+    if (!transporter) {
+      console.warn('Transporter not initialized.');
       return null;
     }
 
     const mailOptions = {
-      from: process.env.GMAIL_USER,
+      from: `"NoReply" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       text,
@@ -37,10 +56,9 @@ const sendEmail = async ({ to, subject, text, html }) => {
     console.log('Email sent:', info.messageId);
     return info;
   } catch (error) {
-    console.error('Error sending email:', error);
-    // Don't throw the error, just log it and continue
+    console.error('Error sending email:', error.message);
     return null;
   }
 };
 
-module.exports = { sendEmail }; 
+module.exports = { sendEmail };
