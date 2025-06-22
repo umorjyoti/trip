@@ -65,7 +65,8 @@ function LoginSuccess() {
       // Send success message to parent window
       window.opener.postMessage({ 
         type: 'GOOGLE_AUTH_SUCCESS',
-        data: data
+        data: data,
+        isNewUser: data.isNewUser || false
       }, '*');
 
       // Close the popup window

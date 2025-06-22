@@ -166,7 +166,7 @@ function AdminLayout({ children }) {
         <div className="relative flex-1 flex flex-col max-w-xs w-full bg-emerald-700">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
             <button
-              className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+              className="ml-1 flex items-center justify-center h-10 w-10 rounded-full focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white touch-target"
               onClick={() => setIsSidebarOpen(false)}
             >
               <span className="sr-only">Close sidebar</span>
@@ -197,7 +197,7 @@ function AdminLayout({ children }) {
                     pathname === item.path
                       ? 'bg-emerald-800 text-white'
                       : 'text-emerald-100 hover:bg-emerald-600'
-                  } group flex items-center px-2 py-2 text-base font-medium rounded-md`}
+                  } group flex items-center px-3 py-3 text-base font-medium rounded-md touch-target`}
                   onClick={() => setIsSidebarOpen(false)}
                 >
                   <item.icon
@@ -217,7 +217,7 @@ function AdminLayout({ children }) {
       <div className="flex flex-col flex-1">
         <div className="md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3">
           <button
-            className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+            className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500 touch-target"
             onClick={() => setIsSidebarOpen(true)}
           >
             <span className="sr-only">Open sidebar</span>
@@ -233,7 +233,7 @@ function AdminLayout({ children }) {
             </svg>
           </button>
         </div>
-        <main className="flex-1 relative z-0 p-6">
+        <main className="flex-1 relative z-0 p-3 sm:p-4 lg:p-6">
           {children}
         </main>
       </div>

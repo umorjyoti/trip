@@ -45,6 +45,7 @@ import {
   FaInfoCircle,
   FaNewspaper,
   FaHeadset,
+  FaChevronRight,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import RichTextEditor from "../components/RichTextEditor";
@@ -84,15 +85,15 @@ const StatCard = ({
   const cardContent = (
     <>
       <div
-        className={`absolute top-4 right-4 p-3 rounded-full ${colors[color]} text-white opacity-80`}
+        className={`absolute top-3 right-3 sm:top-4 sm:right-4 p-2 sm:p-3 rounded-full ${colors[color]} text-white opacity-80`}
       >
-        <Icon className="h-6 w-6" aria-hidden="true" />
+        <Icon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
       </div>
-      <p className="text-sm font-medium text-gray-500 truncate">{title}</p>
+      <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">{title}</p>
       {loading ? (
-        <div className="h-8 w-20 bg-gray-200 rounded animate-pulse mt-1"></div>
+        <div className="h-6 sm:h-8 w-16 sm:w-20 bg-gray-200 rounded animate-pulse mt-1"></div>
       ) : (
-        <p className="mt-1 text-3xl font-semibold text-gray-900">{value}</p>
+        <p className="mt-1 text-2xl sm:text-3xl font-semibold text-gray-900">{value}</p>
       )}
     </>
   );
@@ -107,7 +108,7 @@ const StatCard = ({
     return (
       <motion.div
         {...motionProps}
-        className="relative bg-white pt-5 px-4 pb-5 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+        className="relative bg-white pt-4 px-3 pb-4 sm:pt-5 sm:px-4 sm:pb-5 shadow rounded-lg overflow-hidden hover:shadow-md transition-shadow min-h-[120px] sm:min-h-[140px]"
       >
         <Link
           to={link}
@@ -122,7 +123,7 @@ const StatCard = ({
   return (
     <motion.div
       {...motionProps}
-      className="relative bg-white pt-5 px-4 pb-5 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden"
+      className="relative bg-white pt-4 px-3 pb-4 sm:pt-5 sm:px-4 sm:pb-5 shadow rounded-lg overflow-hidden min-h-[120px] sm:min-h-[140px]"
     >
       {cardContent}
     </motion.div>
@@ -176,8 +177,9 @@ const QuickActionCard = ({
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3 }}
-      whileHover={{ scale: 1.03 }}
-      className={`relative group ${bgColors[color]} p-6 rounded-lg shadow-sm transition-all duration-200`}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      className={`relative group ${bgColors[color]} p-4 sm:p-6 rounded-lg shadow-sm transition-all duration-200 min-h-[140px] sm:min-h-[160px]`}
     >
       <Link
         to={link}
@@ -185,16 +187,16 @@ const QuickActionCard = ({
         aria-label={title}
       ></Link>
       <div
-        className={`inline-block p-3 rounded-lg ${textColors[color]} bg-white mb-4 shadow-sm`}
+        className={`inline-block p-2 sm:p-3 rounded-lg ${textColors[color]} bg-white mb-3 sm:mb-4 shadow-sm`}
       >
-        <Icon className="h-6 w-6" aria-hidden="true" />
+        <Icon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
       </div>
-      <h3 className={`text-lg font-semibold ${textColors[color]} mb-1`}>
+      <h3 className={`text-base sm:text-lg font-semibold ${textColors[color]} mb-1`}>
         {title}
       </h3>
-      <p className="text-sm text-gray-600">{description}</p>
+      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{description}</p>
       <FaArrowRight
-        className={`absolute bottom-4 right-4 h-5 w-5 text-gray-400 group-hover:${textColors[color]} transition-colors`}
+        className={`absolute bottom-3 right-3 sm:bottom-4 sm:right-4 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:${textColors[color]} transition-colors`}
       />
     </motion.div>
   );
@@ -603,18 +605,18 @@ function Dashboard() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="mt-2 text-gray-600">Welcome back, {currentUser?.name}!</p>
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+        <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Welcome back, {currentUser?.name}!</p>
       </div>
 
       {/* Quick Stats */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
           Quick Stats
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {statsConfig
             .filter((stat) => permissions.stats[stat.permissionKey])
             .map((stat, idx) => (
@@ -632,11 +634,11 @@ function Dashboard() {
       </div>
 
       {/* Admin Links */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+      <div className="mb-6 sm:mb-8">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
           Quick Actions
         </h2>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
           {quickActions
             .filter((action) => permissions.actions[action.permissionKey])
             .map((action, index) => (
@@ -646,34 +648,35 @@ function Dashboard() {
       </div>
 
       {/* Recent Treks */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Recent Treks</h2>
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-3 sm:mb-4 gap-2">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Recent Treks</h2>
           <Link
             to="/admin/treks"
-            className="text-emerald-600 hover:text-emerald-700"
+            className="text-emerald-600 hover:text-emerald-700 text-sm sm:text-base font-medium flex items-center gap-1"
           >
             View all
+            <FaChevronRight className="h-3 w-3" />
           </Link>
         </div>
 
         {treks.length > 0 ? (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <div className="bg-white shadow overflow-hidden rounded-lg">
             <ul className="divide-y divide-gray-200">
               {treks.map((trek) => (
                 <li key={trek._id}>
                   <Link
                     to={`/admin/treks/edit/${trek._id}`}
-                    className="block hover:bg-gray-50"
+                    className="block hover:bg-gray-50 transition-colors"
                   >
-                    <div className="px-4 py-4 sm:px-6">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-emerald-600 truncate">
+                    <div className="px-3 py-3 sm:px-4 sm:py-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm sm:text-base font-medium text-emerald-600 truncate flex-1 mr-2">
                           {trek.name}
                         </p>
-                        <div className="ml-2 flex-shrink-0 flex">
+                        <div className="flex-shrink-0">
                           <p
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            className={`px-2 py-1 inline-flex text-xs leading-4 font-semibold rounded-full ${
                               trek.isEnabled
                                 ? "bg-green-100 text-green-800"
                                 : "bg-red-100 text-red-800"
@@ -683,11 +686,11 @@ function Dashboard() {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-2 sm:flex sm:justify-between">
-                        <div className="sm:flex">
-                          <p className="flex items-center text-sm text-gray-500">
+                      <div className="flex flex-col sm:flex-row sm:justify-between gap-2 sm:gap-0">
+                        <div className="flex flex-col sm:flex-row sm:gap-6 gap-1">
+                          <p className="flex items-center text-xs sm:text-sm text-gray-500">
                             <svg
-                              className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400"
+                              className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400"
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
                               fill="currentColor"
@@ -700,9 +703,9 @@ function Dashboard() {
                             </svg>
                             {trek.region}
                           </p>
-                          <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
+                          <p className="flex items-center text-xs sm:text-sm text-gray-500">
                             <svg
-                              className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400"
+                              className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400"
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
                               fill="currentColor"
@@ -716,9 +719,9 @@ function Dashboard() {
                             {trek.duration} days
                           </p>
                         </div>
-                        <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                        <div className="flex items-center text-xs sm:text-sm text-gray-500">
                           <svg
-                            className="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400"
+                            className="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400"
                             xmlns="http://www.w3.org/2000/svg"
                             viewBox="0 0 20 20"
                             fill="currentColor"
@@ -742,28 +745,29 @@ function Dashboard() {
             </ul>
           </div>
         ) : (
-          <div className="bg-white shadow overflow-hidden sm:rounded-md p-6 text-center text-gray-500">
-            No treks found.{" "}
-            <Link
-              to="/admin/treks/add"
-              className="text-emerald-600 hover:text-emerald-700"
-            >
-              Add your first trek
-            </Link>
+          <div className="bg-white shadow overflow-hidden rounded-lg p-4 sm:p-6 text-center text-gray-500">
+            <p className="text-sm sm:text-base">No treks found.{" "}
+              <Link
+                to="/admin/treks/add"
+                className="text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                Add your first trek
+              </Link>
+            </p>
           </div>
         )}
       </div>
 
-      {/* Add a new tab for Trek Sections */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      {/* Tab Navigation - Mobile Optimized */}
+      <div className="border-b border-gray-200 mb-4 sm:mb-6">
+        <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab("overview")}
             className={`${
               activeTab === "overview"
                 ? "border-emerald-500 text-emerald-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            } whitespace-nowrap py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-sm sm:text-base transition-colors`}
           >
             Overview
           </button>
@@ -776,7 +780,7 @@ function Dashboard() {
               activeTab === "trekSections"
                 ? "border-emerald-500 text-emerald-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+            } whitespace-nowrap py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-sm sm:text-base transition-colors`}
           >
             Trek Sections
           </button>
@@ -785,7 +789,7 @@ function Dashboard() {
 
       {/* Add the TrekSectionManager component to your conditional rendering */}
       {activeTab === "trekSections" && (
-        <div className="mt-6">
+        <div className="mt-4 sm:mt-6">
           <TrekSectionManager />
         </div>
       )}

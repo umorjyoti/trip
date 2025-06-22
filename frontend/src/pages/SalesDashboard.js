@@ -50,6 +50,12 @@ function SalesDashboard() {
   };
 
   const formatCurrency = (amount) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR'
+      }).format(0);
+    }
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR'
@@ -138,7 +144,7 @@ function SalesDashboard() {
                 </div>
               </div>
             </div>
-          ) : stats && (
+          ) : stats ? (
             <>
               {/* Key Metrics */}
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -148,7 +154,7 @@ function SalesDashboard() {
                       Total Revenue
                     </dt>
                     <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                    {formatCurrency(stats.totalRevenue.toLocaleString('en-IN'))}
+                      {formatCurrency((stats.totalRevenue || 0).toLocaleString('en-IN'))}
                     </dd>
                   </div>
                 </div>
@@ -159,7 +165,7 @@ function SalesDashboard() {
                       Total Bookings
                     </dt>
                     <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {stats.totalBookings}
+                      {stats.totalBookings || 0}
                     </dd>
                   </div>
                 </div>
@@ -170,7 +176,7 @@ function SalesDashboard() {
                       Average Booking Value
                     </dt>
                     <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {formatCurrency(stats.avgBookingValue.toLocaleString('en-IN'))}
+                      {formatCurrency((stats.avgBookingValue || 0).toLocaleString('en-IN'))}
                     </dd>
                   </div>
                 </div>
@@ -181,7 +187,7 @@ function SalesDashboard() {
                       Average Participants
                     </dt>
                     <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {stats.avgParticipants.toFixed(1)}
+                      {(stats.avgParticipants || 0).toFixed(1)}
                     </dd>
                   </div>
                 </div>
@@ -231,11 +237,11 @@ function SalesDashboard() {
                     <div className="h-80">
                       <Line
                         data={{
-                          labels: stats.revenueByPeriod.map(item => item.period),
+                          labels: (stats.revenueByPeriod || []).map(item => item.period),
                           datasets: [
                             {
                               label: 'Revenue (INR)',
-                              data: stats.revenueByPeriod.map(item => item.amount),
+                              data: (stats.revenueByPeriod || []).map(item => item.amount),
                               borderColor: 'rgb(16, 185, 129)',
                               backgroundColor: 'rgba(16, 185, 129, 0.5)',
                               tension: 0.1
@@ -276,11 +282,11 @@ function SalesDashboard() {
                     <div className="h-80">
                       <Bar
                         data={{
-                          labels: stats.bookingsByPeriod.map(item => item.period),
+                          labels: (stats.bookingsByPeriod || []).map(item => item.period),
                           datasets: [
                             {
                               label: 'Bookings',
-                              data: stats.bookingsByPeriod.map(item => item.count),
+                              data: (stats.bookingsByPeriod || []).map(item => item.count),
                               backgroundColor: 'rgba(16, 185, 129, 0.5)',
                               borderColor: 'rgb(16, 185, 129)',
                               borderWidth: 1
@@ -311,11 +317,11 @@ function SalesDashboard() {
                       <div style={{ width: '50%' }}>
                         <Pie
                           data={{
-                            labels: stats.revenueByRegion.map(item => item.region),
+                            labels: (stats.revenueByRegion || []).map(item => item.region),
                             datasets: [
                               {
                                 label: 'Revenue',
-                                data: stats.revenueByRegion.map(item => item.amount),
+                                data: (stats.revenueByRegion || []).map(item => item.amount),
                                 backgroundColor: [
                                   'rgba(16, 185, 129, 0.7)',
                                   'rgba(14, 165, 233, 0.7)',
@@ -386,7 +392,7 @@ function SalesDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {stats.topTreks.map((trek, index) => (
+                      {(stats.topTreks || []).map((trek, index) => (
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {trek.name}
@@ -398,7 +404,7 @@ function SalesDashboard() {
                             {trek.bookings}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ₹{formatCurrency(trek.revenue.toLocaleString('en-IN'))}
+                            ₹{formatCurrency((trek.revenue || 0).toLocaleString('en-IN'))}
                           </td>
                         </tr>
                       ))}
@@ -407,6 +413,10 @@ function SalesDashboard() {
                 </div>
               </div>
             </>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No sales data available.</p>
+            </div>
           )}
         </>
       )}

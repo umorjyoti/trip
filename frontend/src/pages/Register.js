@@ -72,13 +72,13 @@ function Register() {
         if (event.source !== popup) return;
 
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-          const { data } = event.data;
+          const { data, isNewUser } = event.data;
           // Store the token
           localStorage.setItem('token', data.token);
           // Update auth context with user data
           setCurrentUser(data.user);
           // Show success message
-          toast.success('Successfully signed in with Google');
+          toast.success(isNewUser ? 'Registration successful! Welcome to our community!' : 'Successfully signed in with Google');
           // Navigate to the redirect path
           navigate(redirectPath);
           setLoading(false);

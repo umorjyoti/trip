@@ -208,12 +208,12 @@ const TrekSectionManager = forwardRef(
     };
 
     return (
-      <div className="py-6 max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
+      <div className="py-4 sm:py-6 max-w-7xl mx-auto px-3 sm:px-4 md:px-8">
         {/* Section List */}
         {!externalShowModal && (
           <>
-            <div className="flex justify-between items-center mb-4">
-              <h1 className="text-2xl font-semibold text-gray-900">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
                 Trek Sections
               </h1>
               <button
@@ -221,7 +221,7 @@ const TrekSectionManager = forwardRef(
                   resetForm();
                   setInternalShowModal(true);
                 }}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 touch-target"
               >
                 Add Section
               </button>
@@ -238,45 +238,45 @@ const TrekSectionManager = forwardRef(
                 No sections found. Create your first section.
               </div>
             ) : (
-              <div className="bg-white shadow overflow-hidden sm:rounded-md">
+              <div className="bg-white shadow overflow-hidden rounded-lg">
                 <ul className="divide-y divide-gray-200">
                   {sections.map((section) => (
                     <li key={section._id}>
-                      <div className="px-4 py-4 flex items-center justify-between sm:px-6">
-                        <div>
-                          <h3 className="text-lg font-medium text-gray-900">
+                      <div className="px-3 py-3 sm:px-4 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate">
                             {section.title}
                           </h3>
-                          <p className="mt-1 text-sm text-gray-500">
+                          <p className="mt-1 text-xs sm:text-sm text-gray-500">
                             {section.treks.length} treks | Order:{" "}
                             {section.displayOrder}
                           </p>
                         </div>
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-2 self-end sm:self-auto">
                           <button
                             onClick={() => handleToggleStatus(section)}
-                            className={`p-2 rounded-full ${
+                            className={`p-2 rounded-full touch-target ${
                               section.isActive
                                 ? "bg-green-100 text-green-600 hover:bg-green-200"
                                 : "bg-red-100 text-red-600 hover:bg-red-200"
                             }`}
                             title={section.isActive ? "Deactivate" : "Activate"}
                           >
-                            {section.isActive ? <FaEye /> : <FaEyeSlash />}
+                            {section.isActive ? <FaEye className="h-4 w-4" /> : <FaEyeSlash className="h-4 w-4" />}
                           </button>
                           <button
                             onClick={() => handleEdit(section)}
-                            className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                            className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 touch-target"
                             title="Edit"
                           >
-                            <FaEdit />
+                            <FaEdit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => setDeleteConfirmation(section._id)}
-                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                            className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 touch-target"
                             title="Delete"
                           >
-                            <FaTrash />
+                            <FaTrash className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -319,7 +319,7 @@ const TrekSectionManager = forwardRef(
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Treks *
                   </label>
-                  <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
+                  <div className="max-h-48 sm:max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
                     {allTreks.map((trek) => (
                       <div key={trek._id} className="flex items-center mb-2">
                         <input
@@ -331,9 +331,10 @@ const TrekSectionManager = forwardRef(
                         />
                         <label
                           htmlFor={`trek-${trek._id}`}
-                          className="ml-2 block text-sm text-gray-900"
+                          className="ml-2 block text-sm text-gray-900 cursor-pointer"
                         >
-                          {trek.name} - {trek.region}
+                          <span className="font-medium">{trek.name}</span>
+                          <span className="text-gray-500 ml-1">- {trek.region}</span>
                         </label>
                       </div>
                     ))}
@@ -374,25 +375,25 @@ const TrekSectionManager = forwardRef(
                   />
                   <label
                     htmlFor="isActive"
-                    className="ml-2 block text-sm text-gray-900"
+                    className="ml-2 block text-sm text-gray-900 cursor-pointer"
                   >
                     Active
                   </label>
                 </div>
               </div>
 
-              <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+              <div className="mt-5 sm:mt-6 flex flex-col-reverse sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense gap-3">
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-emerald-600 text-base font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:col-start-2 sm:text-sm"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-3 sm:py-2 bg-emerald-600 text-base font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:col-start-2 sm:text-sm touch-target"
                 >
                   {loading ? "Saving..." : isEditing ? "Update" : "Create"}
                 </button>
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:mt-0 sm:col-start-1 sm:text-sm"
+                  className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-3 sm:py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:col-start-1 sm:text-sm touch-target"
                 >
                   Cancel
                 </button>
@@ -414,18 +415,18 @@ const TrekSectionManager = forwardRef(
                 be undone.
               </p>
             </div>
-            <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+            <div className="mt-5 sm:mt-4 flex flex-col-reverse sm:flex-row sm:flex-row-reverse gap-3">
               <button
                 type="button"
                 onClick={() => handleDelete(deleteConfirmation)}
-                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-3 sm:py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm touch-target"
               >
                 Delete
               </button>
               <button
                 type="button"
                 onClick={() => setDeleteConfirmation(null)}
-                className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
+                className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-3 sm:py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm touch-target"
               >
                 Cancel
               </button>

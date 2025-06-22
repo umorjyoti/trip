@@ -28,17 +28,24 @@ function Login() {
       setLoading(true);
       const response = await login(email, password);
       
-      // Show success message and redirect to OTP verification
-      toast.success('Login initiated! Please check your email for OTP.');
-      
-      // Navigate to OTP verification page
-      navigate('/verify-otp', {
-        state: {
-          email,
-          type: 'login',
-          redirectPath: from
-        }
-      });
+      // Check if OTP is required
+      if (response.requiresOtp) {
+        // Show success message and redirect to OTP verification
+        toast.success('Login initiated! Please check your email for OTP.');
+        
+        // Navigate to OTP verification page
+        navigate('/verify-otp', {
+          state: {
+            email,
+            type: 'login',
+            redirectPath: from
+          }
+        });
+      } else {
+        // Direct login successful, user is already logged in
+        // Navigate to the intended destination
+        navigate(from);
+      }
     } catch (error) {
       console.error('Login error:', error);
       toast.error(error.response?.data?.message || 'Failed to login');
@@ -99,13 +106,13 @@ function Login() {
         if (event.source !== popup) return;
 
         if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-          const { data } = event.data;
+          const { data, isNewUser } = event.data;
           // Store the token
           localStorage.setItem('token', data.token);
           // Update auth context with user data
           setCurrentUser(data.user);
           // Show success message
-          toast.success('Successfully signed in with Google');
+          toast.success(isNewUser ? 'Registration successful! Welcome to our community!' : 'Successfully signed in with Google');
           // Navigate to the redirect path
           navigate(from);
           setLoading(false);

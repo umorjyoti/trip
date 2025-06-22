@@ -34,12 +34,16 @@ export function AuthProvider({ children }) {
       setLoading(true);
       const data = await apiLogin({ email, password });
       
-      // For OTP-based login, we don't immediately get user data
-      // The user data will be returned after OTP verification
-      if (data.message) {
+      // Check if OTP is required (for unverified users)
+      if (data.requiresOtp) {
         return data; // Return the response for OTP flow
-      } else if (data.user) {
+      } else if (data.user && data.token) {
+        // Direct login for verified users
         setCurrentUser(data.user);
+        localStorage.setItem('token', data.token);
+        sessionStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        sessionStorage.setItem('user', JSON.stringify(data.user));
         toast.success('Logged in successfully!');
         return data.user;
       } else {

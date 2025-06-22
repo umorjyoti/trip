@@ -403,7 +403,8 @@ This is an automated message. Please do not reply to this email.`,
         email: user.email,
         isAdmin: false,
         role: userObj.role,
-        isVerified: userObj.isVerified
+        isVerified: userObj.isVerified,
+        createdAt: user.createdAt
       }
     });
   } catch (error) {
@@ -467,7 +468,7 @@ exports.resendRegisterOtp = async (req, res) => {
   }
 };
 
-// Login user with OTP
+// Login user (OTP only for unverified users)
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -477,28 +478,54 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
     
-    // Check if user is verified
-    if (!user.isVerified) {
-      return res.status(401).json({ 
-        message: 'Please verify your email before logging in. Check your email for verification instructions.' 
-      });
-    }
-    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
     
-    // Generate OTP and save
-    const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    console.log(`Login OTP for ${email}:`, otp);
-    user.otp = { code: otp, expiresAt };
-    await user.save();
-    await sendOtpEmail(user, otp);
+    // If user is not verified, require OTP verification
+    if (!user.isVerified) {
+      // Generate OTP and save
+      const otp = generateOTP();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      console.log(`Login OTP for unverified user ${email}:`, otp);
+      user.otp = { code: otp, expiresAt };
+      await user.save();
+      await sendOtpEmail(user, otp);
+      res.json({
+        message: 'OTP sent to your email. Please verify to login.',
+        userId: user._id,
+        requiresOtp: true
+      });
+      return;
+    }
+    
+    // For verified users, login directly without OTP
+    const token = generateToken(user._id);
+    sendTokenCookie(res, token);
+    const userObj = user.toObject();
+    const isAdmin = userObj.role === 'admin' ? true : !!userObj.isAdmin;
+    
     res.json({
-      message: 'OTP sent to your email. Please verify to login.',
-      userId: user._id
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: isAdmin,
+        role: userObj.role,
+        group: user.group || null,
+        username: user.username,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+        country: user.country,
+        profileImage: user.profileImage,
+        isVerified: user.isVerified
+      },
+      requiresOtp: false
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -535,7 +562,6 @@ exports.verifyLoginOtp = async (req, res) => {
         email: user.email,
         isAdmin: isAdmin,
         role: userObj.role,
-        isVerified: userObj.isVerified,
         group: user.group
       }
     });
@@ -1100,7 +1126,253 @@ For support, contact us through our website or mobile app.
   });
 }
 
-// Google OAuth callback with OTP
+// Helper to send welcome email for Google registrations
+async function sendWelcomeEmail(user) {
+  const userName = user.name || user.username || 'there';
+  
+  const emailSubject = 'Welcome to Trek Adventures - Your Account is Ready!';
+  
+  const emailContent = `
+Dear ${userName},
+
+🎉 Welcome to Trek Adventures! Your account has been successfully created and verified.
+
+Your account details:
+• Name: ${user.name}
+• Email: ${user.email}
+• Username: ${user.username}
+
+🔐 ACCOUNT STATUS:
+✅ Email verified
+✅ Account activated
+✅ Ready to book treks
+
+🚀 GET STARTED:
+1. Browse our amazing trek destinations
+2. Book your first adventure
+3. Join our community of trekkers
+
+📱 FEATURES AVAILABLE:
+• Book treks and adventures
+• Manage your bookings
+• View trek details and itineraries
+• Access exclusive offers
+• Join our community
+
+🔒 SECURITY:
+Your account is secured with Google authentication. You can sign in anytime using your Google account.
+
+❓ NEED HELP?
+If you have any questions or need assistance:
+• Visit our website
+• Contact our support team
+• Check our FAQ section
+
+🎯 NEXT STEPS:
+Explore our trek destinations and start planning your next adventure!
+
+Best regards,
+The Trek Adventures Team
+Your Adventure Awaits!
+
+---
+This is an automated message. Please do not reply to this email.
+For support, contact us through our website or mobile app.
+  `;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Trek Adventures</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 5px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .welcome-section {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .welcome-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .account-details {
+            background-color: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .detail-item {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #374151;
+        }
+        .detail-value {
+            color: #10b981;
+        }
+        .features-section {
+            margin: 25px 0;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 5px;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .feature-list li:before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+
+        <div class="welcome-section">
+            <div class="welcome-title">🎉 Welcome to Trek Adventures!</div>
+            <p>Your account has been successfully created and verified.</p>
+        </div>
+
+        <div class="account-details">
+            <div class="section-title">📋 Your Account Details</div>
+            <div class="detail-item">
+                <span class="detail-label">Name:</span>
+                <span class="detail-value">${user.name}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Email:</span>
+                <span class="detail-value">${user.email}</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Username:</span>
+                <span class="detail-value">${user.username}</span>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <div class="section-title">🚀 What You Can Do Now</div>
+            <ul class="feature-list">
+                <li>Browse our amazing trek destinations</li>
+                <li>Book your first adventure</li>
+                <li>Manage your bookings</li>
+                <li>View trek details and itineraries</li>
+                <li>Access exclusive offers</li>
+                <li>Join our community of trekkers</li>
+            </ul>
+        </div>
+
+        <div class="features-section">
+            <div class="section-title">🔒 Account Security</div>
+            <ul class="feature-list">
+                <li>Email verified and account activated</li>
+                <li>Secured with Google authentication</li>
+                <li>Sign in anytime using your Google account</li>
+            </ul>
+        </div>
+
+        <div style="text-align: center;">
+            <a href="${process.env.FRONTEND_URL}" class="cta-button">Start Exploring Treks</a>
+        </div>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Trek Adventures Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+
+  await sendEmail({
+    to: user.email,
+    subject: emailSubject,
+    text: emailContent,
+    html: htmlContent
+  });
+}
+
+// Google OAuth callback with direct login (no OTP)
 exports.googleCallback = async (req, res) => {
   try {
     console.log('Google callback received:', {
@@ -1120,16 +1392,63 @@ exports.googleCallback = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_email`);
     }
 
-    // Generate OTP and save to user
-    const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min expiry
-    await User.findByIdAndUpdate(req.user._id, {
-      otp: { code: otp, expiresAt }
-    });
-    await sendOtpEmail(req.user, otp);
+    // Check if this is a new user (recently created)
+    const isNewUser = !req.user.isVerified || (new Date() - new Date(req.user.createdAt)) < 60000; // Within 1 minute
 
-    // Redirect to frontend for OTP verification with email
-    return res.redirect(`${process.env.FRONTEND_URL}/verify-otp?email=${encodeURIComponent(req.user.email)}`);
+    // Ensure user is verified (Google users are automatically verified)
+    if (!req.user.isVerified) {
+      await User.findByIdAndUpdate(req.user._id, { isVerified: true });
+    }
+
+    // Send welcome email for new users
+    if (isNewUser) {
+      try {
+        await sendWelcomeEmail(req.user);
+        console.log('Welcome email sent to:', req.user.email);
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        // Don't fail the registration if email fails
+      }
+    }
+
+    // Generate JWT token for direct login
+    const token = generateToken(req.user._id);
+    
+    // Set token in cookie
+    sendTokenCookie(res, token);
+
+    // Prepare user data for frontend
+    const userObj = req.user.toObject();
+    const isAdmin = userObj.role === 'admin' ? true : !!userObj.isAdmin;
+    
+    const userData = {
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      isAdmin: isAdmin,
+      role: userObj.role,
+      group: req.user.group || null,
+      username: req.user.username,
+      phone: req.user.phone,
+      address: req.user.address,
+      city: req.user.city,
+      state: req.user.state,
+      zipCode: req.user.zipCode,
+      country: req.user.country,
+      profileImage: req.user.profileImage,
+      isVerified: true,
+      createdAt: req.user.createdAt
+    };
+
+    // Encode the data for URL parameter
+    const encodedData = encodeURIComponent(JSON.stringify({
+      token,
+      user: userData,
+      isNewUser: isNewUser
+    }));
+
+    // Redirect to frontend success page with authentication data
+    return res.redirect(`${process.env.FRONTEND_URL}/login/success?data=${encodedData}`);
   } catch (error) {
     console.error('Google callback error:', error);
     let errorReason = 'unknown';
