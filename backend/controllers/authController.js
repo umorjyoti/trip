@@ -38,10 +38,10 @@ exports.register = async (req, res) => {
   try {
     const { username, name, email, password } = req.body;
     // Check if user already exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
+    // const userExists = await User.findOne({ email });
+    // if (userExists) {
+    //   return res.status(400).json({ message: 'User already exists' });
+    // }
     // Create new user (inactive, with OTP)
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -68,8 +68,8 @@ exports.register = async (req, res) => {
 // Verify OTP for registration
 exports.verifyRegisterOtp = async (req, res) => {
   try {
-    const { userId, otp } = req.body;
-    const user = await User.findById(userId);
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
     if (!user || !user.otp || !user.otp.code) {
       return res.status(400).json({ message: 'OTP not found. Please register again.' });
     }
@@ -110,8 +110,8 @@ exports.verifyRegisterOtp = async (req, res) => {
 // Resend OTP for registration
 exports.resendRegisterOtp = async (req, res) => {
   try {
-    const { userId } = req.body;
-    const user = await User.findById(userId);
+    const { email } = req.body;
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -159,8 +159,8 @@ exports.login = async (req, res) => {
 // Verify OTP for login
 exports.verifyLoginOtp = async (req, res) => {
   try {
-    const { userId, otp } = req.body;
-    const user = await User.findById(userId).populate('group');
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email }).populate('group');
     if (!user || !user.otp || !user.otp.code) {
       return res.status(400).json({ message: 'OTP not found. Please login again.' });
     }
@@ -197,8 +197,8 @@ exports.verifyLoginOtp = async (req, res) => {
 // Resend OTP for login
 exports.resendLoginOtp = async (req, res) => {
   try {
-    const { userId } = req.body;
-    const user = await User.findById(userId);
+    const { email } = req.body;
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -521,8 +521,8 @@ exports.googleCallback = async (req, res) => {
     });
     await sendOtpEmail(req.user, otp);
 
-    // Redirect to frontend for OTP verification
-    return res.redirect(`${process.env.FRONTEND_URL}/verify-otp?userId=${req.user._id}`);
+    // Redirect to frontend for OTP verification with email
+    return res.redirect(`${process.env.FRONTEND_URL}/verify-otp?email=${encodeURIComponent(req.user.email)}`);
   } catch (error) {
     console.error('Google callback error:', error);
     let errorReason = 'unknown';
@@ -540,8 +540,8 @@ exports.googleCallback = async (req, res) => {
 // Verify OTP endpoint
 exports.verifyOtp = async (req, res) => {
   try {
-    const { userId, otp } = req.body;
-    const user = await User.findById(userId);
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
     if (!user || !user.otp || !user.otp.code) {
       return res.status(400).json({ message: 'OTP not found. Please login again.' });
     }
@@ -586,8 +586,8 @@ exports.verifyOtp = async (req, res) => {
 // Resend OTP endpoint
 exports.resendOtp = async (req, res) => {
   try {
-    const { userId } = req.body;
-    const user = await User.findById(userId);
+    const { email } = req.body;
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }

@@ -1,29 +1,30 @@
 const nodemailer = require('nodemailer');
+require('dotenv').config();
 
-// Create a transporter using either Gmail or custom SMTP
-let transporter;
-if (process.env.EMAIL_SERVICE === 'gmail' && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-} else if (process.env.EMAIL_HOST && process.env.EMAIL_PORT && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-  transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT, 10),
-    secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
-} else {
-  transporter = null;
-  console.warn('Email transporter is not properly configured. Please check your .env variables.');
+async function createTransporter() {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE || 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      },
+      tls: {
+        rejectUnauthorized: false // useful for local development
+      }
+    });
+
+    await transporter.verify();
+    console.log('Email transporter verified and ready.');
+    return transporter;
+  } catch (err) {
+    console.error('Failed to verify email transporter:', err.message);
+    console.error('Ensure App Password is used and 2FA is enabled for Gmail.');
+    return null;
+  }
 }
+
+const transporterPromise = createTransporter();
 
 /**
  * Send an email using the configured transporter
@@ -32,33 +33,32 @@ if (process.env.EMAIL_SERVICE === 'gmail' && process.env.EMAIL_USER && process.e
  * @param {string} options.subject - Email subject
  * @param {string} options.text - Email text content
  * @param {string} [options.html] - Email HTML content (optional)
- * @returns {Promise} - Promise that resolves when email is sent
+ * @returns {Promise<object|null>} - Info object or null
  */
 const sendEmail = async ({ to, subject, text, html }) => {
   try {
+    const transporter = await transporterPromise;
+
     if (!transporter) {
-      console.warn('Email transporter not configured. Skipping email send.');
+      console.warn('Transporter not initialized.');
       return null;
     }
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn('Email credentials not configured. Skipping email send.');
-      return null;
-    }
+
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"NoReply" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       text,
       html
     };
+
     const info = await transporter.sendMail(mailOptions);
     console.log('Email sent:', info.messageId);
     return info;
   } catch (error) {
-    console.error('Error sending email:', error);
-    // Don't throw the error, just log it and continue
+    console.error('Error sending email:', error.message);
     return null;
   }
 };
 
-module.exports = { sendEmail }; 
+module.exports = { sendEmail };
