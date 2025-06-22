@@ -38,7 +38,7 @@ function LeadCaptureForm({ trekId, trekName, onClose }) {
       });
       
       toast.success('Thank you for your interest! Our team will contact you soon.');
-      onClose();
+      if (onClose) onClose();
     } catch (error) {
       console.error('Error submitting lead:', error);
       toast.error('Failed to submit your information. Please try again.');
@@ -48,21 +48,7 @@ function LeadCaptureForm({ trekId, trekName, onClose }) {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-900">Get Trek Information</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-500"
-        >
-          <span className="sr-only">Close</span>
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      
+    <>
       {trekName && (
         <div className="mb-4 p-3 bg-emerald-50 rounded-md">
           <p className="text-emerald-800">
@@ -171,7 +157,7 @@ function LeadCaptureForm({ trekId, trekName, onClose }) {
           </label>
         </div>
         
-        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+        <div className="flex justify-end space-x-3 pt-4">
           <button
             type="button"
             onClick={onClose}
@@ -202,7 +188,7 @@ function LeadCaptureForm({ trekId, trekName, onClose }) {
       <div className="mt-4 text-xs text-gray-500">
         <p>By submitting this form, you agree to our privacy policy and terms of service.</p>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from 'react-dom';
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   getTrekById,
@@ -30,6 +31,7 @@ import TrekItinerary from "../components/TrekItinerary";
 import TrekInclusionsExclusions from "../components/TrekInclusionsExclusions";
 import ThingsToPack from '../components/ThingsToPack';
 import TrekFAQs from '../components/TrekFAQs';
+import Modal from '../components/Modal';
 import { format, parseISO, addMonths, isSameMonth } from 'date-fns';
 
 // Add this new component at the top level of the file
@@ -584,6 +586,15 @@ function TrekDetail() {
     }
   }, [galleryOpen]);
 
+  // Prevent background scroll when gallery is open
+  useEffect(() => {
+    if (!galleryOpen) return;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, [galleryOpen]);
+
   // Render batches section
   const renderBatches = () => {
     if (!trek.batches || trek.batches.length === 0) {
@@ -1054,15 +1065,16 @@ function TrekDetail() {
   // Gallery modal
   const renderGalleryModal = () => {
     if (!galleryOpen || !trek?.images) return null;
-    return (
+    
+    const modalContent = (
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 transition-opacity"
         tabIndex={-1}
         ref={galleryModalRef}
         onClick={handleCloseGallery}
       >
         <div
-          className="relative max-w-3xl w-full mx-4 bg-white rounded-xl shadow-lg flex flex-col items-center p-4"
+          className="relative max-w-4xl w-full mx-4 bg-transparent rounded-xl flex flex-col items-center"
           onClick={e => e.stopPropagation()}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -1070,7 +1082,7 @@ function TrekDetail() {
         >
           {/* Close button */}
           <button
-            className="absolute top-2 right-2 text-gray-700 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-gray-200 z-10"
+            className="absolute top-0 right-0 -mr-12 text-white bg-black bg-opacity-50 rounded-full p-2 shadow hover:bg-opacity-75 z-10"
             onClick={handleCloseGallery}
             aria-label="Close gallery"
           >
@@ -1080,20 +1092,20 @@ function TrekDetail() {
           </button>
           {/* Carousel navigation */}
           <button
-            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-gray-200 z-10"
+            className="absolute left-0 top-1/2 -translate-y-1/2 -ml-12 bg-black bg-opacity-50 rounded-full p-2 shadow hover:bg-opacity-75 z-10"
             onClick={handlePrevImage}
             aria-label="Previous image"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6 text-white">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white bg-opacity-80 rounded-full p-2 shadow hover:bg-gray-200 z-10"
+            className="absolute right-0 top-1/2 -translate-y-1/2 -mr-12 bg-black bg-opacity-50 rounded-full p-2 shadow hover:bg-opacity-75 z-10"
             onClick={handleNextImage}
             aria-label="Next image"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6 text-white">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -1101,15 +1113,17 @@ function TrekDetail() {
           <img
             src={trek.images[galleryIndex]}
             alt={`Trek gallery ${galleryIndex + 1}`}
-            className="max-h-[70vh] w-auto rounded-xl object-contain shadow-lg transition-all duration-300"
+            className="max-h-[85vh] w-auto rounded-lg object-contain shadow-lg transition-all duration-300"
           />
           {/* Image counter */}
-          <div className="mt-4 text-gray-700 text-sm">
+          <div className="mt-4 text-white text-sm">
             {galleryIndex + 1} / {trek.images.length}
           </div>
         </div>
       </div>
     );
+
+    return ReactDOM.createPortal(modalContent, document.body);
   };
 
   if (loading) {
@@ -1183,469 +1197,489 @@ function TrekDetail() {
 
   return (
     <>
-     {showLeadForm && (
-      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50 overflow-y-auto">
-        <div className="fixed inset-0 z-10 overflow-y-auto">
-          <div className="flex  items-center justify-center p-4 text-center">
-            <div className="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
-              <LeadCaptureForm
-                trekId={trek._id}
-                trekName={trek.name}
-                onClose={handleCloseLeadForm}
+      <Modal
+        isOpen={showLeadForm}
+        onClose={handleCloseLeadForm}
+        title="Get More Information"
+        size="large"
+      >
+        <LeadCaptureForm
+          trekId={trek?._id}
+          trekName={trek?.name}
+          onClose={handleCloseLeadForm}
+        />
+      </Modal>
+
+      <div className="bg-white">
+        {/* Trek disabled warning */}
+        {isTrekDisabled && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 bg-yellow-50">
+            <div className="flex items-center justify-center">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-yellow-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-medium text-yellow-800">
+                  This trek is currently not available for booking.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Trek gallery */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+          {renderGallery()}
+          {renderGalleryModal()}
+        </div>
+
+        {/* Trek header */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Trek Scroll bar */}
+          <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
+            <nav className="flex space-x-6 overflow-x-auto py-2 px-2 scrollbar-hide">
+              <a
+                href="#overview"
+                onClick={(e) => handleSmoothScroll(e, 'overview')}
+                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+              >
+                Overview
+              </a>
+              <a
+                href="#itinerary"
+                onClick={(e) => handleSmoothScroll(e, 'itinerary')}
+                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+              >
+                Trek Itinerary
+              </a>
+              <a
+                href="#inclusions"
+                onClick={(e) => handleSmoothScroll(e, 'inclusions')}
+                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+              >
+                Inclusions & Exclusions
+              </a>
+              <a
+                href="#thingsToPack"
+                onClick={(e) => handleSmoothScroll(e, 'thingsToPack')}
+                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+              >
+                Things To Pack
+              </a>
+              <a
+                href="#faqs"
+                onClick={(e) => handleSmoothScroll(e, 'faqs')}
+                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+              >
+                FAQs
+              </a>
+            </nav>
+          </div>
+
+          <div className="lg:grid  lg:grid-cols-[4fr_1fr] lg:gap-8">
+            {/* Trek image */}
+            <div className="relative lg:col-span-1">
+              {/* Trek tags */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {trek.difficulty && (
+                  <span
+                    className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${getDifficultyColor(
+                      trek.difficulty
+                    )}`}
+                  >
+                    {trek.difficulty}
+                  </span>
+                )}
+                {trek.season && (
+                  <span
+                    className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${getSeasonColor(
+                      trek.season
+                    )}`}
+                  >
+                    {trek.season}
+                  </span>
+                )}
+                {regionName && (
+                  <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                    {regionName}
+                  </span>
+                )}
+                {trek.duration && (
+                  <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                    {trek.duration} days
+                  </span>
+                )}
+              </div>
+
+              <div className="lg:mt-0 lg:col-span-1">
+                <div className="flex justify-between">
+                  <h1 className="mt-8 text-3xl font-extrabold text-gray-900">
+                    {trek.name}
+                  </h1>
+                </div>
+
+                {/* Trek details */}
+                <div className="mt-4 space-y-4">
+                  {trek.location && (
+                    <div className="flex items-start">
+                      <FaMapMarkerAlt className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                      <p className="ml-3 text-base text-gray-700">
+                        {trek.location}
+                      </p>
+                    </div>
+                  )}
+
+                  {trek.duration && (
+                    <div className="flex items-start">
+                      <FaClock className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                      <p className="ml-3 text-base text-gray-700">
+                        {trek.duration} days
+                      </p>
+                    </div>
+                  )}
+
+                  {trek.maxGroupSize && (
+                    <div className="flex items-start">
+                      <FaUsers className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                      <p className="ml-3 text-base text-gray-700">
+                        Max group size: {trek.maxGroupSize} people
+                      </p>
+                    </div>
+                  )}
+
+                  {trek.maxAltitude && (
+                    <div className="flex items-start">
+                      <FaMountain className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                      <p className="ml-3 text-base text-gray-700">
+                        Max altitude: {trek.maxAltitude} meters
+                      </p>
+                    </div>
+                  )}
+
+                  {trek.distance && (
+                    <div className="flex items-start">
+                      <svg
+                        className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <p className="ml-3 text-base text-gray-700">
+                        Total distance: {trek.distance} km
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Additional Trek Details */}
+                <div className="mt-6 border-t border-gray-200 pt-6">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Trek Details
+                  </h3>
+
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {trek.region && (
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-emerald-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">
+                            Region
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {regionName}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {trek.bestTimeToVisit && (
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-emerald-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 9.586V6z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">
+                            Best Time to Visit
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {trek.bestTimeToVisit}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {trek.startingPoint && (
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-emerald-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">
+                            Starting Point
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {trek.startingPoint}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {trek.endingPoint && (
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-emerald-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">
+                            Ending Point
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {trek.endingPoint}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {trek.altitude && (
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-emerald-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">
+                            Maximum Altitude
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {trek.altitude} meters
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {trek.difficulty && (
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-emerald-600"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm font-medium text-gray-900">
+                            Difficulty Level
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {trek.difficulty}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Trek Highlights */}
+                {trek.highlights && trek.highlights.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Highlights
+                    </h3>
+                    <div className="bg-emerald-50 rounded-lg p-4">
+                      <ul className="space-y-3">
+                        {trek.highlights.map((highlight, index) => (
+                          <li key={index} className="flex items-start">
+                            <svg
+                              className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0"
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586V6h5a1 1 0 100-2h-5v4.586z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <span className="ml-3 text-gray-700">
+                              {highlight}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Price section */}
+                {renderPriceSection()}
+
+                {/* Quick Actions */}
+                {renderQuickActions()}
+              </div>
+
+              {/* Trek description */}
+              <div id="overview" className="mt-12 scroll-mt-20">
+                <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
+                <div className="mt-4 prose prose-emerald prose-lg text-gray-500 max-w-none">
+                  <p>{trek.description}</p>
+                </div>
+              </div>
+            </div>
+            {/* Trek batches/dates */}
+            {trek.batches && trek.batches.length > 0 && (
+              <div className="mt-12">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Available Dates
+                </h2>
+                <BatchesTabView
+                  batches={trek.batches}
+                  onBatchSelect={handleBatchSelect}
+                  isTrekDisabled={isTrekDisabled}
+                  currentUser={currentUser}
+                  navigate={navigate}
+                  trekId={id}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Trek itinerary */}
+          {trek.itinerary && trek.itinerary.length > 0 && (
+            <div id="itinerary" className="mt-12 scroll-mt-20">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                Trek Itinerary
+              </h2>
+              <TrekItinerary itinerary={trek.itinerary} />{' '}
+            </div>
+          )}
+
+          {/* Trek inclusions & exclusions */}
+          {(trek.includes?.length > 0 || trek.excludes?.length > 0) && (
+            <div id="inclusions" className="mt-12 scroll-mt-20">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+                Inclusions & Exclusions
+              </h2>
+              <TrekInclusionsExclusions
+                includes={trek.includes}
+                excludes={trek.excludes}
+              />
+            </div>
+          )}
+
+          {/* Things to Pack */}
+          {trek.thingsToPack && trek.thingsToPack.length > 0 && (
+            <div id="thingsToPack" className="mt-12 scroll-mt-20">
+              <ThingsToPack items={trek.thingsToPack} />
+            </div>
+          )}
+
+          {/* FAQs */}
+          {trek.faqs && trek.faqs.length > 0 && (
+            <div id="faqs" className="mt-12 scroll-mt-20">
+              <TrekFAQs faqs={trek.faqs} />
+            </div>
+          )}
+        </div>
+
+        {/* Booking form modal */}
+        {showBookingForm && selectedBatch && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+            <div className="max-w-2xl w-full mx-4">
+              <BookingForm
+                trek={trek}
+                batch={selectedBatch}
+                onClose={handleCloseBookingForm}
+                onSuccess={handleBookingSuccess}
               />
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Add the related treks section */}
+        {!loading && !error && trek && renderRelatedTreks()}
       </div>
-    )}
-    <div className="bg-white">
-      {/* Trek disabled warning */}
-      {isTrekDisabled && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 bg-yellow-50">
-          <div className="flex items-center justify-center">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-yellow-400"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-yellow-800">
-                This trek is currently not available for booking.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Trek gallery */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        {renderGallery()}
-        {renderGalleryModal()}
-      </div>
-
-     
-
-      {/* Trek header */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-      {/* Trek Scroll bar */}
-        <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
-          <nav className="flex space-x-6 overflow-x-auto py-2 px-2 scrollbar-hide">
-            <a href="#overview" 
-              onClick={(e) => handleSmoothScroll(e, 'overview')}
-              className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200">
-              Overview
-            </a>
-            <a href="#itinerary" 
-              onClick={(e) => handleSmoothScroll(e, 'itinerary')}
-              className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200">
-              Trek Itinerary
-            </a>
-            <a href="#inclusions" 
-              onClick={(e) => handleSmoothScroll(e, 'inclusions')}
-              className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200">
-              Inclusions & Exclusions
-            </a>
-            <a href="#thingsToPack" 
-              onClick={(e) => handleSmoothScroll(e, 'thingsToPack')}
-              className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200">
-              Things To Pack
-            </a>
-            <a href="#faqs" 
-              onClick={(e) => handleSmoothScroll(e, 'faqs')}
-              className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200">
-              FAQs
-            </a>
-          </nav>
-        </div>
-
-        <div className="lg:grid  lg:grid-cols-[4fr_1fr] lg:gap-8">
-          {/* Trek image */}
-          <div className="relative lg:col-span-1">
-          
-
-            {/* Trek tags */}
-            <div className="mt-4 flex flex-wrap gap-2">
-              {trek.difficulty && (
-                <span
-                  className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${getDifficultyColor(
-                    trek.difficulty
-                  )}`}
-                >
-                  {trek.difficulty}
-                </span>
-              )}
-              {trek.season && (
-                <span
-                  className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${getSeasonColor(
-                    trek.season
-                  )}`}
-                >
-                  {trek.season}
-                </span>
-              )}
-              {regionName && (
-                <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
-                  {regionName}
-                </span>
-              )}
-              {trek.duration && (
-                <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
-                  {trek.duration} days
-                </span>
-              )}
-            </div>
-
-            <div className="lg:mt-0 lg:col-span-1">
-            <div className="flex justify-between">
-              <h1 className="mt-8 text-3xl font-extrabold text-gray-900">
-                {trek.name}
-              </h1>
-            </div>
-
-            {/* Trek details */}
-            <div className="mt-4 space-y-4">
-              {trek.location && (
-                <div className="flex items-start">
-                  <FaMapMarkerAlt className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                  <p className="ml-3 text-base text-gray-700">
-                    {trek.location}
-                  </p>
-                </div>
-              )}
-
-              {trek.duration && (
-                <div className="flex items-start">
-                  <FaClock className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                  <p className="ml-3 text-base text-gray-700">
-                    {trek.duration} days
-                  </p>
-                </div>
-              )}
-
-              {trek.maxGroupSize && (
-                <div className="flex items-start">
-                  <FaUsers className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                  <p className="ml-3 text-base text-gray-700">
-                    Max group size: {trek.maxGroupSize} people
-                  </p>
-                </div>
-              )}
-
-              {trek.maxAltitude && (
-                <div className="flex items-start">
-                  <FaMountain className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                  <p className="ml-3 text-base text-gray-700">
-                    Max altitude: {trek.maxAltitude} meters
-                  </p>
-                </div>
-              )}
-
-              {trek.distance && (
-                <div className="flex items-start">
-                  <svg className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z" clipRule="evenodd" />
-                  </svg>
-                  <p className="ml-3 text-base text-gray-700">
-                    Total distance: {trek.distance} km
-                  </p>
-                </div>
-              )}
-            </div>
-
-          
-
-            {/* Additional Trek Details */}
-            <div className="mt-6 border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-medium text-gray-900">
-                Trek Details
-              </h3>
-
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {trek.region && (
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-emerald-600"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        Region
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {regionName}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {trek.bestTimeToVisit && (
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-emerald-600"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 9.586V6z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        Best Time to Visit
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {trek.bestTimeToVisit}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {trek.startingPoint && (
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-emerald-600"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        Starting Point
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {trek.startingPoint}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {trek.endingPoint && (
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-emerald-600"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        Ending Point
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {trek.endingPoint}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {trek.altitude && (
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-emerald-600"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        Maximum Altitude
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {trek.altitude} meters
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {trek.difficulty && (
-                  <div className="flex items-start">
-                    <div className="flex-shrink-0">
-                      <svg
-                        className="h-5 w-5 text-emerald-600"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        Difficulty Level
-                      </p>
-                      <p className="text-sm text-gray-500">{trek.difficulty}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Trek Highlights */}
-            {trek.highlights && trek.highlights.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Highlights</h3>
-                <div className="bg-emerald-50 rounded-lg p-4">
-                  <ul className="space-y-3">
-                    {trek.highlights.map((highlight, index) => (
-                      <li key={index} className="flex items-start">
-                        <svg className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586V6h5a1 1 0 100-2h-5v4.586z" clipRule="evenodd" />
-                        </svg>
-                        <span className="ml-3 text-gray-700">{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            )}
-
-            {/* Price section */}
-            {renderPriceSection()}
-
-            {/* Quick Actions */}
-            {renderQuickActions()}
-          </div>
-
-            {/* Trek description */}
-            <div id="overview" className="mt-12 scroll-mt-20">
-              <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
-              <div className="mt-4 prose prose-emerald prose-lg text-gray-500 max-w-none">
-                <p>{trek.description}</p>
-              </div>
-            </div>
-          </div>
-            {/* Trek batches/dates */}
-            {trek.batches && trek.batches.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold text-gray-900">Available Dates</h2>
-            <BatchesTabView
-              batches={trek.batches}
-              onBatchSelect={handleBatchSelect}
-              isTrekDisabled={isTrekDisabled}
-              currentUser={currentUser}
-              navigate={navigate}
-              trekId={id}
-            />
-          </div>
-        )}
-
-
-        </div> 
-       
-
-      
-        {/* Trek itinerary */}
-        {trek.itinerary && trek.itinerary.length > 0 && (
-          <div id="itinerary" className="mt-12 scroll-mt-20">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">
-              Trek Itinerary
-            </h2>
-            <TrekItinerary itinerary={trek.itinerary} />{" "}
-          </div>
-        )}
-
-        {/* Trek inclusions & exclusions */}
-        {(trek.includes?.length > 0 || trek.excludes?.length > 0) && (
-          <div id="inclusions" className="mt-12 scroll-mt-20">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">
-              Inclusions & Exclusions
-            </h2>
-            <TrekInclusionsExclusions
-              includes={trek.includes}
-              excludes={trek.excludes}
-            />
-          </div>
-        )}
-
-        {/* Things to Pack */}
-        {trek.thingsToPack && trek.thingsToPack.length > 0 && (
-          <div id="thingsToPack" className="mt-12 scroll-mt-20">
-            <ThingsToPack items={trek.thingsToPack} />
-          </div>
-        )}
-
-        {/* FAQs */}
-        {trek.faqs && trek.faqs.length > 0 && (
-          <div id="faqs" className="mt-12 scroll-mt-20">
-            <TrekFAQs faqs={trek.faqs} />
-          </div>
-        )}
-      </div>
-
-      {/* Booking form modal */}
-      {showBookingForm && selectedBatch && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="max-w-2xl w-full mx-4">
-            <BookingForm
-              trek={trek}
-              batch={selectedBatch}
-              onClose={handleCloseBookingForm}
-              onSuccess={handleBookingSuccess}
-            />
-          </div>
-        </div>
-      )}
-
-     
-
-      {/* Add the related treks section */}
-      {!loading && !error && trek && renderRelatedTreks()}
-    </div>
-    
-   </>
+    </>
   );
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { getBookingById, cancelBooking, cancelParticipant } from '../services/api';
+import { getBookingById, cancelParticipant } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CreateTicketModal from '../components/CreateTicketModal';
@@ -69,21 +69,12 @@ function BookingDetail() {
         // Cancel individual participant
         await cancelParticipant(id, selectedParticipant._id);
         toast.success('Participant cancelled successfully');
-        
         // Update the booking state
         setBooking(prev => ({
           ...prev,
           participantDetails: prev.participantDetails.filter(p => p._id !== selectedParticipant._id),
           participants: prev.participants - 1
         }));
-      } else {
-        // Cancel entire booking
-        await cancelBooking(id);
-        setBooking(prev => ({
-          ...prev,
-          status: 'cancelled'
-        }));
-        toast.success('Booking cancelled successfully');
       }
       closeCancelModal();
     } catch (error) {
@@ -404,8 +395,7 @@ function BookingDetail() {
         </div>
       )}
 
-      {/* Cancel Modal */}
-      {cancelModal && (
+      {cancelModal && selectedParticipant && (
         <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
@@ -419,13 +409,11 @@ function BookingDetail() {
                 </div>
                 <div className="mt-3 text-center sm:mt-5">
                   <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                    {selectedParticipant ? 'Cancel Participant' : 'Cancel Booking'}
+                    Cancel Participant
                   </h3>
                   <div className="mt-2">
                     <p className="text-sm text-gray-500">
-                      {selectedParticipant 
-                        ? `Are you sure you want to cancel ${selectedParticipant.name}'s participation? This action cannot be undone.`
-                        : 'Are you sure you want to cancel this booking? This action cannot be undone.'}
+                      Are you sure you want to cancel {selectedParticipant.name}'s participation? This action cannot be undone.
                     </p>
                   </div>
                 </div>
@@ -436,7 +424,7 @@ function BookingDetail() {
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm"
                   onClick={handleCancelBooking}
                 >
-                  {selectedParticipant ? 'Cancel Participant' : 'Cancel Booking'}
+                  Cancel Participant
                 </button>
                 <button
                   type="button"

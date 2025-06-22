@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaQuestionCircle } from 'react-icons/fa';
 import LeadCaptureForm from './LeadCaptureForm';
+import Modal from './Modal';
 
 function FloatingEnquiryButton() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -12,7 +13,7 @@ function FloatingEnquiryButton() {
           position: 'sticky',
           bottom: '2rem',
           right: '2rem',
-          zIndex: 9999,
+          zIndex: 40,
           pointerEvents: 'auto',
           float: 'right',
           marginTop: '10px'
@@ -30,19 +31,14 @@ function FloatingEnquiryButton() {
         </button>
       </div>
 
-      {isModalOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9998] p-4"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div 
-            className="relative w-full max-w-md"
-            onClick={e => e.stopPropagation()}
-          >
-            <LeadCaptureForm onClose={() => setIsModalOpen(false)} />
-          </div>
-        </div>
-      )}
+      <Modal
+        title="Get Trek Information"
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        size="large"
+      >
+        <LeadCaptureForm onClose={() => setIsModalOpen(false)} />
+      </Modal>
     </>
   );
 }

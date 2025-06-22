@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { FaTimes } from 'react-icons/fa';
 
 function Modal({ title, children, onClose, size = 'default', isOpen = true }) {
@@ -37,23 +38,28 @@ function Modal({ title, children, onClose, size = 'default', isOpen = true }) {
     }
   };
 
-  // If modal is not open, don't render anything
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-3 pt-4 pb-20 text-center sm:block sm:p-0 mobile-safe-area">
-        {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" 
-          onClick={onClose}
-          aria-hidden="true"
-        ></div>
+  const modalContent = (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity z-40"
+        onClick={onClose}
+        aria-hidden="true"
+      ></div>
 
-        {/* Modal panel */}
-        <div className={`inline-block w-full ${getModalWidth()} my-4 sm:my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl`}>
+      {/* Modal Centering Container */}
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      >
+        {/* Modal Panel */}
+        <div
+          className={`relative flex flex-col w-full ${getModalWidth()} max-h-[90vh] bg-white rounded-lg shadow-xl`}
+          onClick={(e) => e.stopPropagation()} // Prevent clicks inside the modal from closing it
+        >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+          <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
             <h3 className="text-base sm:text-lg font-medium text-gray-900 truncate flex-1 mr-2">{title}</h3>
             <button
               onClick={onClose}
@@ -64,14 +70,16 @@ function Modal({ title, children, onClose, size = 'default', isOpen = true }) {
             </button>
           </div>
           
-          {/* Content - Make this scrollable */}
-          <div className="px-4 sm:px-6 py-3 sm:py-4 max-h-[60vh] sm:max-h-[70vh] overflow-y-auto">
+          {/* Content - This will scroll if it overflows */}
+          <div className="flex-1 px-4 sm:px-6 py-3 sm:py-4 overflow-y-auto">
             {children}
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
+
+  return ReactDOM.createPortal(modalContent, document.body);
 }
 
 export default Modal; 

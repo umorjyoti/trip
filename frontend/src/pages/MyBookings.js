@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserBookings, cancelBooking } from '../services/api';
+import { getUserBookings } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
-import Modal from '../components/Modal';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [cancelModal, setCancelModal] = useState({ isOpen: false, bookingId: null });
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -27,39 +25,6 @@ function MyBookings() {
 
     fetchBookings();
   }, []);
-
-  const openCancelModal = (bookingId) => {
-    setCancelModal({
-      isOpen: true,
-      bookingId
-    });
-  };
-
-  const closeCancelModal = () => {
-    setCancelModal({
-      isOpen: false,
-      bookingId: null
-    });
-  };
-
-  const handleCancelBooking = async () => {
-    try {
-      await cancelBooking(cancelModal.bookingId);
-      
-      // Update the booking status in the state
-      setBookings(bookings.map(booking => 
-        booking._id === cancelModal.bookingId 
-          ? { ...booking, status: 'cancelled' } 
-          : booking
-      ));
-      
-      toast.success('Booking cancelled successfully');
-      closeCancelModal();
-    } catch (error) {
-      console.error('Error cancelling booking:', error);
-      toast.error(error.response?.data?.message || 'Failed to cancel booking');
-    }
-  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -200,18 +165,10 @@ function MyBookings() {
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                           <Link
                             to={`/booking-detail/${booking._id}`}
-                            className="text-emerald-600 hover:text-emerald-900 mr-4"
+                            className="text-emerald-600 hover:text-emerald-900"
                           >
                             View
                           </Link>
-                          {booking.status.toLowerCase() !== 'cancelled' && (
-                            <button
-                              onClick={() => openCancelModal(booking._id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              Cancel
-                            </button>
-                          )}
                         </td>
                       </tr>
                     ))}
@@ -221,36 +178,6 @@ function MyBookings() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Cancel Booking Modal */}
-      {cancelModal.isOpen && (
-        <Modal
-          title="Cancel Booking"
-          onClose={closeCancelModal}
-        >
-          <div className="mt-2">
-            <p className="text-sm text-gray-500">
-              Are you sure you want to cancel this booking? This action cannot be undone.
-            </p>
-          </div>
-          <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
-              onClick={handleCancelBooking}
-            >
-              Yes, Cancel Booking
-            </button>
-            <button
-              type="button"
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:w-auto sm:text-sm"
-              onClick={closeCancelModal}
-            >
-              No, Keep Booking
-            </button>
-          </div>
-        </Modal>
       )}
     </div>
   );
