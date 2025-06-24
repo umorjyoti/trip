@@ -168,7 +168,7 @@ exports.updateTrek = async (req, res) => {
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns, highlights, batches, faqs, thingsToPack,
       gstPercent, gstType, gatewayPercent, gatewayType,
-      tags, itineraryPdfUrl
+      tags, itineraryPdfUrl , customFields
     } = req.body;
 
     // Filter out empty highlights
@@ -192,7 +192,8 @@ exports.updateTrek = async (req, res) => {
       gatewayType: gatewayType || trek.gatewayType,
       tags, itineraryPdfUrl,
       faqs: faqs || trek.faqs,
-      thingsToPack: thingsToPack || trek.thingsToPack
+      thingsToPack: thingsToPack || trek.thingsToPack,
+      customFields: customFields || trek.customFields
     };
 
     // Handle batches update

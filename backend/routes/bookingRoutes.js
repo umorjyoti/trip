@@ -4,11 +4,102 @@ const { protect, admin } = require('../middleware/authMiddleware');
 const { checkPermission, checkMultiplePermissions } = require('../middleware/checkPermissions');
 const bookingController = require('../controllers/bookingController');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Bookings
+ *   description: Booking management and user booking endpoints
+ */
+
+/**
+ * @swagger
+ * /bookings/user:
+ *   get:
+ *     summary: Get bookings for the current user
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of bookings for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Booking'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Handle the /user route (redirect to /user/mybookings)
 router.get('/user', protect, bookingController.getUserBookings);
 
+/**
+ * @swagger
+ * /bookings/user/mybookings:
+ *   get:
+ *     summary: Get bookings for the current user (alias)
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of bookings for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Booking'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+
 // Get user bookings - this needs to come BEFORE the /:id route
 router.get('/user/mybookings', protect, bookingController.getUserBookings);
+
+/**
+ * @swagger
+ * /bookings:
+ *   get:
+ *     summary: Get all bookings (admin or users with bookings permission)
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all bookings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Booking'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 
 // Get all bookings (admin or users with bookings permission)
 router.get('/', 
@@ -19,6 +110,49 @@ router.get('/',
   ]), 
   bookingController.getBookings
 );
+
+/**
+ * @swagger
+ * /bookings/{id}:
+ *   get:
+ *     summary: Get booking by ID
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Booking ID
+ *     responses:
+ *       200:
+ *         description: Booking details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Booking'
+ *       401:
+ *         description: Not authorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       403:
+ *         description: Forbidden
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       404:
+ *         description: Booking not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 
 // Get booking by ID
 router.get('/:id', 

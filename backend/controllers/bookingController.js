@@ -216,6 +216,8 @@ const getBookingById = async (req, res) => {
         imageUrl: booking.trek.imageUrl
       },
       batch: batchData,
+      startDate: batchData ? batchData.startDate : null,
+      endDate: batchData ? batchData.endDate : null,
       participants: booking.numberOfParticipants,
       participantDetails: booking.participantDetails,
       totalPrice: booking.totalPrice,
