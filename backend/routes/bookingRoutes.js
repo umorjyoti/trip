@@ -156,6 +156,7 @@ router.get('/',
 
 // Get booking by ID
 router.get('/:id', 
+ 
   protect, 
   checkMultiplePermissions([
     { category: 'stats', name: 'bookings' },

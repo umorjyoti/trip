@@ -115,7 +115,7 @@ const createBooking = async (req, res) => {
 };
 
 // Get user's bookings
-const getUserBookings = async (req, res) => {
+const getUserBookings = async (req, res) => {  
   try {
     console.log("Getting bookings for user:", req.user._id);
 
@@ -181,7 +181,10 @@ const getBookingById = async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate("user", "name email")
-      .populate("trek", "name imageUrl batches");
+      .populate("trek", "name imageUrl batches")
+      .populate("batch");
+
+    console.log("booking", booking.batch);
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
@@ -198,23 +201,36 @@ const getBookingById = async (req, res) => {
         .json({ message: "Not authorized to view this booking" });
     }
 
-    // Extract batch data from trek.batches array
     let batchData = null;
-    if (booking.trek && booking.trek.batches && booking.batch) {
-      batchData = booking.trek.batches.find(
-        batch => batch._id.toString() === booking.batch.toString()
+    let trekInfo = booking.trek || null;
+
+    if (trekInfo && Array.isArray(trekInfo.batches) && booking.batch) {
+      batchData = trekInfo.batches.find(
+        batch => batch && batch._id && booking.batch &&
+          batch._id.toString() === booking.batch.toString()
       );
+    }
+
+    // Debug logs
+    console.log("booking.trek._id", trekInfo && trekInfo._id, typeof (trekInfo && trekInfo._id));
+    console.log("booking.batch", booking.batch, typeof booking.batch);
+    console.log("batches", trekInfo && trekInfo.batches && trekInfo.batches.map(b => ({ id: b._id, type: typeof b._id })));
+
+    if (!batchData) {
+      return res.status(404).json({ message: "Batch not found in trek.batches" });
     }
 
     // Format the response data
     const responseData = {
       _id: booking._id,
       user: booking.user,
-      trek: {
-        _id: booking.trek._id,
-        name: booking.trek.name,
-        imageUrl: booking.trek.imageUrl
-      },
+      trek: trekInfo
+        ? {
+            _id: trekInfo._id,
+            name: trekInfo.name,
+            imageUrl: trekInfo.imageUrl
+          }
+        : null,
       batch: batchData,
       startDate: batchData ? batchData.startDate : null,
       endDate: batchData ? batchData.endDate : null,

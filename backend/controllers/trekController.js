@@ -392,8 +392,11 @@ exports.addBatch = async (req, res) => {
       }
     }
     
+    // Explicitly generate a new ObjectId for the batch
+    const batchId = new mongoose.Types.ObjectId();
     // Create new batch
     const newBatch = {
+      _id: batchId,
       startDate: parsedStartDate,
       endDate: parsedEndDate,
       price: Number(price),
@@ -416,7 +419,8 @@ exports.addBatch = async (req, res) => {
       return res.status(404).json({ message: 'Trek not found' });
     }
     
-    res.status(201).json(trek);
+    // Return the new batch ID as well for frontend use
+    res.status(201).json({ trek, batchId });
   } catch (error) {
     console.error('Error adding batch:', error);
     res.status(500).json({ 

@@ -95,9 +95,16 @@ const BookingSchema = new mongoose.Schema({
     required: true
   },
   batch: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Batch',
-    required: true
+    type: mongoose.Schema.Types.ObjectId, // This is ID of one of trek.batches
+    required: true,
+    validate: {
+      validator: async function (batchId) {
+        const trek = await mongoose.model('Trek').findById(this.trek).select('batches');
+        if (!trek) return false;
+        return trek.batches.some(batch => batch._id.toString() === batchId.toString());
+      },
+      message: 'Batch is not part of the selected trek.'
+    }
   },
   numberOfParticipants: {
     type: Number,
