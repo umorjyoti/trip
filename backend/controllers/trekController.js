@@ -884,7 +884,13 @@ exports.updateWeekendGetawayGallery = async (req, res) => {
 // Get batch performance data
 exports.getBatchPerformance = async (req, res) => {
   try {
-    const { trekId, batchId } = req.params;
+    console.log('Batch performance - req.params:', req.params);
+    
+    // The route uses :id and :batchId, so we need to extract them correctly
+    const trekId = req.params.id; // Changed from req.params.trekId
+    const batchId = req.params.batchId;
+
+    console.log('Extracted IDs - trekId:', trekId, 'batchId:', batchId);
 
     // Validate input parameters
     if (!trekId || !batchId) {
@@ -896,6 +902,10 @@ exports.getBatchPerformance = async (req, res) => {
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
     }
+
+    console.log('Trek found:', trek.name);
+    console.log('Trek customFields:', trek.customFields);
+    console.log('Trek customFields length:', trek.customFields?.length);
 
     if (!trek.batches || !Array.isArray(trek.batches)) {
       return res.status(404).json({ message: 'No batches found for this trek' });
@@ -917,6 +927,11 @@ exports.getBatchPerformance = async (req, res) => {
 
     // Calculate performance metrics with null safety
     const performanceData = {
+      trek: {
+        _id: trek._id,
+        name: trek.name,
+        customFields: trek.customFields || []
+      },
       batchDetails: {
         startDate: batch.startDate || null,
         endDate: batch.endDate || null,
@@ -977,6 +992,9 @@ exports.getBatchPerformance = async (req, res) => {
       }).filter(detail => detail !== null),
       feedback: batch.feedback || []
     };
+
+    console.log('Performance data trek.customFields:', performanceData.trek.customFields);
+    console.log('Performance data trek.customFields length:', performanceData.trek.customFields.length);
 
     res.json(performanceData);
   } catch (error) {
@@ -1215,11 +1233,14 @@ exports.exportBatchParticipants = async (req, res) => {
     };
 
     // Add custom fields from trek
+    console.log('Processing custom fields in export:', trek.customFields);
     if (trek.customFields && Array.isArray(trek.customFields)) {
       trek.customFields.forEach(field => {
-        availableFields[`custom_${field.key}`] = field.label || field.key;
+        console.log('Adding custom field to available fields:', field.fieldName);
+        availableFields[`custom_${field.fieldName}`] = field.fieldName;
       });
     }
+    console.log('Available fields after adding custom fields:', availableFields);
 
     // Use selected fields or default to first 10 available
     const fieldsToExport = selectedFields.length > 0 
@@ -1279,9 +1300,13 @@ exports.exportBatchParticipants = async (req, res) => {
                 // Handle custom fields
                 if (field.startsWith('custom_')) {
                   const customFieldKey = field.replace('custom_', '');
-                  const customField = trek.customFields?.find(f => f.key === customFieldKey);
+                  const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
+                  console.log('Processing custom field:', customFieldKey, 'Found field:', customField);
                   if (customField) {
-                    const value = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey)?.value;
+                    // Look for the response using fieldId which should match the fieldName
+                    const customFieldResponse = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey);
+                    console.log('Found custom field response:', customFieldResponse);
+                    const value = customFieldResponse?.value;
                     if (Array.isArray(value)) {
                       return value.join(', ') || 'N/A';
                     }
