@@ -19,13 +19,15 @@ function ParticipantDetailsPage() {
       age: "",
       gender: "",
       allergies: "",
-      extraComment: ""
+      extraComment: "",
+      customFields: {}
     }))
   );
   const [loading, setLoading] = useState(false);
   const [trekFields, setTrekFields] = useState([]);
   const [batch, setBatch] = useState(null);
   const [trek, setTrek] = useState(null);
+  const [customFields, setCustomFields] = useState([]);
 
   useEffect(() => {
     const fetchTrekFields = async () => {
@@ -42,6 +44,16 @@ function ParticipantDetailsPage() {
             });
             return { ...p, ...newFields };
           }));
+        }
+        if (Array.isArray(trek.customFields)) {
+          setCustomFields(trek.customFields);
+          setParticipants(prev => prev.map(p => ({
+            ...p,
+            customFields: trek.customFields.reduce((acc, field) => {
+              acc[field.fieldName] = "";
+              return acc;
+            }, {})
+          })));
         }
         // Find batch info from trek.batches
         if (batchId && trek.batches) {
@@ -69,6 +81,20 @@ function ParticipantDetailsPage() {
     setParticipants((prev) => {
       const updated = [...prev];
       updated[idx][name] = value;
+      return updated;
+    });
+  };
+
+  const handleCustomFieldChange = (idx, fieldName, value) => {
+    setParticipants(prev => {
+      const updated = [...prev];
+      updated[idx] = {
+        ...updated[idx],
+        customFields: {
+          ...updated[idx].customFields,
+          [fieldName]: value
+        }
+      };
       return updated;
     });
   };
@@ -159,6 +185,33 @@ function ParticipantDetailsPage() {
                     type={field.type || "text"}
                     required={!!field.required}
                   />
+                </div>
+              ))}
+              {customFields.map(field => (
+                <div key={field.fieldName}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{field.label || field.fieldName}</label>
+                  {field.fieldType === 'select' && Array.isArray(field.options) ? (
+                    <select
+                      value={p.customFields?.[field.fieldName] || ""}
+                      onChange={e => handleCustomFieldChange(idx, field.fieldName, e.target.value)}
+                      required={!!field.isRequired}
+                      className="border p-2 rounded w-full"
+                    >
+                      <option value="">Select</option>
+                      {field.options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={field.fieldType || "text"}
+                      value={p.customFields?.[field.fieldName] || ""}
+                      onChange={e => handleCustomFieldChange(idx, field.fieldName, e.target.value)}
+                      required={!!field.isRequired}
+                      placeholder={field.label || field.fieldName}
+                      className="border p-2 rounded w-full"
+                    />
+                  )}
                 </div>
               ))}
               <div className="md:col-span-2">

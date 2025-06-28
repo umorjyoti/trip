@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaTrash, FaArrowLeft } from 'react-icons/fa';
 import ImageUploader from '../components/ImageUploader';
-import axios from 'axios';
+import api from '../services/api';
 
 // Helper: FormSection component
 const FormSection = ({ title, children }) => (
@@ -753,8 +753,8 @@ function TrekForm() {
                         try {
                           const formData = new FormData();
                           formData.append('file', file);
-                          console.log('[PDF UPLOAD] FormData created, sending POST to /api/upload');
-                          const response = await axios.post('/api/upload', formData, {
+                          console.log('[PDF UPLOAD] FormData created, sending POST to /upload');
+                          const response = await api.post('/upload', formData, {
                             headers: { 'Content-Type': 'multipart/form-data' }
                           });
                           console.log('[PDF UPLOAD] Response:', response);
@@ -785,7 +785,7 @@ function TrekForm() {
                           const urlParts = formData.itineraryPdfUrl.split('.com/');
                           if (urlParts.length !== 2) throw new Error('Invalid S3 URL format');
                           const key = encodeURIComponent(urlParts[1]);
-                          await axios.delete(`/api/upload/${key}`);
+                          await api.delete(`/upload/${key}`);
                           setFormData(prev => ({ ...prev, itineraryPdfUrl: '' }));
                           toast.success('PDF deleted successfully!');
                         } catch (err) {

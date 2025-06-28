@@ -3,7 +3,7 @@ import axios from 'axios';
 // Remove accidental wrapping quotes that sometimes appear when an env variable
 // is defined like REACT_APP_API_URL="https://example.com/api" (the quotes end
 // up being part of the final bundled string).
-let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 if (API_URL) {
   API_URL = API_URL.replace(/^['"](.*)['"]$/, '$1');
 }
@@ -808,7 +808,7 @@ export const getWeekendGetaways = async (params = {}) => {
       .map(key => `${key}=${params[key]}`)
       .join('&');
     
-    const response = await axios.get(`/api/treks/weekend-getaways?${queryString}`);
+    const response = await api.get(`/treks/weekend-getaways?${queryString}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching weekend getaways:', error);
@@ -827,7 +827,7 @@ export const toggleWeekendGetaway = async (id, weekendData) => {
       throw new Error(`Invalid trek ID: ${id}`);
     }
     
-    const response = await axios.put(`/api/treks/weekend-getaway/${id}`, weekendData);
+    const response = await api.put(`/treks/weekend-getaway/${id}`, weekendData);
     return response.data;
   } catch (error) {
     console.error('Error updating weekend getaway status:', error);
@@ -838,7 +838,7 @@ export const toggleWeekendGetaway = async (id, weekendData) => {
 // Get all weekend getaway galleries
 export const getWeekendGetawayGalleries = async () => {
   try {
-    const response = await axios.get('/api/treks/weekend-getaways/galleries');
+    const response = await api.get('/treks/weekend-getaways/galleries');
     return response.data;
   } catch (error) {
     console.error('Error fetching weekend getaway galleries:', error);
@@ -849,7 +849,7 @@ export const getWeekendGetawayGalleries = async () => {
 // Get all weekend getaway blogs
 export const getWeekendGetawayBlogs = async () => {
   try {
-    const response = await axios.get('/api/treks/weekend-getaways/blogs');
+    const response = await api.get('/treks/weekend-getaways/blogs');
     return response.data;
   } catch (error) {
     console.error('Error fetching weekend getaway blogs:', error);
@@ -860,7 +860,7 @@ export const getWeekendGetawayBlogs = async () => {
 // Get all weekend getaway activities
 export const getWeekendGetawayActivities = async () => {
   try {
-    const response = await axios.get('/api/treks/weekend-getaways/activities');
+    const response = await api.get('/treks/weekend-getaways/activities');
     return response.data;
   } catch (error) {
     console.error('Error fetching weekend getaway activities:', error);
@@ -871,7 +871,7 @@ export const getWeekendGetawayActivities = async () => {
 // Get weekend getaway details
 export const getWeekendGetawayDetails = async (id) => {
   try {
-    const response = await axios.get(`/api/treks/weekend-getaways/${id}/details`);
+    const response = await api.get(`/treks/weekend-getaways/${id}/details`);
     return response.data;
   } catch (error) {
     console.error('Error fetching weekend getaway details:', error);
@@ -882,7 +882,7 @@ export const getWeekendGetawayDetails = async (id) => {
 // Update weekend getaway gallery
 export const updateWeekendGetawayGallery = async (id, gallery) => {
   try {
-    const response = await axios.put(`/api/treks/weekend-getaways/${id}/gallery`, { gallery });
+    const response = await api.put(`/treks/weekend-getaways/${id}/gallery`, { gallery });
     return response.data;
   } catch (error) {
     console.error('Error updating weekend getaway gallery:', error);
@@ -912,15 +912,7 @@ export const getTrekPerformance = async (trekId) => {
 
 export const addParticipant = async (bookingId, participantData) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/bookings/${bookingId}/participants`,
-      participantData,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    const response = await api.post(`/bookings/${bookingId}/participants`, participantData);
     return response.data;
   } catch (error) {
     throw error;
@@ -929,15 +921,7 @@ export const addParticipant = async (bookingId, participantData) => {
 
 export const updateParticipant = async (bookingId, participantId, participantData) => {
   try {
-    const response = await axios.put(
-      `${API_URL}/bookings/${bookingId}/participants/${participantId}`,
-      participantData,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
+    const response = await api.put(`/bookings/${bookingId}/participants/${participantId}`, participantData);
     return response.data;
   } catch (error) {
     throw error;

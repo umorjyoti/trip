@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { toast } from 'react-toastify';
 import { FaPlus, FaTrash, FaImage } from 'react-icons/fa';
+import api from '../services/api';
 
 const ImageUploader = ({ images = [], onChange }) => {
   const [uploading, setUploading] = useState(false);
@@ -18,7 +18,7 @@ const ImageUploader = ({ images = [], onChange }) => {
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await axios.post('/api/upload', formData, {
+        const response = await api.post('/upload', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -48,8 +48,8 @@ const ImageUploader = ({ images = [], onChange }) => {
       // Get the key and decode it to handle special characters
       const key = decodeURIComponent(urlParts[1]);
       
-      // Call the backend to delete the image
-      await axios.delete(`/api/upload/${encodeURIComponent(key)}`);
+      // Call the backend to delete the image using the API service
+      await api.delete(`/upload/${encodeURIComponent(key)}`);
       
       // Update the images array
       const newImages = images.filter((_, i) => i !== index);

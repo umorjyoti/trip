@@ -1,6 +1,6 @@
 # Active Context
 
-**Current Focus:** Fixed comprehensive user group permission issues preventing regular users from accessing booking functionality.
+**Current Focus:** Fixed API routing issues causing duplicate `/api/api/upload` paths and other API endpoint problems.
 
 **Recent Changes:**
 
@@ -41,15 +41,33 @@
       - Kept `protect` middleware to ensure users are authenticated
       - Relied on controller-level authorization which properly checks if user owns the booking or is admin
     - **Result**: Regular users can now fully manage their own bookings without needing a user group assignment
+*   **Fixed API routing issues causing duplicate `/api/api/upload` paths**: Resolved configuration conflicts between frontend proxy and API service:
+    - **Issues Fixed**:
+      - `POST /api/api/upload` - Duplicate `/api` in upload requests causing 404 errors
+      - `DELETE /api/api/upload/:key` - Duplicate `/api` in delete requests
+      - Various other API endpoints with duplicate `/api` paths
+    - **Root Cause**: 
+      - Frontend proxy configured to `http://localhost:5000/api` in `package.json`
+      - API service configured with base URL `http://localhost:5001/api`
+      - Components making direct axios calls to `/api/upload` instead of using API service
+      - Some API service functions using direct axios calls instead of configured api instance
+    - **Solutions Implemented**:
+      - Fixed API service base URL to match proxy: `http://localhost:5000/api`
+      - Updated `ImageUploader` component to use API service instead of direct axios calls
+      - Updated `TrekForm` component to use API service for upload operations
+      - Fixed all direct axios calls in `api.js` service to use configured api instance
+      - Standardized all API calls to use the configured api instance with proper base URL
+    - **Result**: All API calls now use consistent routing without duplicate `/api` paths
 
 **Next Steps:**
 
 1.  Test the complete OTP verification flow for both registration and login
 2.  Test that regular users can now access all booking functionality without permission issues
-3.  Consider implementing Redis for temporary storage in production
-4.  Add email verification resend functionality for existing users
-5.  Consider adding rate limiting for OTP requests
-6.  Await further instructions or specific tasks from the user.
+3.  Test that upload functionality works correctly without 404 errors
+4.  Consider implementing Redis for temporary storage in production
+5.  Add email verification resend functionality for existing users
+6.  Consider adding rate limiting for OTP requests
+7.  Await further instructions or specific tasks from the user.
 
 **Active Decisions/Considerations:**
 
@@ -60,4 +78,5 @@
 *   **Token Storage**: JWT tokens are now stored in both localStorage and sessionStorage for better persistence and security.
 *   **Temporary Storage**: Currently using in-memory Map for pending registrations. In production, this should be replaced with Redis or a similar persistent storage solution.
 *   **Permission System**: The permission system is designed for admin functions and should not block regular users from accessing their own data. Controllers should handle authorization logic for user-specific data access.
-*   **Booking Management**: Regular users should have full control over their own bookings (view, update, cancel, manage participants) without needing special permissions or user group assignments. 
+*   **Booking Management**: Regular users should have full control over their own bookings (view, update, cancel, manage participants) without needing special permissions or user group assignments.
+*   **API Configuration**: All frontend API calls should use the configured API service instance to ensure consistent routing and avoid duplicate path issues. The proxy configuration in `package.json` should match the API service base URL. 

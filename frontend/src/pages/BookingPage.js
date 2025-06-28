@@ -112,12 +112,21 @@ function BookingPage() {
     }
   };
 
-  const handleAddOnChange = (addOnId) => {
+  // Helper to get a unique add-on key
+  const getAddOnKey = (addOn, idx) => addOn._id || `${addOn.name || 'addon'}-${idx}`;
+
+  const getSelectedAddOns = () => {
+    if (!trek || !trek.addOns) return [];
+    return trek.addOns
+      .map((addOn, idx) => ({ addOn, key: getAddOnKey(addOn, idx) }))
+      .filter(({ key }) => formData.addOns.includes(key));
+  };
+
+  const handleAddOnChange = (addOnKey) => {
     setFormData((prev) => {
-      const newAddOns = prev.addOns.includes(addOnId)
-        ? prev.addOns.filter(id => id !== addOnId)
-        : [...prev.addOns, addOnId];
-      
+      const newAddOns = prev.addOns.includes(addOnKey)
+        ? prev.addOns.filter(id => id !== addOnKey)
+        : [...prev.addOns, addOnKey];
       return {
         ...prev,
         addOns: newAddOns
@@ -200,12 +209,10 @@ function BookingPage() {
 
     try {
       // Map selected add-on IDs to { name, price } objects
-      const validAddOns = formData.addOns
-        .map(addOnId => {
-          const addOn = trek.addOns.find(a => a._id === addOnId && a.isEnabled);
-          return addOn ? { name: addOn.name, price: addOn.price } : null;
-        })
-        .filter(Boolean);
+      const validAddOns = trek.addOns
+        .map((addOn, idx) => ({ ...addOn, key: getAddOnKey(addOn, idx) }))
+        .filter(({ key, isEnabled }) => isEnabled && formData.addOns.includes(key))
+        .map(({ _id, name, price }) => ({ _id, name, price }));
 
       const bookingData = {
         trekId: id,
@@ -295,17 +302,12 @@ function BookingPage() {
 
   const calculateBasePrice = () => {
     if (!selectedBatch) return 0;
-
     let basePrice = selectedBatch.price * formData.numberOfParticipants;
-
-    // Add prices for selected add-ons
-    formData.addOns.forEach((addOnId) => {
-      const addOn = trek.addOns.find((a) => a._id === addOnId);
-      if (addOn && addOn.isEnabled) {
+    getSelectedAddOns().forEach(({ addOn }) => {
+      if (addOn.isEnabled) {
         basePrice += addOn.price * formData.numberOfParticipants;
       }
     });
-
     return basePrice;
   };
 
@@ -530,35 +532,38 @@ function BookingPage() {
                   <div className="space-y-4">
                     {trek.addOns
                       .filter((addOn) => addOn.isEnabled)
-                      .map((addOn) => (
-                        <div
-                          key={addOn._id}
-                          className="relative flex items-start"
-                        >
-                          <div className="flex items-center h-5">
-                            <input
-                              id={`addon-${addOn._id}`}
-                              type="checkbox"
-                              checked={formData.addOns.includes(addOn._id)}
-                              onChange={() => handleAddOnChange(addOn._id)}
-                              className="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300 rounded"
-                            />
+                      .map((addOn, idx) => {
+                        const addOnKey = getAddOnKey(addOn, idx);
+                        return (
+                          <div
+                            key={addOnKey}
+                            className="relative flex items-start"
+                          >
+                            <div className="flex items-center h-5">
+                              <input
+                                id={`addon-${addOnKey}`}
+                                type="checkbox"
+                                checked={formData.addOns.includes(addOnKey)}
+                                onChange={() => handleAddOnChange(addOnKey)}
+                                className="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300 rounded"
+                              />
+                            </div>
+                            <div className="ml-3 text-sm">
+                              <label
+                                htmlFor={`addon-${addOnKey}`}
+                                className="font-medium text-gray-700"
+                              >
+                                {addOn.name} - ₹{addOn.price}
+                              </label>
+                              {addOn.description && (
+                                <p className="text-gray-500">
+                                  {addOn.description}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div className="ml-3 text-sm">
-                            <label
-                              htmlFor={`addon-${addOn._id}`}
-                              className="font-medium text-gray-700"
-                            >
-                              {addOn.name} - ₹{addOn.price}
-                            </label>
-                            {addOn.description && (
-                              <p className="text-gray-500">
-                                {addOn.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -651,14 +656,11 @@ function BookingPage() {
                     <dt className="text-sm font-medium text-gray-500">Add-ons</dt>
                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                       <ul className="space-y-1">
-                        {formData.addOns.map((addOnId) => {
-                          const addOn = trek.addOns.find((a) => a._id === addOnId);
-                          return addOn ? (
-                            <li key={addOn._id}>
-                              {addOn.name} - ₹{(addOn.price * formData.numberOfParticipants).toFixed(2)}
-                            </li>
-                          ) : null;
-                        })}
+                        {getSelectedAddOns().map(({ addOn, key }) => (
+                          <li key={key}>
+                            {addOn.name} - ₹{(addOn.price * formData.numberOfParticipants).toFixed(2)}
+                          </li>
+                        ))}
                       </ul>
                     </dd>
                   </div>
