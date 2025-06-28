@@ -25,6 +25,10 @@ const blogRoutes = require('./src/routes/blogRoutes');
 const passport = require('./config/passport');
 const session = require('express-session');
 
+// Swagger documentation
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -142,6 +146,12 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminBookingRoutes);
 app.use('/api/blogs', blogRoutes);
+
+// Swagger API Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Trekking Club API Documentation'
+}));
 
 // Add this after registering the wishlist routes
 console.log('Registered routes:');

@@ -168,7 +168,7 @@ exports.updateTrek = async (req, res) => {
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns, highlights, batches, faqs, thingsToPack,
       gstPercent, gstType, gatewayPercent, gatewayType,
-      tags, itineraryPdfUrl
+      tags, itineraryPdfUrl , customFields
     } = req.body;
 
     // Filter out empty highlights
@@ -192,7 +192,8 @@ exports.updateTrek = async (req, res) => {
       gatewayType: gatewayType || trek.gatewayType,
       tags, itineraryPdfUrl,
       faqs: faqs || trek.faqs,
-      thingsToPack: thingsToPack || trek.thingsToPack
+      thingsToPack: thingsToPack || trek.thingsToPack,
+      customFields: customFields || trek.customFields
     };
 
     // Handle batches update
@@ -391,8 +392,11 @@ exports.addBatch = async (req, res) => {
       }
     }
     
+    // Explicitly generate a new ObjectId for the batch
+    const batchId = new mongoose.Types.ObjectId();
     // Create new batch
     const newBatch = {
+      _id: batchId,
       startDate: parsedStartDate,
       endDate: parsedEndDate,
       price: Number(price),
@@ -415,7 +419,8 @@ exports.addBatch = async (req, res) => {
       return res.status(404).json({ message: 'Trek not found' });
     }
     
-    res.status(201).json(trek);
+    // Return the new batch ID as well for frontend use
+    res.status(201).json({ trek, batchId });
   } catch (error) {
     console.error('Error adding batch:', error);
     res.status(500).json({ 
