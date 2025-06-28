@@ -124,79 +124,79 @@ function BlogManagement() {
             <p className="text-gray-600">No blogs found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Title
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Published
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredBlogs.map((blog) => (
-                  <tr key={blog._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{blog.title}</div>
-                      <div className="text-sm text-gray-500">{blog.excerpt}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        blog.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {blog.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(blog.createdAt), 'MMM d, yyyy')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {blog.publishedAt ? format(new Date(blog.publishedAt), 'MMM d, yyyy') : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
-                        <button
-                          onClick={() => navigate(`/admin/blogs/${blog._id}`)}
-                          className="text-emerald-600 hover:text-emerald-900"
-                          disabled={actionLoading[blog._id]}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(blog._id, blog.status === 'published' ? 'draft' : 'published')}
-                          className="text-blue-600 hover:text-blue-900"
-                          disabled={actionLoading[blog._id]}
-                        >
-                          {blog.status === 'published' ? 'Unpublish' : 'Publish'}
-                        </button>
-                        <button
-                          onClick={() => handleDelete(blog._id)}
-                          className="text-red-600 hover:text-red-900"
-                          disabled={actionLoading[blog._id]}
-                        >
-                          Delete
-                        </button>
-                        {actionLoading[blog._id] && (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+            {filteredBlogs.map((blog) => (
+              <div key={blog._id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                {/* Banner Image */}
+                {blog.bannerImage && (
+                  <div className="aspect-w-16 aspect-h-9">
+                    <img
+                      src={blog.bannerImage}
+                      alt={blog.title}
+                      className="w-full h-48 object-cover rounded-t-lg"
+                    />
+                  </div>
+                )}
+                
+                {/* Card Content */}
+                <div className="p-4">
+                  {/* Status Badge */}
+                  <div className="flex justify-between items-start mb-3">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      blog.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {blog.status}
+                    </span>
+                    {actionLoading[blog._id] && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600"></div>
+                    )}
+                  </div>
+                  
+                  {/* Title */}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                    {blog.title}
+                  </h3>
+                  
+                  {/* Excerpt */}
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-3">
+                    {blog.excerpt}
+                  </p>
+                  
+                  {/* Dates */}
+                  <div className="text-xs text-gray-500 mb-4 space-y-1">
+                    <div>Created: {format(new Date(blog.createdAt), 'MMM d, yyyy')}</div>
+                    {blog.publishedAt && (
+                      <div>Published: {format(new Date(blog.publishedAt), 'MMM d, yyyy')}</div>
+                    )}
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => navigate(`/admin/blogs/${blog._id}`)}
+                      className="text-emerald-600 hover:text-emerald-900 text-sm font-medium"
+                      disabled={actionLoading[blog._id]}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(blog._id, blog.status === 'published' ? 'draft' : 'published')}
+                      className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                      disabled={actionLoading[blog._id]}
+                    >
+                      {blog.status === 'published' ? 'Unpublish' : 'Publish'}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(blog._id)}
+                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                      disabled={actionLoading[blog._id]}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

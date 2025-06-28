@@ -10,7 +10,6 @@ const blogSchema = new mongoose.Schema({
   },
   slug: {
     type: String,
-    required: true,
     unique: true,
     trim: true
   },
@@ -100,7 +99,8 @@ blogSchema.index({ slug: 1 }, { unique: true });
 
 // Create slug from title before saving
 blogSchema.pre('save', function(next) {
-  if (this.isModified('title')) {
+  // Always generate slug if it doesn't exist or if title is modified
+  if (!this.slug || this.isModified('title')) {
     this.slug = this.title
       .toLowerCase()
       .replace(/[^a-zA-Z0-9]/g, '-')

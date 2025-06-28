@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
-import ReactMarkdown from 'react-markdown';
 import { Helmet } from 'react-helmet-async';
 
 function BlogDetail() {
@@ -100,38 +99,86 @@ function BlogDetail() {
 
         {/* Content Section */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <style>
+            {`
+              .blog-content img {
+                width: 100%;
+                max-width: 600px;
+                height: 400px;
+                object-fit: cover;
+                border-radius: 8px;
+                margin: 20px auto;
+                display: block;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+              }
+              .blog-content h1, .blog-content h2, .blog-content h3, .blog-content h4, .blog-content h5, .blog-content h6 {
+                color: #1f2937;
+                font-weight: 600;
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+              }
+              .blog-content h1 { font-size: 2.25rem; }
+              .blog-content h2 { font-size: 1.875rem; }
+              .blog-content h3 { font-size: 1.5rem; }
+              .blog-content p {
+                margin-bottom: 1.5rem;
+                line-height: 1.75;
+              }
+              .blog-content ul, .blog-content ol {
+                margin: 1.5rem 0;
+                padding-left: 2rem;
+              }
+              .blog-content li {
+                margin-bottom: 0.5rem;
+              }
+              .blog-content blockquote {
+                border-left: 4px solid #10b981;
+                padding-left: 1rem;
+                margin: 1.5rem 0;
+                font-style: italic;
+                background-color: #f0fdf4;
+                padding: 1rem;
+                border-radius: 4px;
+              }
+              .blog-content code {
+                background-color: #f3f4f6;
+                padding: 0.25rem 0.5rem;
+                border-radius: 4px;
+                font-family: 'Courier New', monospace;
+                font-size: 0.9em;
+              }
+              .blog-content pre {
+                background-color: #1f2937;
+                color: #f9fafb;
+                padding: 1rem;
+                border-radius: 8px;
+                overflow-x: auto;
+                margin: 1.5rem 0;
+              }
+              .blog-content pre code {
+                background-color: transparent;
+                padding: 0;
+                color: inherit;
+              }
+              .blog-content a {
+                color: #10b981;
+                text-decoration: underline;
+              }
+              .blog-content a:hover {
+                color: #047857;
+              }
+            `}
+          </style>
           <article className="prose prose-lg prose-emerald max-w-none">
-            <ReactMarkdown
-              components={{
-                img: ({ node, ...props }) => (
-                  <div className="relative">
-                    <img
-                      {...props}
-                      className="w-full h-auto rounded-lg"
-                      loading="lazy"
-                    />
-                  </div>
-                ),
-                code: ({ node, inline, className, children, ...props }) => (
-                  <code
-                    className={`${className} bg-gray-100 rounded px-1 py-0.5`}
-                    {...props}
-                  >
-                    {children}
-                  </code>
-                ),
-                pre: ({ node, children, ...props }) => (
-                  <pre
-                    className="bg-gray-100 rounded-lg p-4 overflow-x-auto"
-                    {...props}
-                  >
-                    {children}
-                  </pre>
-                ),
+            <div 
+              className="blog-content"
+              dangerouslySetInnerHTML={{ __html: blog.content }}
+              style={{
+                lineHeight: '1.8',
+                fontSize: '1.1rem',
+                color: '#374151'
               }}
-            >
-              {blog.content}
-            </ReactMarkdown>
+            />
           </article>
 
           {/* Meta Information */}
