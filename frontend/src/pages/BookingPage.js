@@ -199,11 +199,13 @@ function BookingPage() {
     }
 
     try {
-      // Validate add-ons
-      const validAddOns = formData.addOns.filter(addOnId => {
-        const addOn = trek.addOns.find(a => a._id === addOnId);
-        return addOn && addOn.isEnabled;
-      });
+      // Map selected add-on IDs to { name, price } objects
+      const validAddOns = formData.addOns
+        .map(addOnId => {
+          const addOn = trek.addOns.find(a => a._id === addOnId && a.isEnabled);
+          return addOn ? { name: addOn.name, price: addOn.price } : null;
+        })
+        .filter(Boolean);
 
       const bookingData = {
         trekId: id,

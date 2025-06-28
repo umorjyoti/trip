@@ -61,26 +61,6 @@ const createBooking = async (req, res) => {
         .json({ message: "Not enough spots available in this batch" });
     }
 
-    // Validate add-ons if provided
-    if (addOns && Array.isArray(addOns) && addOns.length > 0) {
-      const validAddOns = trek.addOns
-        .filter(addOn => addOn && addOn.isEnabled)
-        .map(addOn => addOn._id.toString());
-      
-      const invalidAddOns = addOns.filter(addOnId => {
-        if (!addOnId) return true;
-        try {
-          return !validAddOns.includes(addOnId.toString());
-        } catch (error) {
-          return true;
-        }
-      });
-      
-      if (invalidAddOns.length > 0) {
-        return res.status(400).json({ message: "Invalid add-ons selected" });
-      }
-    }
-
     // Create booking
     const booking = new Booking({
       user: req.user._id,

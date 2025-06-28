@@ -112,8 +112,8 @@ const BookingSchema = new mongoose.Schema({
     min: 1
   },
   addOns: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'AddOn'
+    name: { type: String, required: true },
+    price: { type: Number, required: true }
   }],
   userDetails: {
     type: UserDetailsSchema,

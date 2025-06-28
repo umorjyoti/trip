@@ -120,7 +120,17 @@ function BookingPreviewPage() {
             <FaPlusCircle className="text-emerald-500" />
             <span className="text-lg font-semibold text-emerald-700">Add-ons</span>
           </div>
-          <div className="ml-7 text-gray-700">{booking.addOns?.length ? booking.addOns.join(", ") : "None"}</div>
+          <div className="ml-7 text-gray-700">
+            {booking.addOns && booking.addOns.length > 0 ? (
+              <ul className="list-disc ml-4">
+                {booking.addOns.map((addOn, idx) => (
+                  <li key={idx}>{addOn.name} - ₹{addOn.price}</li>
+                ))}
+              </ul>
+            ) : (
+              <span>None</span>
+            )}
+          </div>
         </div>
 
         {/* Participants Card */}
@@ -139,11 +149,21 @@ function BookingPreviewPage() {
                   <div className="text-sm text-gray-700"><strong>Phone:</strong> {p.phone || '-'}</div>
                   <div className="text-sm text-gray-700"><strong>Age:</strong> {p.age || '-'}</div>
                   <div className="text-sm text-gray-700"><strong>Gender:</strong> {p.gender || '-'}</div>
+                  {p._id && <div className="text-sm text-gray-700"><strong>ID:</strong> {p._id}</div>}
                   {p.allergies && <div className="text-sm text-gray-700"><strong>Allergies:</strong> {p.allergies}</div>}
                   {p.extraComment && <div className="text-sm text-gray-700"><strong>Extra Comment:</strong> {p.extraComment}</div>}
-                  {Object.keys(p).filter(k => !['name','email','phone','age','gender','allergies','extraComment'].includes(k)).map(k => (
-                    <div key={k} className="text-sm text-gray-700"><strong>{k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}:</strong> {p[k]}</div>
-                  ))}
+                  {Array.isArray(p.customFieldResponses) && p.customFieldResponses.length > 0 && (
+                    <div className="text-sm text-gray-700 mt-2">
+                      <strong>Custom Field Responses:</strong>
+                      <ul className="list-disc ml-5">
+                        {p.customFieldResponses.map((resp, rIdx) => (
+                          <li key={rIdx}>
+                            {resp.fieldName ? <>{resp.fieldName}: </> : null}{resp.value !== undefined ? resp.value.toString() : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
