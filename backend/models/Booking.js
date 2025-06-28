@@ -150,10 +150,18 @@ const BookingSchema = new mongoose.Schema({
   // This will be filled after payment success
   participantDetails: [{
     name: String,
+    email: String,
+    phone: String,
     age: Number,
     gender: {
       type: String,
       enum: ['Male', 'Female', 'Other']
+    },
+    allergies: String,
+    extraComment: String,
+    customFields: {
+      type: Map,
+      of: String
     },
     medicalConditions: String,
     specialRequests: String,
