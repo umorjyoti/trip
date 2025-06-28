@@ -256,6 +256,17 @@ function App() {
                             </ProtectedRoutes>
                           }
                         />
+                        <Route
+                          path="treks/:trekId/batches/:batchId/performance"
+                          element={
+                            <ProtectedRoutes
+                              permissionKey="manageTreks"
+                              permissions={permissions}
+                            >
+                              <BatchPerformance />
+                            </ProtectedRoutes>
+                          }
+                        />
 
                         <Route
                           path="regions"

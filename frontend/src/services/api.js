@@ -900,6 +900,23 @@ export const getBatchPerformance = async (trekId, batchId) => {
   }
 };
 
+export const exportBatchParticipants = async (trekId, batchId, fields = []) => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (fields.length > 0) {
+      queryParams.append('fields', fields.join(','));
+    }
+
+    const response = await api.get(`/treks/${trekId}/batches/${batchId}/export-participants?${queryParams.toString()}`, {
+      responseType: 'blob'
+    });
+    return response;
+  } catch (error) {
+    console.error('Error exporting batch participants:', error);
+    throw error;
+  }
+};
+
 export const getTrekPerformance = async (trekId) => {
   try {
     const response = await api.get(`/treks/${trekId}/performance`);

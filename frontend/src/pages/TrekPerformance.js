@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { getTrekPerformance, getBatchPerformance } from '../services/api';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ParticipantExportModal from '../components/ParticipantExportModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const TrekPerformance = () => {
@@ -13,6 +14,7 @@ const TrekPerformance = () => {
   const [batchDetails, setBatchDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     fetchPerformanceData();
@@ -174,9 +176,20 @@ const TrekPerformance = () => {
       {selectedBatch && batchDetails && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Batch Details: {formatDate(selectedBatch.startDate)} - {formatDate(selectedBatch.endDate)}
-            </h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Batch Details: {formatDate(selectedBatch.startDate)} - {formatDate(selectedBatch.endDate)}
+              </h2>
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Participants
+              </button>
+            </div>
             <button
               onClick={() => {
                 setSelectedBatch(null);
@@ -275,6 +288,15 @@ const TrekPerformance = () => {
           </div>
         </div>
       )}
+
+      {/* Export Participants Modal */}
+      <ParticipantExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        trekId={trekId}
+        batchId={selectedBatch?._id}
+        trekData={performanceData?.trek}
+      />
     </div>
   );
 };

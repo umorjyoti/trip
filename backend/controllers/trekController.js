@@ -910,7 +910,7 @@ exports.getBatchPerformance = async (req, res) => {
     const bookings = await Booking.find({
       trek: trekId,
       batch: batchId
-    }).populate('user', 'name email phone');
+    }).populate('user', 'name email');
 
     // Safely filter bookings
     const safeBookings = bookings.filter(booking => booking != null);
@@ -1138,6 +1138,198 @@ exports.getTrekPerformance = async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error('Error getting trek performance:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Export batch participants to PDF
+exports.exportBatchParticipants = async (req, res) => {
+  try {
+    console.log('Export participants - req.params:', req.params);
+    console.log('Export participants - req.query:', req.query);
+    
+    // The route uses :id and :batchId, so we need to extract them correctly
+    const trekId = req.params.id; // Changed from req.params.trekId
+    const batchId = req.params.batchId;
+    const { fields } = req.query;
+
+    console.log('Extracted IDs - trekId:', trekId, 'batchId:', batchId);
+
+    // Validate MongoDB IDs
+    if (!mongoose.Types.ObjectId.isValid(trekId) || !mongoose.Types.ObjectId.isValid(batchId)) {
+      console.log('Invalid IDs - trekId valid:', mongoose.Types.ObjectId.isValid(trekId), 'batchId valid:', mongoose.Types.ObjectId.isValid(batchId));
+      return res.status(400).json({ message: 'Invalid trek or batch ID format' });
+    }
+
+    // Find the trek and batch
+    const trek = await Trek.findById(trekId);
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+
+    const batch = trek.batches.id(batchId);
+    if (!batch) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+
+    // Get all bookings for this batch
+    const bookings = await Booking.find({ batch: batchId })
+      .populate('user', 'name email phone');
+
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({ message: 'No participants found for this batch' });
+    }
+
+    // Parse fields parameter
+    const selectedFields = fields ? fields.split(',') : [];
+    
+    // Define available fields
+    const availableFields = {
+      // Participant Details
+      participantName: 'Participant Name',
+      participantAge: 'Age',
+      participantGender: 'Gender',
+      participantPhone: 'Contact Number',
+      
+      // Emergency Contact
+      emergencyContactName: 'Emergency Contact Name',
+      emergencyContactPhone: 'Emergency Contact Phone',
+      emergencyContactRelation: 'Emergency Contact Relation',
+      
+      // Health & Safety
+      medicalConditions: 'Medical Conditions',
+      specialRequests: 'Special Requests',
+      
+      // Booking Information
+      bookingUserName: 'Booking User Name',
+      bookingUserEmail: 'Booking User Email',
+      bookingUserPhone: 'Booking User Phone',
+      bookingDate: 'Booking Date',
+      bookingStatus: 'Booking Status',
+      totalPrice: 'Total Price',
+      
+      // Logistics
+      pickupLocation: 'Pickup Location',
+      dropLocation: 'Drop Location',
+      additionalRequests: 'Additional Requests'
+    };
+
+    // Add custom fields from trek
+    if (trek.customFields && Array.isArray(trek.customFields)) {
+      trek.customFields.forEach(field => {
+        availableFields[`custom_${field.key}`] = field.label || field.key;
+      });
+    }
+
+    // Use selected fields or default to first 10 available
+    const fieldsToExport = selectedFields.length > 0 
+      ? selectedFields.slice(0, 10) 
+      : Object.keys(availableFields).slice(0, 10);
+
+    // Prepare data for PDF
+    const tableData = [];
+    
+    // Add header row
+    const headers = fieldsToExport.map(field => availableFields[field] || field);
+    tableData.push(headers);
+
+    // Add data rows
+    bookings.forEach(booking => {
+      if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+        booking.participantDetails.forEach(participant => {
+          const row = fieldsToExport.map(field => {
+            switch (field) {
+              case 'participantName':
+                return participant.name || 'N/A';
+              case 'participantAge':
+                return participant.age || 'N/A';
+              case 'participantGender':
+                return participant.gender || 'N/A';
+              case 'participantPhone':
+                return participant.contactNumber || 'N/A';
+              case 'emergencyContactName':
+                return participant.emergencyContact?.name || 'N/A';
+              case 'emergencyContactPhone':
+                return participant.emergencyContact?.phone || 'N/A';
+              case 'emergencyContactRelation':
+                return participant.emergencyContact?.relationship || 'N/A';
+              case 'medicalConditions':
+                return participant.medicalConditions || 'N/A';
+              case 'specialRequests':
+                return participant.specialRequests || 'N/A';
+              case 'bookingUserName':
+                return booking.user?.name || 'N/A';
+              case 'bookingUserEmail':
+                return booking.user?.email || 'N/A';
+              case 'bookingUserPhone':
+                return booking.user?.phone || 'N/A';
+              case 'bookingDate':
+                return booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A';
+              case 'bookingStatus':
+                return booking.status || 'N/A';
+              case 'totalPrice':
+                return booking.totalPrice ? `₹${booking.totalPrice}` : 'N/A';
+              case 'pickupLocation':
+                return booking.pickupLocation || 'N/A';
+              case 'dropLocation':
+                return booking.dropLocation || 'N/A';
+              case 'additionalRequests':
+                return booking.additionalRequests || 'N/A';
+              default:
+                // Handle custom fields
+                if (field.startsWith('custom_')) {
+                  const customFieldKey = field.replace('custom_', '');
+                  const customField = trek.customFields?.find(f => f.key === customFieldKey);
+                  if (customField) {
+                    const value = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey)?.value;
+                    if (Array.isArray(value)) {
+                      return value.join(', ') || 'N/A';
+                    }
+                    return value || 'N/A';
+                  }
+                }
+                return 'N/A';
+            }
+          });
+          tableData.push(row);
+        });
+      }
+    });
+
+    // Generate PDF
+    const PDFDocument = require('pdfkit-table');
+    const doc = new PDFDocument({ margin: 30 });
+
+    // Set response headers
+    const filename = `batch-participants-${trek.name.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Pipe PDF to response
+    doc.pipe(res);
+
+    // Add header
+    doc.fontSize(18).text(`${trek.name} - Batch Participants`, { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Batch: ${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`, { align: 'center' });
+    doc.fontSize(10).text(`Generated on: ${new Date().toLocaleDateString()}`, { align: 'center' });
+    doc.moveDown(2);
+
+    // Add table
+    const table = {
+      headers: headers,
+      rows: tableData.slice(1) // Skip header row
+    };
+
+    await doc.table(table, {
+      prepareHeader: () => doc.fontSize(8),
+      prepareRow: () => doc.fontSize(7)
+    });
+
+    doc.end();
+
+  } catch (error) {
+    console.error('Error exporting batch participants:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 }; 

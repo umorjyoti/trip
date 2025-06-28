@@ -22,12 +22,6 @@ router.put('/weekend-getaway/:id', [protect, admin], trekController.toggleWeeken
 router.put('/:id/toggle-status', [protect, admin], trekController.toggleTrekStatus);
 router.patch('/:id/toggle-status', [protect, admin], trekController.toggleTrekStatus);
 
-// Batch routes
-router.post('/:id/batches', protect, admin, trekController.addBatch);
-router.put('/:id/batches/:batchId', protect, admin, trekController.updateBatch);
-router.delete('/:id/batches/:batchId', protect, admin, trekController.deleteBatch);
-router.get('/:trekId/batches/:batchId/performance', [protect, admin], trekController.getBatchPerformance);
-
 // Performance route - must come before general ID route
 router.get('/:id/performance', [protect, admin], trekController.getTrekPerformance);
 
@@ -83,6 +77,24 @@ router.delete('/:id/batches/:batchId',
     { category: 'quickActions', name: 'createBatch' }
   ]), 
   trekController.removeBatch
+);
+
+router.get('/:id/batches/:batchId/performance', 
+  protect, 
+  checkMultiplePermissions([
+    { category: 'sections', name: 'treks' },
+    { category: 'quickActions', name: 'createBatch' }
+  ]), 
+  trekController.getBatchPerformance
+);
+
+router.get('/:id/batches/:batchId/export-participants', 
+  protect, 
+  checkMultiplePermissions([
+    { category: 'sections', name: 'treks' },
+    { category: 'quickActions', name: 'createBatch' }
+  ]), 
+  trekController.exportBatchParticipants
 );
 
 module.exports = router; 
