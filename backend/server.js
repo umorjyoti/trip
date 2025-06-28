@@ -22,6 +22,7 @@ const userRoutes = require('./routes/userRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminBookingRoutes = require('./routes/adminBookingRoutes');
 const blogRoutes = require('./src/routes/blogRoutes');
+const careerRoutes = require('./routes/careerRoutes');
 const passport = require('./config/passport');
 const session = require('express-session');
 
@@ -146,6 +147,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminBookingRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/careers', careerRoutes);
 
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {

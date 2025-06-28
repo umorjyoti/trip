@@ -46,7 +46,8 @@ function UserGroups() {
         manageLeads: false,
         trekSections: false,
         manageUserGroups: false,
-        manageBlogs: false
+        manageBlogs: false,
+        manageCareers: false
       }
     }
   });
@@ -92,7 +93,8 @@ function UserGroups() {
             manageLeads: data.permissions?.actions?.manageLeads || false,
             trekSections: data.permissions?.actions?.trekSections || false,
             manageUserGroups: data.permissions?.actions?.manageUserGroups || false,
-            manageBlogs: data.permissions?.actions?.manageBlogs || false
+            manageBlogs: data.permissions?.actions?.manageBlogs || false,
+            manageCareers: data.permissions?.actions?.manageCareers || false
           }
         }
       });

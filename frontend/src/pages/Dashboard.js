@@ -46,6 +46,7 @@ import {
   FaNewspaper,
   FaHeadset,
   FaChevronRight,
+  FaUsersCog,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import RichTextEditor from "../components/RichTextEditor";
@@ -559,6 +560,14 @@ function Dashboard() {
       link: "/admin/trek-sections",
       color: "teal",
       permissionKey: "trekSections",
+    },
+    {
+      title: "Manage Careers",
+      description: "Review and manage career applications",
+      icon: FaUsersCog,
+      link: "/admin/careers",
+      color: "cyan",
+      permissionKey: "manageCareers",
     }
   ];
 

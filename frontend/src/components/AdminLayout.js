@@ -30,7 +30,8 @@ function AdminLayout({ children }) {
     'Weekend Getaways': 'manageWeekendGetaways',
     'User Groups': 'manageUserGroups',
     'Leads': 'manageLeads',
-    'Settings': null
+    'Settings': null,
+    'Careers': 'manageCareers'
   };
 
   // Define all menu items
@@ -99,6 +100,11 @@ function AdminLayout({ children }) {
       name: 'Settings',
       path: '/admin/settings',
       icon: FaCog
+    },
+    {
+      name: 'Careers',
+      path: '/admin/careers',
+      icon: FaUsersCog
     }
   ];
 

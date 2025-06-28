@@ -65,6 +65,8 @@ import LoginSuccess from './pages/LoginSuccess';
 import ParticipantDetailsPage from "./pages/ParticipantDetailsPage";
 import BlogEditor from './pages/admin/BlogEditor';
 import BookingPreviewPage from './pages/BookingPreviewPage';
+import Career from './pages/Career';
+import AdminCareers from './pages/AdminCareers';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -535,6 +537,19 @@ function App() {
 
               {/* OTP Verification Route */}
               <Route path="/verify-otp" element={<OTPVerification />} />
+
+              {/* Career Routes */}
+              <Route path="/career" element={<Career />} />
+
+              {/* Admin Career Routes */}
+              <Route
+                path="/admin/careers"
+                element={
+                  <ProtectedRoutes permissionKey="manageCareers" permissions={permissions}>
+                    <AdminCareers />
+                  </ProtectedRoutes>
+                }
+              />
 
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />
