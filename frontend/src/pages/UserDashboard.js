@@ -172,7 +172,7 @@ function UserDashboard() {
                     </div>
                     <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
                       <div className="text-xs sm:text-sm text-gray-500">
-                        {booking.participants || 1} participants • ₹{booking.totalPrice || 0}
+                        {booking.participants || 1} participants • ₹{(booking.totalPrice || 0).toFixed(2)}
                       </div>
                       <div className="flex space-x-3 sm:space-x-4">
                         <Link
@@ -181,12 +181,6 @@ function UserDashboard() {
                         >
                           View Details
                         </Link>
-                        <button
-                          onClick={() => {/* TODO: Implement cancel booking */}}
-                          className="text-red-600 hover:text-red-900 text-xs sm:text-sm font-medium touch-target"
-                        >
-                          Cancel
-                        </button>
                       </div>
                     </div>
                   </div>
