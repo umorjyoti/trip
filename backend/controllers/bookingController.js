@@ -846,11 +846,33 @@ const updateParticipantDetails = async (req, res) => {
       });
     }
 
+    // Validate and format participant data
+    const formattedParticipants = participants.map((participant, index) => {
+      // Validate required fields
+      if (!participant.name || !participant.email || !participant.phone) {
+        throw new Error(`Participant ${index + 1} is missing required fields (name, email, phone)`);
+      }
+
+      // Format the participant data
+      return {
+        name: participant.name,
+        email: participant.email,
+        phone: participant.phone,
+        age: participant.age ? Number(participant.age) : null,
+        gender: participant.gender,
+        allergies: participant.allergies || '',
+        extraComment: participant.extraComment || '',
+        customFields: participant.customFields || {},
+        medicalConditions: participant.medicalConditions || '',
+        specialRequests: participant.specialRequests || ''
+      };
+    });
+
     // Update booking with participant details
-    booking.participantDetails = participants;
-    booking.pickupLocation = pickupLocation;
-    booking.dropLocation = dropLocation;
-    booking.additionalRequests = additionalRequests;
+    booking.participantDetails = formattedParticipants;
+    booking.pickupLocation = pickupLocation || 'To be confirmed';
+    booking.dropLocation = dropLocation || 'To be confirmed';
+    booking.additionalRequests = additionalRequests || '';
     booking.status = 'confirmed'; // Update status to confirmed after collecting details
 
     await booking.save();
@@ -865,7 +887,7 @@ const updateParticipantDetails = async (req, res) => {
       
       console.log('Sending booking confirmation email to:', user.email);
 
-      await sendBookingConfirmationEmail(booking, trek, user, participants, batch, pickupLocation, dropLocation, additionalRequests);
+      await sendBookingConfirmationEmail(booking, trek, user, formattedParticipants, batch, pickupLocation, dropLocation, additionalRequests);
       
       console.log('Booking confirmation email sent successfully');
     } catch (emailError) {
