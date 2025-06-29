@@ -119,6 +119,37 @@ export const getTrekById = async (id) => {
   return response.data;
 };
 
+// Custom trek APIs
+export const getCustomTrekByToken = async (token) => {
+  try {
+    const response = await api.get(`/treks/custom/${token}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching custom trek:', error);
+    throw error;
+  }
+};
+
+export const getTrekByIdWithCustomToken = async (id, customToken) => {
+  try {
+    const response = await api.get(`/treks/${id}?customToken=${customToken}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trek with custom token:', error);
+    throw error;
+  }
+};
+
+export const getAllTreksWithCustomToggle = async (showCustom = false) => {
+  try {
+    const response = await api.get(`/treks/all?showCustom=${showCustom}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching treks with custom toggle:', error);
+    throw error;
+  }
+};
+
 export const createTrek = async (trekData) => {
   try {
     console.log('Creating trek with data:', trekData);
@@ -222,6 +253,17 @@ export const deleteRegion = async (id) => {
 export const createBooking = async (bookingData) => {
   const response = await api.post('/bookings', bookingData);
   return response.data;
+};
+
+// Custom trek booking API
+export const createCustomTrekBooking = async (bookingData) => {
+  try {
+    const response = await api.post('/bookings/custom', bookingData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating custom trek booking:', error);
+    throw error;
+  }
 };
 
 export const getBookingById = async (id) => {
@@ -1150,3 +1192,13 @@ export async function adminCancelBooking({ bookingId, refund, refundType, partic
   if (!res.ok) throw new Error((await res.json()).message || 'Failed to cancel booking');
   return res.json();
 }
+
+export const sendCustomTrekLink = async (trekId, email) => {
+  try {
+    const response = await api.post(`/treks/${trekId}/send-custom-link`, { email });
+    return response.data;
+  } catch (error) {
+    console.error('Error sending custom trek link:', error);
+    throw error;
+  }
+};

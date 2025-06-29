@@ -164,6 +164,9 @@ router.get('/:id',
 // Create new booking
 router.post('/', protect, bookingController.createBooking);
 
+// Create custom trek booking (simplified flow)
+router.post('/custom', protect, bookingController.createCustomTrekBooking);
+
 // Update booking status
 router.put('/:id/status', 
   protect, 

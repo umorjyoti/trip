@@ -276,6 +276,19 @@ const TrekSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Custom trek fields
+  isCustom: {
+    type: Boolean,
+    default: false
+  },
+  customLinkExpiry: {
+    type: Date
+  },
+  customAccessToken: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   createdAt: {
     type: Date,
     default: Date.now

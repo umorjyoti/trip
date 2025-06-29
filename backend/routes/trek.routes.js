@@ -3,6 +3,7 @@ const router = express.Router();
 const trekController = require('../controllers/trekController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const { checkPermission, checkMultiplePermissions } = require('../middleware/checkPermissions');
+const { sendCustomTrekLink } = require('../controllers/trekController');
 
 // Add this before your routes
 router.use((req, res, next) => {
@@ -15,6 +16,9 @@ router.get('/stats', trekController.getTrekStats);
 router.get('/all', trekController.getAllTreks);
 router.get('/by-region/:regionId', trekController.getTreksByExactRegion);
 
+// Custom trek routes - must come before general ID route
+router.get('/custom/:token', trekController.getTrekByCustomToken);
+
 // Weekend getaway toggle route - keep this before the general ID route
 router.put('/weekend-getaway/:id', [protect, admin], trekController.toggleWeekendGetaway);
 
@@ -26,7 +30,7 @@ router.patch('/:id/toggle-status', [protect, admin], trekController.toggleTrekSt
 router.get('/:id/performance', [protect, admin], trekController.getTrekPerformance);
 
 // General routes - these should come AFTER more specific routes
-router.get('/:id', (req, res, next) => {
+router.get('/:id', protect, (req, res, next) => {
   console.log(`ID route matched with id: ${req.params.id}`);
   next();
 }, trekController.getTrekById);
@@ -96,5 +100,7 @@ router.get('/:id/batches/:batchId/export-participants',
   ]), 
   trekController.exportBatchParticipants
 );
+
+router.post('/:id/send-custom-link', protect, admin, sendCustomTrekLink);
 
 module.exports = router; 

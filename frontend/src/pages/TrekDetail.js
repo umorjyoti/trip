@@ -33,6 +33,7 @@ import ThingsToPack from '../components/ThingsToPack';
 import TrekFAQs from '../components/TrekFAQs';
 import Modal from '../components/Modal';
 import { format, parseISO, addMonths, isSameMonth } from 'date-fns';
+import CustomTrekBookingForm from '../components/CustomTrekBookingForm';
 
 // Add this new component at the top level of the file
 const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, navigate, trekId }) => {
@@ -1666,12 +1667,20 @@ function TrekDetail() {
         {showBookingForm && selectedBatch && (
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
             <div className="max-w-2xl w-full mx-4">
-              <BookingForm
-                trek={trek}
-                batch={selectedBatch}
-                onClose={handleCloseBookingForm}
-                onSuccess={handleBookingSuccess}
-              />
+              {trek.isCustom ? (
+                <CustomTrekBookingForm
+                  trek={trek}
+                  onClose={handleCloseBookingForm}
+                  onSuccess={handleBookingSuccess}
+                />
+              ) : (
+                <BookingForm
+                  trek={trek}
+                  batch={selectedBatch}
+                  onClose={handleCloseBookingForm}
+                  onSuccess={handleBookingSuccess}
+                />
+              )}
             </div>
           </div>
         )}

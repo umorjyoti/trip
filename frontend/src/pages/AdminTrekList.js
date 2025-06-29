@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getTreks, deleteTrek, toggleTrekStatus } from '../services/api';
+import { getTreks, deleteTrek, toggleTrekStatus, getAllTreksWithCustomToggle, sendCustomTrekLink } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
@@ -14,15 +14,19 @@ function AdminTrekList() {
   const [trekToDelete, setTrekToDelete] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'enabled', 'disabled', 'with-bookings', 'most-booked'
   const [expandedTreks, setExpandedTreks] = useState(new Set());
+  const [showCustomTreks, setShowCustomTreks] = useState(false);
+  const [emailInputs, setEmailInputs] = useState({}); // { [trekId]: email }
+  const [showEmailInput, setShowEmailInput] = useState({}); // { [trekId]: boolean }
+  const [sending, setSending] = useState({}); // { [trekId]: boolean }
 
   useEffect(() => {
     fetchTreks();
-  }, []);
+  }, [showCustomTreks]);
 
   const fetchTreks = async () => {
     try {
       setLoading(true);
-      const data = await getTreks({ includeDisabled: true });
+      const data = await getAllTreksWithCustomToggle(showCustomTreks);
       setTreks(data);
     } catch (err) {
       console.error('Error fetching treks:', err);
@@ -74,6 +78,11 @@ function AdminTrekList() {
   const getFilteredAndSortedTreks = () => {
     let filteredTreks = [...treks];
 
+    // Hide custom treks unless showCustomTreks is true
+    if (!showCustomTreks) {
+      filteredTreks = filteredTreks.filter(trek => !trek.isCustom);
+    }
+
     // Apply filters
     switch (filterStatus) {
       case 'enabled':
@@ -107,6 +116,12 @@ function AdminTrekList() {
       }
       return newSet;
     });
+  };
+
+  // Helper to get custom trek link
+  const getCustomTrekLink = (trek) => {
+    const frontendUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
+    return `${frontendUrl}/custom-trek/${trek._id}`;
   };
 
   if (loading) {
@@ -143,6 +158,31 @@ function AdminTrekList() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-extrabold text-gray-900">Manage Treks</h1>
         <div className="flex items-center space-x-4">
+          {/* Custom Trek Toggle */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Show:</label>
+            <button
+              onClick={() => setShowCustomTreks(false)}
+              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                !showCustomTreks
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Regular Treks
+            </button>
+            <button
+              onClick={() => setShowCustomTreks(true)}
+              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                showCustomTreks
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Custom Treks
+            </button>
+          </div>
+          
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -182,12 +222,22 @@ function AdminTrekList() {
                       <div className="ml-4">
                         <div className={`text-sm font-medium ${!trek.isEnabled ? 'text-gray-500' : 'text-gray-900'}`}>
                           {trek.name}
+                          {trek.isCustom && (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                              Custom
+                            </span>
+                          )}
                         </div>
                         <div className="text-sm text-gray-500">
                           {trek.region} • {trek.difficulty} • {trek.duration} days
                           {trek.bookings && trek.bookings.length > 0 && (
                             <span className="ml-2 text-emerald-600">
                               • {trek.bookings.length} {trek.bookings.length === 1 ? 'booking' : 'bookings'}
+                            </span>
+                          )}
+                          {trek.isCustom && trek.customLinkExpiry && (
+                            <span className="ml-2 text-orange-600">
+                              • Expires {new Date(trek.customLinkExpiry).toLocaleDateString()}
                             </span>
                           )}
                         </div>
@@ -303,6 +353,67 @@ function AdminTrekList() {
                           </div>
                         )}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Custom Trek Link and Email Buttons */}
+                  {trek.isCustom && (
+                    <div className="mt-2 flex flex-col md:flex-row md:items-center gap-2">
+                      {/* Copy Link Button */}
+                      <button
+                        className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 text-xs font-medium"
+                        onClick={() => {
+                          navigator.clipboard.writeText(getCustomTrekLink(trek));
+                          toast.success('Custom trek link copied!');
+                        }}
+                      >
+                        Copy Link
+                      </button>
+                      {/* Share via Email Button */}
+                      <button
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium"
+                        onClick={() => setShowEmailInput(prev => ({ ...prev, [trek._id]: !prev[trek._id] }))}
+                      >
+                        Share via Email
+                      </button>
+                      {/* Email Input and Send Button */}
+                      {showEmailInput[trek._id] && (
+                        <div className="flex flex-col md:flex-row md:items-center gap-2 mt-2">
+                          <input
+                            type="email"
+                            placeholder="Enter email address"
+                            className="border px-2 py-1 rounded text-sm"
+                            value={emailInputs[trek._id] || ''}
+                            onChange={e => setEmailInputs(prev => ({ ...prev, [trek._id]: e.target.value }))}
+                            disabled={sending[trek._id]}
+                            style={{ minWidth: 220 }}
+                          />
+                          <button
+                            className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium"
+                            disabled={sending[trek._id]}
+                            onClick={async () => {
+                              const email = emailInputs[trek._id];
+                              if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                                toast.error('Please enter a valid email address.');
+                                return;
+                              }
+                              setSending(prev => ({ ...prev, [trek._id]: true }));
+                              try {
+                                await sendCustomTrekLink(trek._id, email);
+                                toast.success('Custom trek link sent!');
+                                setShowEmailInput(prev => ({ ...prev, [trek._id]: false }));
+                                setEmailInputs(prev => ({ ...prev, [trek._id]: '' }));
+                              } catch (err) {
+                                toast.error('Failed to send email.');
+                              } finally {
+                                setSending(prev => ({ ...prev, [trek._id]: false }));
+                              }
+                            }}
+                          >
+                            {sending[trek._id] ? 'Sending...' : 'Send'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

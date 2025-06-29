@@ -53,6 +53,9 @@ function TrekList() {
     fetchTreks();
   }, [filters]);
 
+  // Filter out custom treks for public display
+  const publicTreks = treks.filter(trek => !trek.isCustom);
+
   if (loading && treks.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -88,7 +91,7 @@ function TrekList() {
             <>
               <div className="mb-4">
                 <p className="text-gray-600">
-                  Showing {treks.length} {treks.length === 1 ? 'trek' : 'treks'}
+                  Showing {publicTreks.length} {publicTreks.length === 1 ? 'trek' : 'treks'}
                   {filters.category && ` in ${filters.category} category`}
                   {filters.region && ` in ${filters.region}`}
                   {filters.season && ` during ${filters.season}`}
@@ -103,7 +106,7 @@ function TrekList() {
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
               >
                 <AnimatePresence>
-                  {treks.map(trek => (
+                  {publicTreks.map(trek => (
                     <motion.div 
                       key={trek._id} 
                       variants={itemVariants}
@@ -116,7 +119,7 @@ function TrekList() {
                 </AnimatePresence>
               </motion.div>
               
-              {treks.length === 0 && !loading && (
+              {publicTreks.length === 0 && !loading && (
                 <div className="text-center py-12">
                   <p className="text-gray-500 text-lg">No treks found matching your filters.</p>
                   <button 

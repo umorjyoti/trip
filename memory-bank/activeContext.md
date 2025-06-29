@@ -1,6 +1,6 @@
 # Active Context
 
-**Current Focus:** Updated project branding from "TrekBooker" to "Bengaluru Trekkers" throughout the application.
+**Current Focus:** Implementing custom trek feature for admin-created private treks with special booking flow.
 
 **Recent Changes:**
 
@@ -67,3 +67,28 @@
       - Fixed all direct axios calls in `api.js` service to use configured api instance
       - Standardized all API calls to use the configured api instance with proper base URL
     - **Result**: All API calls now use consistent routing without duplicate `/api`
+*   **NEW: Implementing Custom Trek Feature**: Adding support for admin-created private treks with special booking flow:
+    - **Custom Trek Characteristics**:
+      - Completely hidden from general users
+      - Admin dashboard toggle between regular and custom treks
+      - Custom URL structure: `/trek/trek-name`
+      - 2-week expiration date for custom links
+      - Simplified booking flow (no participant details required)
+      - Direct confirmation after payment
+      - Single custom batch per trek
+    - **Implementation Plan**:
+      - Update Trek model with custom trek fields
+      - Modify trek controller for custom trek logic
+      - Update booking flow for custom treks
+      - Enhance admin interface with custom trek toggle
+      - Create custom trek booking form
+      - Update routing for custom trek access
+
+**Next Steps:**
+1. Update Trek model with custom trek fields (isCustom, customLinkExpiry, customAccessToken)
+2. Modify trek controller to handle custom trek creation and access
+3. Update booking controller for simplified custom trek booking flow
+4. Enhance admin dashboard with custom trek toggle
+5. Create custom trek booking form component
+6. Update frontend routing for custom trek access
+7. Test complete flow end-to-end

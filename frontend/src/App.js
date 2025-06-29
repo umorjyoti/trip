@@ -67,6 +67,7 @@ import BlogEditor from './pages/admin/BlogEditor';
 import BookingPreviewPage from './pages/BookingPreviewPage';
 import Career from './pages/Career';
 import AdminCareers from './pages/AdminCareers';
+import CustomTrekDetail from './pages/CustomTrekDetail';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -550,6 +551,9 @@ function App() {
                   </ProtectedRoutes>
                 }
               />
+
+              {/* Custom Trek Detail Route */}
+              <Route path="/custom-trek/:id" element={<CustomTrekDetail />} />
 
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />
