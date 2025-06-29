@@ -29,6 +29,42 @@ function BlogDetail() {
     }
   };
 
+  // Generate JSON-LD structured data
+  const generateStructuredData = () => {
+    if (!blog) return null;
+
+    const structuredData = {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      "headline": blog.title,
+      "description": blog.metaDescription || blog.excerpt,
+      "image": blog.bannerImage,
+      "author": {
+        "@type": "Person",
+        "name": blog.author ? blog.author.name : ''
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Trek Adventures",
+        "logo": {
+          "@type": "ImageObject",
+          "url": `${window.location.origin}/logo.png`
+        }
+      },
+      "datePublished": blog.publishedAt,
+      "dateModified": blog.updatedAt,
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": `${window.location.origin}/blogs/${blog.slug}`
+      },
+      "keywords": (blog.keywords || []).join(', '),
+      "articleSection": "Travel",
+      "wordCount": blog.content ? blog.content.split(/\s+/).length : 0
+    };
+
+    return JSON.stringify(structuredData);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex justify-center items-center">
@@ -58,18 +94,60 @@ function BlogDetail() {
       <Helmet>
         <title>{blog.metaTitle || blog.title}</title>
         <meta name="description" content={blog.metaDescription || blog.excerpt} />
-        <meta name="keywords" content={blog.keywords.join(', ')} />
+        <meta name="keywords" content={(blog.keywords || []).join(', ')} />
+        <link rel="canonical" href={`${window.location.origin}/blogs/${blog.slug}`} />
+        
+        {/* Open Graph */}
         <meta property="og:title" content={blog.metaTitle || blog.title} />
         <meta property="og:description" content={blog.metaDescription || blog.excerpt} />
         <meta property="og:image" content={blog.bannerImage} />
         <meta property="og:type" content="article" />
+        <meta property="og:url" content={`${window.location.origin}/blogs/${blog.slug}`} />
+        <meta property="og:site_name" content="Trek Adventures" />
+        <meta property="article:published_time" content={blog.publishedAt} />
+        <meta property="article:modified_time" content={blog.updatedAt} />
+        <meta property="article:author" content={blog.author ? blog.author.name : ''} />
+        {(blog.keywords || []).map((keyword, index) => (
+          <meta key={index} property="article:tag" content={keyword} />
+        ))}
+        
+        {/* Twitter Cards */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={blog.metaTitle || blog.title} />
         <meta name="twitter:description" content={blog.metaDescription || blog.excerpt} />
         <meta name="twitter:image" content={blog.bannerImage} />
+        <meta name="twitter:site" content="@trekadventures" />
+        
+        {/* JSON-LD Structured Data */}
+        <script type="application/ld+json">
+          {generateStructuredData()}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-gray-50">
+        {/* Breadcrumb Navigation */}
+        <nav className="bg-white shadow-sm border-b">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <ol className="flex items-center space-x-2 text-sm text-gray-600">
+              <li>
+                <a href="/" className="hover:text-emerald-600">Home</a>
+              </li>
+              <li>
+                <span className="mx-2">/</span>
+              </li>
+              <li>
+                <a href="/blogs" className="hover:text-emerald-600">Blog</a>
+              </li>
+              <li>
+                <span className="mx-2">/</span>
+              </li>
+              <li className="text-gray-900 font-medium truncate">
+                {blog.title}
+              </li>
+            </ol>
+          </div>
+        </nav>
+
         {/* Banner Section */}
         <div className="relative h-96">
           {imageLoading && (
@@ -89,9 +167,15 @@ function BlogDetail() {
             <div className="text-center text-white max-w-4xl px-4">
               <h1 className="text-4xl md:text-5xl font-bold mb-4">{blog.title}</h1>
               <div className="flex items-center justify-center space-x-4 text-lg">
-                <span>{blog.author.name}</span>
+                <span>{blog.author ? blog.author.name : ''}</span>
                 <span>•</span>
-                <span>{format(new Date(blog.publishedAt), 'MMMM d, yyyy')}</span>
+                <span>
+                  {blog.publishedAt && !isNaN(new Date(blog.publishedAt))
+                    ? format(new Date(blog.publishedAt), 'MMMM d, yyyy')
+                    : ''}
+                </span>
+                <span>•</span>
+                <span>{blog.readingTime}</span>
               </div>
             </div>
           </div>
@@ -184,7 +268,7 @@ function BlogDetail() {
           {/* Meta Information */}
           <div className="mt-12 pt-8 border-t border-gray-200">
             <div className="flex flex-wrap gap-2">
-              {blog.keywords.map((keyword, index) => (
+              {(blog.keywords || []).map((keyword, index) => (
                 <span
                   key={index}
                   className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800"

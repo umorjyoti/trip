@@ -27,6 +27,16 @@ function BlogEditor() {
     status: 'draft'
   });
 
+  // SEO Analysis state
+  const [seoAnalysis, setSeoAnalysis] = useState({
+    titleLength: 0,
+    descriptionLength: 0,
+    keywordDensity: {},
+    readabilityScore: 0,
+    imageAltTags: 0,
+    internalLinks: 0
+  });
+
   useEffect(() => {
     if (id) {
       fetchBlog();
@@ -260,9 +270,177 @@ function BlogEditor() {
     }
   };
 
+  // Analyze SEO metrics
+  const analyzeSEO = useCallback(() => {
+    const analysis = {
+      titleLength: formData.metaTitle.length,
+      descriptionLength: formData.metaDescription.length,
+      keywordDensity: {},
+      readabilityScore: 0,
+      imageAltTags: 0,
+      internalLinks: 0
+    };
+
+    // Analyze keyword density
+    const contentWords = formData.content.toLowerCase().split(/\s+/);
+    const keywords = formData.keywords.split(',').map(k => k.trim().toLowerCase()).filter(k => k);
+    
+    keywords.forEach(keyword => {
+      const keywordWords = keyword.split(/\s+/);
+      let count = 0;
+      for (let i = 0; i <= contentWords.length - keywordWords.length; i++) {
+        let match = true;
+        for (let j = 0; j < keywordWords.length; j++) {
+          if (contentWords[i + j] !== keywordWords[j]) {
+            match = false;
+            break;
+          }
+        }
+        if (match) count++;
+      }
+      analysis.keywordDensity[keyword] = {
+        count,
+        density: contentWords.length > 0 ? (count / contentWords.length * 100).toFixed(2) : 0
+      };
+    });
+
+    // Count images without alt tags
+    const imgTags = (formData.content.match(/<img[^>]*>/g) || []).length;
+    const imgWithAlt = (formData.content.match(/<img[^>]*alt=["'][^"']*["'][^>]*>/g) || []).length;
+    analysis.imageAltTags = imgTags - imgWithAlt;
+
+    // Count internal links
+    const internalLinks = (formData.content.match(/href=["']\/(?!\/)[^"']*["']/g) || []).length;
+    analysis.internalLinks = internalLinks;
+
+    // Calculate readability score (simple Flesch-Kincaid approximation)
+    const sentences = formData.content.split(/[.!?]+/).length;
+    const words = contentWords.length;
+    const syllables = contentWords.reduce((acc, word) => {
+      return acc + Math.max(1, word.replace(/[^aeiou]/gi, '').length);
+    }, 0);
+    
+    if (sentences > 0 && words > 0) {
+      analysis.readabilityScore = Math.round(206.835 - 1.015 * (words / sentences) - 84.6 * (syllables / words));
+    }
+
+    setSeoAnalysis(analysis);
+  }, [formData]);
+
+  useEffect(() => {
+    analyzeSEO();
+  }, [formData, analyzeSEO]);
+
+  // SEO Preview Component
+  // const SEOPreview = () => (
+  //   <div className="bg-white p-6 rounded-lg shadow-sm border">
+  //     <h3 className="text-lg font-semibold text-gray-900 mb-4">SEO Preview</h3>
+  //     
+  //     {/* Google Search Preview */}
+  //     <div className="mb-6">
+  //       <h4 className="text-sm font-medium text-gray-700 mb-2">Google Search Preview</h4>
+  //       <div className="border rounded-lg p-3 bg-gray-50">
+  //         <div className="text-blue-600 text-sm truncate">
+  //           {window.location.origin}/blogs/{formData.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}
+  //         </div>
+  //         <div className="text-xl text-blue-600 font-medium truncate">
+  //           {formData.metaTitle || formData.title}
+  //         </div>
+  //         <div className="text-sm text-gray-600 line-clamp-2">
+  //           {formData.metaDescription || formData.excerpt}
+  //         </div>
+  //       </div>
+  //     </div>
+  //
+  //     {/* SEO Analysis */}
+  //     <div className="space-y-3">
+  //       <h4 className="text-sm font-medium text-gray-700">SEO Analysis</h4>
+  //       
+  //       {/* Title Length */}
+  //       <div className="flex justify-between items-center">
+  //         <span className="text-sm text-gray-600">Title Length</span>
+  //         <span className={`text-sm font-medium ${
+  //           seoAnalysis.titleLength >= 10 && seoAnalysis.titleLength <= 60 
+  //             ? 'text-green-600' 
+  //             : 'text-red-600'
+  //         }`}>
+  //           {seoAnalysis.titleLength}/60
+  //         </span>
+  //       </div>
+  //
+  //       {/* Description Length */}
+  //       <div className="flex justify-between items-center">
+  //         <span className="text-sm text-gray-600">Description Length</span>
+  //         <span className={`text-sm font-medium ${
+  //           seoAnalysis.descriptionLength >= 50 && seoAnalysis.descriptionLength <= 160 
+  //             ? 'text-green-600' 
+  //             : 'text-red-600'
+  //         }`}>
+  //           {seoAnalysis.descriptionLength}/160
+  //         </span>
+  //       </div>
+  //
+  //       {/* Readability Score */}
+  //       <div className="flex justify-between items-center">
+  //         <span className="text-sm text-gray-600">Readability Score</span>
+  //         <span className={`text-sm font-medium ${
+  //           seoAnalysis.readabilityScore >= 60 
+  //             ? 'text-green-600' 
+  //             : seoAnalysis.readabilityScore >= 30 
+  //               ? 'text-yellow-600' 
+  //               : 'text-red-600'
+  //         }`}>
+  //           {seoAnalysis.readabilityScore}/100
+  //         </span>
+  //       </div>
+  //
+  //       {/* Missing Alt Tags */}
+  //       {seoAnalysis.imageAltTags > 0 && (
+  //         <div className="flex justify-between items-center">
+  //           <span className="text-sm text-gray-600">Missing Alt Tags</span>
+  //           <span className="text-sm font-medium text-red-600">
+  //             {seoAnalysis.imageAltTags} images
+  //           </span>
+  //         </div>
+  //       )}
+  //
+  //       {/* Internal Links */}
+  //       <div className="flex justify-between items-center">
+  //         <span className="text-sm text-gray-600">Internal Links</span>
+  //         <span className={`text-sm font-medium ${
+  //           seoAnalysis.internalLinks >= 2 
+  //             ? 'text-green-600' 
+  //             : 'text-yellow-600'
+  //         }`}>
+  //           {seoAnalysis.internalLinks} links
+  //         </span>
+  //       </div>
+  //
+  //       {/* Keyword Density */}
+  //       {Object.keys(seoAnalysis.keywordDensity).length > 0 && (
+  //         <div className="mt-4">
+  //           <h5 className="text-sm font-medium text-gray-700 mb-2">Keyword Density</h5>
+  //           {Object.entries(seoAnalysis.keywordDensity).map(([keyword, data]) => (
+  //             <div key={keyword} className="flex justify-between items-center text-sm">
+  //               <span className="text-gray-600">{keyword}</span>
+  //               <span className={`font-medium ${
+  //                 data.density >= 0.5 && data.density <= 2.5 
+  //                   ? 'text-green-600' 
+  //                   : 'text-red-600'
+  //               }`}>
+  //                 {data.density}% ({data.count} times)
+  //               </span>
+  //             </div>
+  //           ))}
+  //         </div>
+  //       )}
+  //     </div>
+  //   </div>
+  // );
+
   if (loading) {
     return (
-      <div className="min-h-screen flex justify-center items-center">
+      <div className="min-h-screen flex justify-center items-center bg-gray-50">
         <div className="flex flex-col items-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
           <p className="text-gray-600">Loading blog...</p>
@@ -272,24 +450,22 @@ function BlogEditor() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {id ? 'Edit Blog' : 'Create New Blog'}
-          </h1>
-          <div className="flex space-x-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8 px-2">
+      <div className="w-full max-w-6xl bg-white rounded-2xl shadow-lg p-4 md:p-8">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+          <h1 className="text-xl font-bold text-gray-900 mb-3 md:mb-0">Edit Blog</h1>
+          <div className="flex gap-2">
             <button
-              onClick={() => navigate('/admin/blogs')}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              disabled={submitting}
+              type="button"
+              onClick={() => navigate(-1)}
+              className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-100 font-medium transition text-base"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={() => setIsPreview(!isPreview)}
-              className="text-emerald-600 hover:text-emerald-900"
-              disabled={submitting}
+              className="px-4 py-2 rounded-md bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition text-base"
             >
               {isPreview ? 'Edit' : 'Preview'}
             </button>
@@ -297,119 +473,25 @@ function BlogEditor() {
         </div>
 
         {isPreview ? (
-          <div className="prose prose-lg max-w-none">
-            <h1 className="text-3xl font-bold text-gray-900 mb-6">{formData.title}</h1>
+          <div className="prose prose-base max-w-none">
+            <h1 className="text-xl font-bold text-gray-900 mb-4">{formData.title}</h1>
             {formData.bannerImage && (
               <img
                 src={formData.bannerImage}
                 alt={formData.title}
-                className="w-full max-w-2xl h-96 object-cover rounded-lg mb-8 mx-auto"
+                className="w-full max-w-2xl h-80 object-cover rounded-lg mb-6 mx-auto"
               />
             )}
             <div 
               className="blog-content"
               dangerouslySetInnerHTML={{ __html: formData.content }}
             />
-            <style>{`
-              .blog-content {
-                line-height: 1.8;
-                color: #374151;
-              }
-              .blog-content h1 {
-                font-size: 2.25rem;
-                font-weight: 700;
-                margin: 2rem 0 1rem 0;
-                color: #111827;
-              }
-              .blog-content h2 {
-                font-size: 1.875rem;
-                font-weight: 600;
-                margin: 1.75rem 0 1rem 0;
-                color: #1f2937;
-              }
-              .blog-content h3 {
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin: 1.5rem 0 0.75rem 0;
-                color: #374151;
-              }
-              .blog-content h4 {
-                font-size: 1.25rem;
-                font-weight: 600;
-                margin: 1.25rem 0 0.5rem 0;
-                color: #4b5563;
-              }
-              .blog-content p {
-                margin: 1rem 0;
-                text-align: justify;
-              }
-              .blog-content img {
-                max-width: 600px;
-                height: 400px;
-                object-fit: cover;
-                border-radius: 8px;
-                margin: 1.5rem auto;
-                display: block;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-              }
-              .blog-content ul, .blog-content ol {
-                margin: 1rem 0;
-                padding-left: 2rem;
-              }
-              .blog-content li {
-                margin: 0.5rem 0;
-              }
-              .blog-content blockquote {
-                border-left: 4px solid #10b981;
-                padding-left: 1rem;
-                margin: 1.5rem 0;
-                font-style: italic;
-                color: #6b7280;
-                background-color: #f9fafb;
-                padding: 1rem;
-                border-radius: 4px;
-              }
-              .blog-content code {
-                background-color: #f3f4f6;
-                padding: 0.125rem 0.25rem;
-                border-radius: 3px;
-                font-size: 0.875rem;
-                color: #e11d48;
-              }
-              .blog-content pre {
-                background-color: #1f2937;
-                color: #f9fafb;
-                padding: 1rem;
-                border-radius: 6px;
-                overflow-x: auto;
-                margin: 1.5rem 0;
-              }
-              .blog-content pre code {
-                background-color: transparent;
-                color: inherit;
-                padding: 0;
-              }
-              .blog-content a {
-                color: #10b981;
-                text-decoration: underline;
-              }
-              .blog-content a:hover {
-                color: #059669;
-              }
-              .blog-content strong {
-                font-weight: 600;
-                color: #111827;
-              }
-              .blog-content em {
-                font-style: italic;
-                color: #6b7280;
-              }
-            `}</style>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Title</label>
+              <label className="block text-base font-medium text-gray-800 mb-1">Title</label>
               <input
                 type="text"
                 value={formData.title}
@@ -417,22 +499,19 @@ function BlogEditor() {
                   setFormData({ ...formData, title: e.target.value });
                   setErrors(prev => ({ ...prev, title: '' }));
                 }}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                  errors.title ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.title ? 'border-red-300' : 'border-gray-300'}`}
                 required
+                placeholder="Enter blog title"
               />
               {errors.title && (
                 <p className="mt-1 text-sm text-red-600">{errors.title}</p>
               )}
             </div>
 
+            {/* Excerpt */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Excerpt 
-                <span className="text-gray-500 text-xs ml-1">
-                  ({formData.excerpt.length}/500 characters, min 50)
-                </span>
+              <label className="block text-base font-medium text-gray-800 mb-1">
+                Excerpt <span className="text-gray-500 text-xs ml-1">({formData.excerpt.length}/500 characters, min 50)</span>
               </label>
               <textarea
                 value={formData.excerpt}
@@ -441,9 +520,7 @@ function BlogEditor() {
                   setErrors(prev => ({ ...prev, excerpt: '' }));
                 }}
                 rows={3}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                  errors.excerpt ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 resize-none ${errors.excerpt ? 'border-red-300' : 'border-gray-300'}`}
                 placeholder="Write a brief summary of your blog post (minimum 50 characters)"
                 required
               />
@@ -451,15 +528,16 @@ function BlogEditor() {
                 <p className="mt-1 text-sm text-red-600">{errors.excerpt}</p>
               )}
               {formData.excerpt.length > 0 && formData.excerpt.length < 50 && (
-                <p className="mt-1 text-sm text-yellow-600">
+                <p className="mt-1 text-xs text-yellow-600">
                   {50 - formData.excerpt.length} more characters needed
                 </p>
               )}
             </div>
 
+            {/* Content */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Content</label>
-              <div className={`mt-1 ${errors.content ? 'border-2 border-red-300 rounded-md' : ''}`}>
+              <label className="block text-base font-medium text-gray-800 mb-1">Content</label>
+              <div className={`rounded-lg border bg-gray-50 ${errors.content ? 'border-red-300' : 'border-gray-300'}`}> 
                 <RichTextEditor
                   value={formData.content}
                   onChange={(content) => {
@@ -474,56 +552,47 @@ function BlogEditor() {
               )}
             </div>
 
+            {/* Banner Image */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Banner Image</label>
-              <div className="mt-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleBannerImageChange}
-                  className={`block w-full text-sm text-gray-500
-                    file:mr-4 file:py-2 file:px-4
-                    file:rounded-md file:border-0
-                    file:text-sm file:font-semibold
-                    file:bg-emerald-50 file:text-emerald-700
-                    hover:file:bg-emerald-100
-                    ${errors.bannerImage ? 'border-2 border-red-300 rounded-md' : ''}`}
-                />
-                {uploadingImage && (
-                  <div className="mt-2 flex items-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600 mr-2"></div>
-                    <span className="text-sm text-gray-600">Uploading image...</span>
-                  </div>
-                )}
-                {formData.bannerImage && (
-                  <div className="mt-3">
-                    <div className="relative inline-block">
-                      <img
-                        src={formData.bannerImage}
-                        alt="Banner preview"
-                        className="w-32 h-24 object-cover rounded-md border border-gray-200 shadow-sm"
-                      />
-                      <div className="absolute top-1 right-1">
-                        <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
-                          Preview
-                        </span>
-                      </div>
+              <label className="block text-base font-medium text-gray-800 mb-1">Banner Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleBannerImageChange}
+                className={`block w-full text-base text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-base file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 ${errors.bannerImage ? 'border-2 border-red-300 rounded-md' : ''}`}
+              />
+              {uploadingImage && (
+                <div className="mt-2 flex items-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-600 mr-2"></div>
+                  <span className="text-sm text-gray-600">Uploading image...</span>
+                </div>
+              )}
+              {formData.bannerImage && (
+                <div className="mt-3">
+                  <div className="relative inline-block">
+                    <img
+                      src={formData.bannerImage}
+                      alt="Banner preview"
+                      className="w-40 h-28 object-cover rounded-lg border border-gray-200 shadow-sm"
+                    />
+                    <div className="absolute top-1 right-1">
+                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-emerald-100 text-emerald-800">
+                        Preview
+                      </span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">Banner image preview (will be resized for display)</p>
                   </div>
-                )}
-              </div>
+                  <p className="mt-1 text-xs text-gray-500">Banner image preview (will be resized for display)</p>
+                </div>
+              )}
               {errors.bannerImage && (
                 <p className="mt-1 text-sm text-red-600">{errors.bannerImage}</p>
               )}
             </div>
 
+            {/* Meta Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Meta Title
-                <span className="text-gray-500 text-xs ml-1">
-                  ({formData.metaTitle.length}/60 characters, min 10)
-                </span>
+              <label className="block text-base font-medium text-gray-800 mb-1">
+                Meta Title <span className="text-gray-500 text-xs ml-1">({formData.metaTitle.length}/60 characters, min 10)</span>
               </label>
               <input
                 type="text"
@@ -532,9 +601,7 @@ function BlogEditor() {
                   setFormData({ ...formData, metaTitle: e.target.value });
                   setErrors(prev => ({ ...prev, metaTitle: '' }));
                 }}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                  errors.metaTitle ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.metaTitle ? 'border-red-300' : 'border-gray-300'}`}
                 placeholder="SEO title for search engines (minimum 10 characters)"
                 required
               />
@@ -542,18 +609,16 @@ function BlogEditor() {
                 <p className="mt-1 text-sm text-red-600">{errors.metaTitle}</p>
               )}
               {formData.metaTitle.length > 0 && formData.metaTitle.length < 10 && (
-                <p className="mt-1 text-sm text-yellow-600">
+                <p className="mt-1 text-xs text-yellow-600">
                   {10 - formData.metaTitle.length} more characters needed
                 </p>
               )}
             </div>
 
+            {/* Meta Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Meta Description
-                <span className="text-gray-500 text-xs ml-1">
-                  ({formData.metaDescription.length}/160 characters, min 50)
-                </span>
+              <label className="block text-base font-medium text-gray-800 mb-1">
+                Meta Description <span className="text-gray-500 text-xs ml-1">({formData.metaDescription.length}/160 characters, min 50)</span>
               </label>
               <textarea
                 value={formData.metaDescription}
@@ -562,9 +627,7 @@ function BlogEditor() {
                   setErrors(prev => ({ ...prev, metaDescription: '' }));
                 }}
                 rows={3}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                  errors.metaDescription ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 resize-none ${errors.metaDescription ? 'border-red-300' : 'border-gray-300'}`}
                 placeholder="SEO description for search engines (minimum 50 characters)"
                 required
               />
@@ -572,14 +635,15 @@ function BlogEditor() {
                 <p className="mt-1 text-sm text-red-600">{errors.metaDescription}</p>
               )}
               {formData.metaDescription.length > 0 && formData.metaDescription.length < 50 && (
-                <p className="mt-1 text-sm text-yellow-600">
+                <p className="mt-1 text-xs text-yellow-600">
                   {50 - formData.metaDescription.length} more characters needed
                 </p>
               )}
             </div>
 
+            {/* Keywords */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Keywords (comma-separated)</label>
+              <label className="block text-base font-medium text-gray-800 mb-1">Keywords (comma-separated)</label>
               <input
                 type="text"
                 value={formData.keywords}
@@ -587,22 +651,22 @@ function BlogEditor() {
                   setFormData({ ...formData, keywords: e.target.value });
                   setErrors(prev => ({ ...prev, keywords: '' }));
                 }}
-                className={`mt-1 block w-full rounded-md shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm ${
-                  errors.keywords ? 'border-red-300' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.keywords ? 'border-red-300' : 'border-gray-300'}`}
                 required
+                placeholder="Enter keywords separated by commas"
               />
               {errors.keywords && (
                 <p className="mt-1 text-sm text-red-600">{errors.keywords}</p>
               )}
             </div>
 
+            {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <label className="block text-base font-medium text-gray-800 mb-1">Status</label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50"
                 disabled={submitting}
               >
                 <option value="draft">Draft</option>
@@ -610,10 +674,11 @@ function BlogEditor() {
               </select>
             </div>
 
+            {/* Submit Button */}
             <div className="flex justify-end">
               <button
                 type="submit"
-                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 disabled:opacity-50"
+                className="px-5 py-2 bg-emerald-600 text-white rounded-lg font-semibold text-base hover:bg-emerald-700 transition disabled:opacity-50"
                 disabled={submitting}
               >
                 {submitting ? (

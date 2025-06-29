@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
+import SEOAnalytics from '../../components/SEOAnalytics';
 
 function BlogManagement() {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ function BlogManagement() {
   const [actionLoading, setActionLoading] = useState({});
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('-createdAt');
+  const [selectedBlog, setSelectedBlog] = useState(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   useEffect(() => {
     fetchBlogs();
@@ -68,6 +71,11 @@ function BlogManagement() {
     }
   };
 
+  const handleViewAnalytics = (blog) => {
+    setSelectedBlog(blog);
+    setShowAnalytics(true);
+  };
+
   const filteredBlogs = blogs.filter(blog => {
     if (filter === 'all') return true;
     return blog.status === filter;
@@ -112,6 +120,32 @@ function BlogManagement() {
           </select>
         </div>
       </div>
+
+      {/* Analytics Modal */}
+      {showAnalytics && selectedBlog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  SEO Analytics - {selectedBlog.title}
+                </h2>
+                <button
+                  onClick={() => setShowAnalytics(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              <SEOAnalytics blogId={selectedBlog._id} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {loading ? (
@@ -171,7 +205,7 @@ function BlogManagement() {
                   </div>
                   
                   {/* Action Buttons */}
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+                  <div className="flex flex-wrap justify-between items-center pt-4 border-t border-gray-100 gap-2">
                     <button
                       onClick={() => navigate(`/admin/blogs/${blog._id}`)}
                       className="text-emerald-600 hover:text-emerald-900 text-sm font-medium"

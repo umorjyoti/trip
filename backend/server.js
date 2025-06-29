@@ -189,10 +189,12 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/trekking-
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB connection error:', err));
 
+// Serve blog routes (including sitemap.xml, rss.xml, robots.txt) before static React app
+app.use('/blogs', blogRoutes);
+
 // Serve static assets in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../frontend/build')));
-  
   app.get('*', (req, res) => {
     res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'));
   });

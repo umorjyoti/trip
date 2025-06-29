@@ -34,6 +34,11 @@ const handleMulterError = (err, req, res, next) => {
   next();
 };
 
+// SEO and Feed routes (must come before other routes)
+router.get('/sitemap.xml', blogController.getSitemap);
+router.get('/robots.txt', blogController.getRobotsTxt);
+router.get('/rss.xml', blogController.getRSSFeed);
+
 // Protected routes (admin only)
 router.get('/admin', protect, admin, blogController.getAdminBlogs);
 router.get('/admin/:id', protect, admin, blogController.getAdminBlog);

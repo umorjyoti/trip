@@ -37,6 +37,193 @@ const validateBlogData = (data) => {
   return errors;
 };
 
+// Generate sitemap XML
+const generateSitemap = (blogs, baseUrl) => {
+  const currentDate = new Date().toISOString();
+  
+  let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${baseUrl}</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/blogs</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/treks</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/about</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>${baseUrl}/contact</loc>
+    <lastmod>${currentDate}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`;
+
+  // Add blog URLs
+  blogs.forEach(blog => {
+    sitemap += `
+  <url>
+    <loc>${baseUrl}/blogs/${blog.slug}</loc>
+    <lastmod>${new Date(blog.updatedAt).toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+  });
+
+  sitemap += `
+</urlset>`;
+
+  return sitemap;
+};
+
+// Get sitemap
+exports.getSitemap = async (req, res) => {
+  try {
+    const baseUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    
+    // Check cache
+    const cacheKey = 'sitemap';
+    const cachedSitemap = cache.get(cacheKey);
+    if (cachedSitemap) {
+      res.set('Content-Type', 'application/xml');
+      return res.send(cachedSitemap);
+    }
+
+    // Get all published blogs
+    const blogs = await Blog.find({ status: 'published' })
+      .select('slug updatedAt')
+      .sort('-publishedAt');
+
+    // Generate sitemap
+    const sitemap = generateSitemap(blogs, baseUrl);
+    
+    // Cache the sitemap for 1 hour
+    cache.set(cacheKey, sitemap, 3600);
+    
+    res.set('Content-Type', 'application/xml');
+    res.send(sitemap);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get robots.txt
+exports.getRobotsTxt = async (req, res) => {
+  try {
+    const baseUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    
+    const robotsTxt = `User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: ${baseUrl}/sitemap.xml
+
+# Disallow admin areas
+Disallow: /admin/
+Disallow: /api/admin/
+
+# Disallow private areas
+Disallow: /dashboard/
+Disallow: /profile/
+Disallow: /my-bookings/
+
+# Allow important pages
+Allow: /blogs/
+Allow: /treks/
+Allow: /about/
+Allow: /contact/
+
+# Crawl delay (optional)
+Crawl-delay: 1`;
+
+    res.set('Content-Type', 'text/plain');
+    res.send(robotsTxt);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get RSS feed
+exports.getRSSFeed = async (req, res) => {
+  try {
+    const baseUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    
+    // Check cache
+    const cacheKey = 'rss_feed';
+    const cachedFeed = cache.get(cacheKey);
+    if (cachedFeed) {
+      res.set('Content-Type', 'application/rss+xml');
+      return res.send(cachedFeed);
+    }
+
+    // Get recent published blogs
+    const blogs = await Blog.find({ status: 'published' })
+      .populate('author', 'name')
+      .sort('-publishedAt')
+      .limit(20);
+
+    const currentDate = new Date().toISOString();
+    
+    let rssFeed = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Trek Adventures Blog</title>
+    <link>${baseUrl}/blogs</link>
+    <description>Discover amazing travel stories, trekking tips, and adventure guides from our expert team.</description>
+    <language>en-US</language>
+    <lastBuildDate>${currentDate}</lastBuildDate>
+    <atom:link href="${baseUrl}/rss.xml" rel="self" type="application/rss+xml" />
+    <image>
+      <url>${baseUrl}/logo.png</url>
+      <title>Trek Adventures Blog</title>
+      <link>${baseUrl}/blogs</link>
+    </image>`;
+
+    blogs.forEach(blog => {
+      const pubDate = new Date(blog.publishedAt).toUTCString();
+      const description = blog.excerpt.replace(/<[^>]*>/g, ''); // Remove HTML tags
+      
+      rssFeed += `
+    <item>
+      <title><![CDATA[${blog.title}]]></title>
+      <link>${baseUrl}/blogs/${blog.slug}</link>
+      <guid>${baseUrl}/blogs/${blog.slug}</guid>
+      <pubDate>${pubDate}</pubDate>
+      <description><![CDATA[${description}]]></description>
+      <author>${blog.author.name}</author>
+      <category>Travel</category>
+    </item>`;
+    });
+
+    rssFeed += `
+  </channel>
+</rss>`;
+
+    // Cache the RSS feed for 30 minutes
+    cache.set(cacheKey, rssFeed, 1800);
+    
+    res.set('Content-Type', 'application/rss+xml');
+    res.send(rssFeed);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Delete image from S3
 const deleteImageFromS3 = async (imageUrl) => {
   try {
