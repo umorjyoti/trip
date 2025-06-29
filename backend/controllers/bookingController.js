@@ -954,16 +954,6 @@ const markTrekCompleted = async (req, res) => {
   }
 };
 
-// Booking reminder email (to be called by a scheduler)
-const sendBookingReminderEmail = async (booking, trek, batch) => {
-  if (!booking || !trek || !batch) return;
-  await sendEmail({
-    to: booking.userDetails.email,
-    subject: 'Booking Reminder',
-    text: `Hi ${booking.userDetails.name},\n\nThis is a reminder for your upcoming trek: ${trek.name}.\nBatch: ${batch.startDate ? new Date(batch.startDate).toLocaleDateString() : ''} to ${batch.endDate ? new Date(batch.endDate).toLocaleDateString() : ''}\nParticipants: ${booking.numberOfParticipants}\n\nWe look forward to seeing you!\n\nSafe travels!`
-  });
-};
-
 module.exports = {
   createBooking,
   getUserBookings,
@@ -978,6 +968,5 @@ module.exports = {
   updateBooking,
   exportBookings,
   updateParticipantDetails,
-  sendBookingReminderEmail,
   markTrekCompleted
 };

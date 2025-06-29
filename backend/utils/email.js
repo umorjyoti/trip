@@ -561,8 +561,285 @@ For support, contact us through our website or mobile app.
   });
 };
 
+/**
+ * Send booking reminder email 2 days before trip
+ * @param {Object} booking - Booking object
+ * @param {Object} trek - Trek object
+ * @param {Object} user - User object
+ * @param {Object} batch - Batch object
+ */
+const sendBookingReminderEmail = async (booking, trek, user, batch) => {
+  const emailSubject = `⏰ Trek Reminder - ${trek?.name || 'Your Trek'} starts in 2 days!`;
+  
+  const emailContent = `
+Dear ${user.name},
+
+⏰ TREK REMINDER - Your adventure starts in 2 days!
+
+📋 TRIP DETAILS:
+Trek: ${trek?.name || 'N/A'}
+Start Date: ${batch?.startDate ? new Date(batch.startDate).toLocaleDateString() : 'N/A'}
+End Date: ${batch?.endDate ? new Date(batch.endDate).toLocaleDateString() : 'N/A'}
+Booking ID: ${booking._id}
+Participants: ${booking.numberOfParticipants}
+
+📍 PICKUP & DROP LOCATIONS:
+Pickup: ${booking.pickupLocation || 'To be confirmed'}
+Drop: ${booking.dropLocation || 'To be confirmed'}
+
+🎒 ESSENTIAL PACKING LIST:
+• Comfortable trekking shoes with good grip
+• Weather-appropriate clothing (check weather forecast)
+• Water bottle (at least 2 liters)
+• Energy snacks and light food
+• Personal medications (if any)
+• ID proof (Aadhar/PAN/Driving License)
+• Small backpack for essentials
+• Rain protection (poncho/umbrella)
+• Sun protection (hat, sunglasses, sunscreen)
+
+⚠️ IMPORTANT REMINDERS:
+• Arrive 15 minutes before scheduled pickup time
+• Wear comfortable, weather-appropriate clothing
+• Carry sufficient water and snacks
+• Inform us immediately if you have any health concerns
+• Check weather conditions for your trek location
+
+📞 CONTACT INFORMATION:
+Our team will contact you tomorrow with final pickup details and any last-minute instructions.
+
+❓ NEED HELP?
+If you have any questions or need to make changes, please contact us immediately.
+
+🏔️ Get ready for an amazing adventure!
+
+Best regards,
+The Trek Team
+Your Adventure Awaits!
+
+---
+This is an automated reminder. Please do not reply to this email.
+For support, contact us through our website or mobile app.
+  `;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${emailSubject}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f59e0b;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #f59e0b;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .reminder-container {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+        .countdown {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #f59e0b;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #f59e0b;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .packing-list {
+            list-style: none;
+            padding: 0;
+        }
+        .packing-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+            position: relative;
+            padding-left: 25px;
+        }
+        .packing-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .countdown {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">⏰ Trek Reminder</div>
+            <div class="subtitle">Your Adventure Starts Soon!</div>
+        </div>
+
+        <h2>Dear ${user.name},</h2>
+        
+        <div class="reminder-container">
+            <div class="section-title">⏰ Trek Reminder</div>
+            <p>Your adventure starts in 2 days!</p>
+            <div class="countdown">2 DAYS TO GO!</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📋 Trip Details</div>
+            <ul class="info-list">
+                <li><strong>Trek:</strong> ${trek?.name || 'N/A'}</li>
+                <li><strong>Start Date:</strong> ${batch?.startDate ? new Date(batch.startDate).toLocaleDateString() : 'N/A'}</li>
+                <li><strong>End Date:</strong> ${batch?.endDate ? new Date(batch.endDate).toLocaleDateString() : 'N/A'}</li>
+                <li><strong>Booking ID:</strong> ${booking._id}</li>
+                <li><strong>Participants:</strong> ${booking.numberOfParticipants}</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📍 Pickup & Drop Locations</div>
+            <ul class="info-list">
+                <li><strong>Pickup:</strong> ${booking.pickupLocation || 'To be confirmed'}</li>
+                <li><strong>Drop:</strong> ${booking.dropLocation || 'To be confirmed'}</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🎒 Essential Packing List</div>
+            <ul class="packing-list">
+                <li>Comfortable trekking shoes with good grip</li>
+                <li>Weather-appropriate clothing (check weather forecast)</li>
+                <li>Water bottle (at least 2 liters)</li>
+                <li>Energy snacks and light food</li>
+                <li>Personal medications (if any)</li>
+                <li>ID proof (Aadhar/PAN/Driving License)</li>
+                <li>Small backpack for essentials</li>
+                <li>Rain protection (poncho/umbrella)</li>
+                <li>Sun protection (hat, sunglasses, sunscreen)</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">⚠️ Important Reminders</div>
+            <ul class="packing-list">
+                <li>Arrive 15 minutes before scheduled pickup time</li>
+                <li>Wear comfortable, weather-appropriate clothing</li>
+                <li>Carry sufficient water and snacks</li>
+                <li>Inform us immediately if you have any health concerns</li>
+                <li>Check weather conditions for your trek location</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📞 Contact Information</div>
+            <p>Our team will contact you tomorrow with final pickup details and any last-minute instructions.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">❓ Need Help?</div>
+            <p>If you have any questions or need to make changes, please contact us immediately.</p>
+        </div>
+
+        <p style="text-align: center; font-size: 18px; color: #f59e0b; margin: 30px 0;">
+            🏔️ Get ready for an amazing adventure!
+        </p>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Trek Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                This is an automated reminder. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+
+  await sendEmail({
+    to: user.email,
+    subject: emailSubject,
+    text: emailContent,
+    html: htmlContent
+  });
+};
+
 module.exports = { 
   sendEmail, 
   sendBookingConfirmationEmail, 
-  sendPaymentReceivedEmail 
+  sendPaymentReceivedEmail,
+  sendBookingReminderEmail
 };
