@@ -1274,20 +1274,14 @@ exports.exportBatchParticipants = async (req, res) => {
     console.log('Export participants - req.params:', req.params);
     console.log('Export participants - req.query:', req.query);
     
-    // The route uses :id and :batchId, so we need to extract them correctly
-    const trekId = req.params.id; // Changed from req.params.trekId
+    const trekId = req.params.id;
     const batchId = req.params.batchId;
     const { fields } = req.query;
 
-    console.log('Extracted IDs - trekId:', trekId, 'batchId:', batchId);
-
-    // Validate MongoDB IDs
     if (!mongoose.Types.ObjectId.isValid(trekId) || !mongoose.Types.ObjectId.isValid(batchId)) {
-      console.log('Invalid IDs - trekId valid:', mongoose.Types.ObjectId.isValid(trekId), 'batchId valid:', mongoose.Types.ObjectId.isValid(batchId));
       return res.status(400).json({ message: 'Invalid trek or batch ID format' });
     }
 
-    // Find the trek and batch
     const trek = await Trek.findById(trekId);
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
@@ -1308,65 +1302,45 @@ exports.exportBatchParticipants = async (req, res) => {
 
     // Parse fields parameter
     const selectedFields = fields ? fields.split(',') : [];
-    
-    // Define available fields
-    const availableFields = {
-      // Participant Details
-      participantName: 'Participant Name',
-      participantAge: 'Age',
-      participantGender: 'Gender',
-      participantPhone: 'Contact Number',
-      
-      // Emergency Contact
-      emergencyContactName: 'Emergency Contact Name',
-      emergencyContactPhone: 'Emergency Contact Phone',
-      emergencyContactRelation: 'Emergency Contact Relation',
-      
-      // Health & Safety
-      medicalConditions: 'Medical Conditions',
-      specialRequests: 'Special Requests',
-      
-      // Booking Information
-      bookingUserName: 'Booking User Name',
-      bookingUserEmail: 'Booking User Email',
-      bookingUserPhone: 'Booking User Phone',
-      bookingDate: 'Booking Date',
-      bookingStatus: 'Booking Status',
-      totalPrice: 'Total Price',
-      
-      // Logistics
-      pickupLocation: 'Pickup Location',
-      dropLocation: 'Drop Location',
-      additionalRequests: 'Additional Requests'
-    };
 
-    // Add custom fields from trek
-    console.log('Processing custom fields in export:', trek.customFields);
-    if (trek.customFields && Array.isArray(trek.customFields)) {
-      trek.customFields.forEach(field => {
-        console.log('Adding custom field to available fields:', field.fieldName);
-        availableFields[`custom_${field.fieldName}`] = field.fieldName;
-      });
-    }
-    console.log('Available fields after adding custom fields:', availableFields);
+    // Build headers
+    const headers = selectedFields.map(field => {
+      switch (field) {
+        case 'participantName': return 'Participant Name';
+        case 'participantAge': return 'Age';
+        case 'participantGender': return 'Gender';
+        case 'contactNumber': return 'Contact Number';
+        case 'emergencyContactName': return 'Emergency Contact Name';
+        case 'emergencyContactPhone': return 'Emergency Contact Phone';
+        case 'emergencyContactRelation': return 'Emergency Contact Relation';
+        case 'medicalConditions': return 'Medical Conditions';
+        case 'specialRequests': return 'Special Requests';
+        case 'bookingUserName': return 'Booking User Name';
+        case 'bookingUserEmail': return 'Booking User Email';
+        case 'bookingUserPhone': return 'Booking User Phone';
+        case 'bookingDate': return 'Booking Date';
+        case 'status': return 'Booking Status';
+        case 'totalPrice': return 'Total Price';
+        case 'pickupLocation': return 'Pickup Location';
+        case 'dropLocation': return 'Drop Location';
+        case 'additionalRequests': return 'Additional Requests';
+        default:
+          // Custom fields
+          if (field.startsWith('custom_')) {
+            return field.replace('custom_', '');
+          }
+          return field;
+      }
+    });
 
-    // Use selected fields or default to first 10 available
-    const fieldsToExport = selectedFields.length > 0 
-      ? selectedFields.slice(0, 10) 
-      : Object.keys(availableFields).slice(0, 10);
+    const tableData = [headers];
 
-    // Prepare data for PDF
-    const tableData = [];
-    
-    // Add header row
-    const headers = fieldsToExport.map(field => availableFields[field] || field);
-    tableData.push(headers);
-
-    // Add data rows
     bookings.forEach(booking => {
-      if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+      if (booking.participantDetails && booking.participantDetails.length > 0) {
         booking.participantDetails.forEach(participant => {
-          const row = fieldsToExport.map(field => {
+          // Debug: log participant object
+          console.log('Exporting participant:', participant);
+          const row = selectedFields.map(field => {
             switch (field) {
               case 'participantName':
                 return participant.name || 'N/A';
@@ -1374,8 +1348,8 @@ exports.exportBatchParticipants = async (req, res) => {
                 return participant.age || 'N/A';
               case 'participantGender':
                 return participant.gender || 'N/A';
-              case 'participantPhone':
-                return participant.contactNumber || 'N/A';
+              case 'contactNumber':
+                return participant.phone || participant.contactNumber || 'N/A';
               case 'emergencyContactName':
                 return participant.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
@@ -1394,10 +1368,10 @@ exports.exportBatchParticipants = async (req, res) => {
                 return booking.user?.phone || 'N/A';
               case 'bookingDate':
                 return booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A';
-              case 'bookingStatus':
+              case 'status':
                 return booking.status || 'N/A';
               case 'totalPrice':
-                return booking.totalPrice ? `₹${booking.totalPrice}` : 'N/A';
+                return booking.totalPrice || 'N/A';
               case 'pickupLocation':
                 return booking.pickupLocation || 'N/A';
               case 'dropLocation':
@@ -1409,23 +1383,44 @@ exports.exportBatchParticipants = async (req, res) => {
                 if (field.startsWith('custom_')) {
                   const customFieldKey = field.replace('custom_', '');
                   const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
-                  console.log('Processing custom field:', customFieldKey, 'Found field:', customField);
-                  if (customField) {
-                    // Look for the response using fieldId which should match the fieldName
-                    const customFieldResponse = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey);
-                    console.log('Found custom field response:', customFieldResponse);
-                    const value = customFieldResponse?.value;
-                    if (Array.isArray(value)) {
-                      return value.join(', ') || 'N/A';
-                    }
-                    return value || 'N/A';
+                  const customFieldResponse = participant.customFields?.[customFieldKey] || participant.customFieldResponses?.find(f => f.fieldId === customFieldKey)?.value;
+                  if (Array.isArray(customFieldResponse)) {
+                    return customFieldResponse.join(', ') || 'N/A';
                   }
+                  return customFieldResponse || 'N/A';
                 }
                 return 'N/A';
             }
           });
           tableData.push(row);
         });
+      } else {
+        // No participants, export booking-level info
+        const row = selectedFields.map(field => {
+          switch (field) {
+            case 'bookingUserName':
+              return booking.user?.name || 'N/A';
+            case 'bookingUserEmail':
+              return booking.user?.email || 'N/A';
+            case 'bookingUserPhone':
+              return booking.user?.phone || 'N/A';
+            case 'bookingDate':
+              return booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A';
+            case 'status':
+              return booking.status || 'N/A';
+            case 'totalPrice':
+              return booking.totalPrice || 'N/A';
+            case 'pickupLocation':
+              return booking.pickupLocation || 'N/A';
+            case 'dropLocation':
+              return booking.dropLocation || 'N/A';
+            case 'additionalRequests':
+              return booking.additionalRequests || 'N/A';
+            default:
+              return 'N/A';
+          }
+        });
+        tableData.push(row);
       }
     });
 
