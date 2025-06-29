@@ -321,7 +321,7 @@ export const getAllBookings = async (page = 1, filters = {}) => {
 
 export const updateBookingStatus = async (bookingId, status) => {
   try {
-    if (!status || !['confirmed', 'cancelled'].includes(status)) {
+    if (!status || !['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled'].includes(status)) {
       throw new Error('Invalid status value');
     }
     
@@ -329,6 +329,16 @@ export const updateBookingStatus = async (bookingId, status) => {
     return response.data;
   } catch (error) {
     const errorMessage = error.response?.data?.message || 'Failed to update booking status';
+    throw new Error(errorMessage);
+  }
+};
+
+export const markTrekCompleted = async (bookingId) => {
+  try {
+    const response = await api.put(`/bookings/${bookingId}/complete-trek`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to mark trek as completed';
     throw new Error(errorMessage);
   }
 };

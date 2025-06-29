@@ -74,7 +74,44 @@ function BookingConfirmation() {
   }
 
   // Determine if payment is needed based on status
-  const needsPayment = booking.status === 'pending';
+  const needsPayment = booking.status === 'pending_payment';
+  const needsParticipantDetails = booking.status === 'payment_completed';
+  const isConfirmed = booking.status === 'confirmed';
+  const isTrekCompleted = booking.status === 'trek_completed';
+
+  const getStatusMessage = () => {
+    switch (booking.status) {
+      case 'pending_payment':
+        return 'Payment Pending - Please complete your payment to proceed';
+      case 'payment_completed':
+        return 'Payment Completed - Please fill in participant details to confirm your booking';
+      case 'confirmed':
+        return 'Booking Confirmed - Your trek is confirmed and ready!';
+      case 'trek_completed':
+        return 'Trek Completed - Hope you had a great adventure!';
+      case 'cancelled':
+        return 'Booking Cancelled';
+      default:
+        return 'Booking Status Unknown';
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'pending_payment':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'payment_completed':
+        return 'bg-blue-100 text-blue-800';
+      case 'confirmed':
+        return 'bg-green-100 text-green-800';
+      case 'trek_completed':
+        return 'bg-purple-100 text-purple-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -88,7 +125,7 @@ function BookingConfirmation() {
             </div>
             <div className="ml-4">
               <h1 className="text-2xl font-bold text-gray-900">Booking Confirmed!</h1>
-              <p className="text-sm text-gray-500">Your booking has been successfully processed.</p>
+              <p className="text-sm text-gray-500">{getStatusMessage()}</p>
             </div>
           </div>
         </div>
@@ -120,11 +157,7 @@ function BookingConfirmation() {
             <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Status</dt>
               <dd className="mt-1 sm:mt-0 sm:col-span-2">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                  booking.status === 'confirmed' ? 'bg-green-100 text-green-800' : 
-                  booking.status === 'cancelled' ? 'bg-red-100 text-red-800' : 
-                  'bg-yellow-100 text-yellow-800'
-                }`}>
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(booking.status)}`}>
                   {booking.status}
                 </span>
               </dd>
@@ -157,6 +190,14 @@ function BookingConfirmation() {
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Proceed to Payment
+              </Link>
+            )}
+            {needsParticipantDetails && (
+              <Link
+                to={`/booking/${booking._id}/participants`}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Fill Participant Details
               </Link>
             )}
             <Link

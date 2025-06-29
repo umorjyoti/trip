@@ -66,15 +66,28 @@ function ParticipantDetailsPage() {
     // eslint-disable-next-line
   }, [trekId, batchId]);
 
-  // Fetch booking to get batch if not in trek
+  // Fetch booking to get batch if not in trek, and set correct number of participant forms
   useEffect(() => {
-    if (!batch && bookingId) {
+    if (bookingId) {
       getBookingById(bookingId).then(data => {
         if (data && data.batch) setBatch(data.batch);
         if (data && data.trek) setTrek(data.trek);
+        // Ensure correct number of participant forms
+        if (data && data.participants && participants.length !== data.participants) {
+          setParticipants(Array.from({ length: data.participants }, (_, i) => participants[i] || {
+            name: "",
+            email: "",
+            phone: "",
+            age: "",
+            gender: "",
+            allergies: "",
+            extraComment: "",
+            customFields: {}
+          }));
+        }
       });
     }
-  }, [batch, bookingId]);
+  }, [bookingId]);
 
   const handleChange = (idx, e) => {
     const { name, value } = e.target;
@@ -110,7 +123,7 @@ function ParticipantDetailsPage() {
         additionalRequests: "" // Default empty value
       });
       toast.success("Participant details saved!");
-      navigate(`/booking/${bookingId}/preview`);
+      navigate(`/booking-confirmation/${bookingId}`);
     } catch (error) {
       toast.error(error.message || "Failed to save details");
     } finally {

@@ -92,7 +92,7 @@ exports.verifyPayment = async (req, res) => {
         .populate('user', 'name email');
       
       if (booking) {
-        booking.status = 'confirmed';
+        booking.status = 'payment_completed';
         booking.paymentDetails = {
           paymentId: razorpay_payment_id,
           orderId: razorpay_order_id,

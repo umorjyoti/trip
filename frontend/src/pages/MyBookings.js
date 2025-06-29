@@ -8,6 +8,7 @@ function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -37,8 +38,14 @@ function MyBookings() {
   const getStatusBadgeClass = (status) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
+      case 'pending_payment':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'payment_completed':
+        return 'bg-blue-100 text-blue-800';
       case 'confirmed':
         return 'bg-green-100 text-green-800';
+      case 'trek_completed':
+        return 'bg-purple-100 text-purple-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
       case 'completed':
@@ -47,6 +54,73 @@ function MyBookings() {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getResumeAction = (booking) => {
+    switch (booking.status) {
+      case 'pending_payment':
+        return {
+          text: 'Complete Payment',
+          link: `/payment/${booking._id}`,
+          color: 'bg-yellow-600 hover:bg-yellow-700',
+          icon: '💳'
+        };
+      case 'payment_completed':
+        return {
+          text: 'Fill Participant Details',
+          link: `/booking/${booking._id}/participant-details`,
+          color: 'bg-blue-600 hover:bg-blue-700',
+          icon: '👥'
+        };
+      default:
+        return null;
+    }
+  };
+
+  const isIncompleteBooking = (status) => {
+    return ['pending_payment', 'payment_completed'].includes(status);
+  };
+
+  const getBookingProgress = (status) => {
+    switch (status) {
+      case 'pending_payment':
+        return { step: 1, total: 3, label: 'Payment Pending' };
+      case 'payment_completed':
+        return { step: 2, total: 3, label: 'Payment Complete' };
+      case 'confirmed':
+        return { step: 3, total: 3, label: 'Booking Confirmed' };
+      case 'trek_completed':
+        return { step: 4, total: 4, label: 'Trek Completed' };
+      default:
+        return { step: 0, total: 3, label: 'Unknown' };
+    }
+  };
+
+  const ProgressIndicator = ({ booking }) => {
+    const progress = getBookingProgress(booking.status);
+    const isIncomplete = isIncompleteBooking(booking.status);
+    
+    if (!isIncomplete) return null;
+    
+    return (
+      <div className="mt-2">
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+          <span>Step {progress.step} of {progress.total}</span>
+          <span>{progress.label}</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div 
+            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(progress.step / progress.total) * 100}%` }}
+          ></div>
+        </div>
+      </div>
+    );
+  };
+
+  const incompleteBookings = bookings.filter(booking => isIncompleteBooking(booking.status));
+  const filteredBookings = showIncompleteOnly 
+    ? bookings.filter(booking => isIncompleteBooking(booking.status))
+    : bookings;
 
   if (loading) {
     return (
@@ -77,6 +151,108 @@ function MyBookings() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Incomplete Bookings Notification Banner */}
+      {incompleteBookings.length > 0 && (
+        <div className="mb-6 bg-gradient-to-r from-yellow-400 to-orange-400 border-l-4 border-yellow-600 p-4 rounded-md shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-6 w-6 text-yellow-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  Action Required: Complete Your Booking{incompleteBookings.length > 1 ? 's' : ''}
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    You have {incompleteBookings.length} incomplete booking{incompleteBookings.length > 1 ? 's' : ''} that need{incompleteBookings.length > 1 ? '' : 's'} your attention. 
+                    {incompleteBookings.some(b => b.status === 'pending_payment') && ' Some require payment.'}
+                    {incompleteBookings.some(b => b.status === 'payment_completed') && ' Some need participant details.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="ml-4 flex-shrink-0">
+              <button
+                onClick={() => setShowIncompleteOnly(true)}
+                className="bg-yellow-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-yellow-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+              >
+                View Incomplete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Actions for Incomplete Bookings */}
+      {incompleteBookings.length > 0 && (
+        <div className="mb-6 bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {incompleteBookings.slice(0, 3).map((booking) => {
+              const resumeAction = getResumeAction(booking);
+              if (!resumeAction) return null;
+              
+              return (
+                <div key={booking._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900 truncate">
+                      {booking.trek?.name || 'Unknown Trek'}
+                    </h4>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeClass(booking.status)}`}>
+                      {booking.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {resumeAction.text} to continue your booking
+                  </p>
+                  <Link
+                    to={resumeAction.link}
+                    className={`inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white ${resumeAction.color} hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
+                  >
+                    <span className="mr-1">{resumeAction.icon}</span>
+                    {resumeAction.text}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+          {incompleteBookings.length > 3 && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => setShowIncompleteOnly(true)}
+                className="text-emerald-600 hover:text-emerald-800 font-medium"
+              >
+                View all {incompleteBookings.length} incomplete bookings →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Success Message for Complete Bookings */}
+      {bookings.length > 0 && incompleteBookings.length === 0 && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800">
+                All your bookings are complete! 🎉
+              </p>
+              <p className="text-sm text-green-700 mt-1">
+                You're all set for your upcoming adventures.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
         <Link
@@ -95,6 +271,27 @@ function MyBookings() {
           <p className="mt-2 text-sm text-gray-700">
             View and manage all your trek bookings.
           </p>
+          {incompleteBookings.length > 0 && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <span className="text-yellow-800 font-medium">
+                    ⏳ You have {incompleteBookings.length} incomplete booking{incompleteBookings.length > 1 ? 's' : ''} that need attention
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowIncompleteOnly(!showIncompleteOnly)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                    showIncompleteOnly 
+                      ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
+                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                  }`}
+                >
+                  {showIncompleteOnly ? 'Show All' : 'Show Incomplete Only'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -132,6 +329,9 @@ function MyBookings() {
                         Status
                       </th>
                       <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+                        Next Action
+                      </th>
+                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
                         Created At
                       </th>
                       <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
@@ -140,38 +340,65 @@ function MyBookings() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
-                    {bookings.map((booking) => (
-                      <tr key={booking._id}>
-                        <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                          {booking.trek ? booking.trek.name : 'N/A'}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {booking.batch && booking.batch.startDate ? formatDate(booking.batch.startDate) : 'N/A'}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {booking.participants || 0}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          ₹{booking.totalPrice ? booking.totalPrice.toFixed(2) : '0.00'}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(booking.status)}`}>
-                            {booking.status}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                          {formatDate(booking.createdAt)}
-                        </td>
-                        <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                          <Link
-                            to={`/booking-detail/${booking._id}`}
-                            className="text-emerald-600 hover:text-emerald-900"
-                          >
-                            View
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredBookings.map((booking) => {
+                      const resumeAction = getResumeAction(booking);
+                      const isIncomplete = isIncompleteBooking(booking.status);
+                      
+                      return (
+                        <tr key={booking._id} className={isIncomplete ? 'bg-yellow-50' : ''}>
+                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                            <div className="flex items-center">
+                              {booking.trek ? booking.trek.name : 'N/A'}
+                              {isIncomplete && (
+                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  ⏳ Incomplete
+                                </span>
+                              )}
+                            </div>
+                            <ProgressIndicator booking={booking} />
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {booking.batch && booking.batch.startDate ? formatDate(booking.batch.startDate) : 'N/A'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {booking.participants || 0}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            ₹{booking.totalPrice ? booking.totalPrice.toFixed(2) : '0.00'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(booking.status)}`}>
+                              {booking.status}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {resumeAction ? resumeAction.text : 'N/A'}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                            {formatDate(booking.createdAt)}
+                          </td>
+                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                            <div className="flex items-center justify-end space-x-2">
+                              {resumeAction && (
+                                <Link
+                                  to={resumeAction.link}
+                                  className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white ${resumeAction.color} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
+                                >
+                                  <span className="mr-1">{resumeAction.icon}</span>
+                                  {resumeAction.text}
+                                </Link>
+                              )}
+                              <Link
+                                to={`/booking-detail/${booking._id}`}
+                                className="text-emerald-600 hover:text-emerald-900"
+                              >
+                                View
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -29,7 +29,13 @@ const PaymentConfirmation = ({ bookingId, amount }) => {
         
         <div className="mt-8 space-y-3">
           <Link 
-            to={`/bookings/${bookingId}`} 
+            to={`/booking/${bookingId}/participant-details`} 
+            className="block w-full py-3 px-4 text-center bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm"
+          >
+            Fill Participant Details
+          </Link>
+          <Link 
+            to={`/booking-detail/${bookingId}`} 
             className="block w-full py-3 px-4 text-center bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md shadow-sm"
           >
             View Booking Details

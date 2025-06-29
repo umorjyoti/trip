@@ -72,9 +72,11 @@ const BookingList = () => {
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
+            <option value="pending_payment">Pending Payment</option>
+            <option value="payment_completed">Payment Completed</option>
             <option value="confirmed">Confirmed</option>
+            <option value="trek_completed">Trek Completed</option>
             <option value="cancelled">Cancelled</option>
-            <option value="completed">Completed</option>
           </select>
         </div>
       </div>
@@ -98,6 +100,9 @@ const BookingList = () => {
                       </p>
                       <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        booking.status === 'pending_payment' ? 'bg-yellow-100 text-yellow-800' :
+                        booking.status === 'payment_completed' ? 'bg-blue-100 text-blue-800' :
+                        booking.status === 'trek_completed' ? 'bg-purple-100 text-purple-800' :
                         booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'

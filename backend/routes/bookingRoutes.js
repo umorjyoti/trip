@@ -207,6 +207,13 @@ router.put('/:id',
 // Update participant details after payment
 router.put('/:id/participants', protect, bookingController.updateParticipantDetails);
 
+// Mark trek as completed (admin only)
+router.put('/:id/complete-trek', 
+  protect, 
+  checkPermission('actions', 'manageBookings'), 
+  bookingController.markTrekCompleted
+);
+
 // Export bookings
 router.get('/admin/export', protect, admin, bookingController.exportBookings);
 

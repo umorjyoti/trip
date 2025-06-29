@@ -170,9 +170,11 @@ const BookingForm = () => {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
           >
             <option value="pending">Pending</option>
+            <option value="pending_payment">Pending Payment</option>
+            <option value="payment_completed">Payment Completed</option>
             <option value="confirmed">Confirmed</option>
+            <option value="trek_completed">Trek Completed</option>
             <option value="cancelled">Cancelled</option>
-            <option value="completed">Completed</option>
           </select>
         </div>
 

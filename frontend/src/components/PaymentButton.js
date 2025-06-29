@@ -31,7 +31,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
           throw new Error('Authentication required');
         }
 
-        const response = await fetch('/api/payments/get-key', {
+        const response = await fetch('/payments/get-key', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -79,14 +79,14 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
       }
 
       // Create order on backend
-      const response = await fetch('/api/payments/create-order', {
+      const response = await fetch('/payments/create-order', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: amount * 100, // Convert to paise
+          amount: Math.round(amount), // Send as integer rupees
           bookingId,
           partial_payment: allowPartialPayment,
         }),
@@ -113,7 +113,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         handler: async function (response) {
           try {
             // Verify payment on backend
-            const verifyResponse = await fetch('/api/payments/verify', {
+            const verifyResponse = await fetch('/payments/verify', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,

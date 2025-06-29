@@ -70,7 +70,7 @@ const createBooking = async (req, res) => {
       addOns: Array.isArray(addOns) ? addOns : [],
       userDetails,
       totalPrice,
-      status: "pending",
+      status: "pending_payment",
     });
 
     // Save booking
@@ -164,16 +164,30 @@ const getBookingById = async (req, res) => {
     }
 
     // Check if the booking belongs to the logged-in user or user is admin
+    console.log("Backend authorization check:", {
+      bookingUserId: booking.user._id,
+      bookingUserType: typeof booking.user._id,
+      reqUserId: req.user._id,
+      reqUserType: typeof req.user._id,
+      bookingUserString: booking.user.toString(),
+      reqUserString: req.user._id.toString(),
+      isAdmin: req.user.isAdmin,
+      role: req.user.role
+    });
+    
     if (
       booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
       !req.user.isAdmin &&
       req.user.role !== "admin"
     ) {
+      console.log("Authorization failed - user not authorized");
       return res
         .status(403)
         .json({ message: "Not authorized to view this booking" });
     }
+    
+    console.log("Authorization successful - user authorized");
 
     let batchData = null;
     let trekInfo = booking.trek || null;
@@ -302,7 +316,7 @@ const updateBookingStatus = async (req, res) => {
     const { status } = req.body;
 
     // Validate status
-    const validStatuses = ["pending", "confirmed", "cancelled", "completed"];
+    const validStatuses = ["pending", "pending_payment", "payment_completed", "confirmed", "trek_completed", "cancelled"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -905,6 +919,41 @@ const updateParticipantDetails = async (req, res) => {
   }
 };
 
+// Mark trek as completed
+const markTrekCompleted = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Check if user is authorized (admin only)
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to mark trek as completed" });
+    }
+
+    // Only confirmed bookings can be marked as completed
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ 
+        message: "Only confirmed bookings can be marked as trek completed" 
+      });
+    }
+
+    booking.status = 'trek_completed';
+    await booking.save();
+
+    res.json({ 
+      message: "Trek marked as completed successfully",
+      booking 
+    });
+  } catch (error) {
+    console.error("Error marking trek as completed:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Booking reminder email (to be called by a scheduler)
 const sendBookingReminderEmail = async (booking, trek, batch) => {
   if (!booking || !trek || !batch) return;
@@ -929,5 +978,6 @@ module.exports = {
   updateBooking,
   exportBookings,
   updateParticipantDetails,
-  sendBookingReminderEmail
+  sendBookingReminderEmail,
+  markTrekCompleted
 };
