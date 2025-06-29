@@ -4,11 +4,11 @@ function About() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-6">About TrekBooker</h1>
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-6">About Bengaluru Trekkers</h1>
         
         <div className="prose prose-emerald max-w-none">
           <p className="text-lg text-gray-700 mb-6">
-            TrekBooker is your ultimate companion for discovering and booking unforgettable trekking adventures around the world.
+            Bengaluru Trekkers is your ultimate companion for discovering and booking unforgettable trekking adventures around the world.
           </p>
           
           <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">Our Mission</h2>
@@ -18,7 +18,7 @@ function About() {
           
           <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">Our Story</h2>
           <p className="text-gray-700 mb-6">
-            Founded by a group of passionate trekkers, TrekBooker was born from the desire to simplify the process of finding and booking quality trekking experiences. We understand the challenges of planning adventure trips, from finding reliable guides to ensuring safety and environmental responsibility.
+            Founded by a group of passionate trekkers, Bengaluru Trekkers was born from the desire to simplify the process of finding and booking quality trekking experiences. We understand the challenges of planning adventure trips, from finding reliable guides to ensuring safety and environmental responsibility.
           </p>
           
           <h2 className="text-2xl font-bold text-gray-900 mt-8 mb-4">What We Offer</h2>

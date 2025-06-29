@@ -1,9 +1,18 @@
 # Active Context
 
-**Current Focus:** Fixed API routing issues causing duplicate `/api/api/upload` paths and other API endpoint problems.
+**Current Focus:** Updated project branding from "TrekBooker" to "Bengaluru Trekkers" throughout the application.
 
 **Recent Changes:**
 
+*   **Branding Update**: Successfully changed all occurrences of "TrekBooker" to "Bengaluru Trekkers" and "trekbooker.com" to "bengalurutrekkers.com" throughout the codebase:
+    - Updated memory bank files (projectbrief.md, productContext.md)
+    - Updated frontend components (Header, Navbar, Footer, HeroSection, AdminLayout)
+    - Updated frontend pages (About, Contact)
+    - Updated backend controller (careerController.js)
+    - Updated test files (Header.test.js)
+    - Updated public files (index.html, manifest.json)
+    - All email addresses changed from @trekbooker.com to @bengalurutrekkers.com
+    - All display names and titles updated to reflect the new branding with proper spacing ("Bengaluru Trekkers")
 *   Created initial versions of all core Memory Bank files based on codebase analysis.
 *   **Fixed registration duplicate email error**: Updated `backend/controllers/authController.js` to properly handle duplicate email errors during user registration. The issue was that the duplicate email check was commented out, causing MongoDB to throw E11000 duplicate key errors. Now the system:
     - Checks for existing users by email before attempting to create a new user
@@ -57,26 +66,4 @@
       - Updated `TrekForm` component to use API service for upload operations
       - Fixed all direct axios calls in `api.js` service to use configured api instance
       - Standardized all API calls to use the configured api instance with proper base URL
-    - **Result**: All API calls now use consistent routing without duplicate `/api` paths
-
-**Next Steps:**
-
-1.  Test the complete OTP verification flow for both registration and login
-2.  Test that regular users can now access all booking functionality without permission issues
-3.  Test that upload functionality works correctly without 404 errors
-4.  Consider implementing Redis for temporary storage in production
-5.  Add email verification resend functionality for existing users
-6.  Consider adding rate limiting for OTP requests
-7.  Await further instructions or specific tasks from the user.
-
-**Active Decisions/Considerations:**
-
-*   The analysis assumes the codebase provided represents the current state of the project.
-*   Features like promo codes, offers, support tickets, and detailed file upload handling are inferred from routes/controllers/models but their full implementation details require further investigation if they become the focus.
-*   **Registration Error Handling**: The system now provides user-friendly error messages for duplicate emails and usernames, improving the user experience during registration.
-*   **OTP Verification System**: Users must now verify their email with OTP before their account is created and they can log in. This improves security and ensures email validity.
-*   **Token Storage**: JWT tokens are now stored in both localStorage and sessionStorage for better persistence and security.
-*   **Temporary Storage**: Currently using in-memory Map for pending registrations. In production, this should be replaced with Redis or a similar persistent storage solution.
-*   **Permission System**: The permission system is designed for admin functions and should not block regular users from accessing their own data. Controllers should handle authorization logic for user-specific data access.
-*   **Booking Management**: Regular users should have full control over their own bookings (view, update, cancel, manage participants) without needing special permissions or user group assignments.
-*   **API Configuration**: All frontend API calls should use the configured API service instance to ensure consistent routing and avoid duplicate path issues. The proxy configuration in `package.json` should match the API service base URL. 
+    - **Result**: All API calls now use consistent routing without duplicate `/api`

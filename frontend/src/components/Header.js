@@ -109,7 +109,7 @@ function Header() {
           <div className="flex items-center">
             <Link to="/" className="flex-shrink-0 flex items-center">
               <span className="text-2xl font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
-                TrekBooker
+                Bengaluru Trekkers
               </span>
             </Link>
             <nav className="hidden sm:ml-8 sm:flex sm:space-x-6">

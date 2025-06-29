@@ -71,7 +71,7 @@ function Footer() {
           </a>
         </div>
         <p className="mt-8 text-center text-base text-gray-400">
-          &copy; {new Date().getFullYear()} TrekBooker, Inc. All rights reserved.
+          &copy; {new Date().getFullYear()} Bengaluru Trekkers, Inc. All rights reserved.
         </p>
       </div>
     </footer>

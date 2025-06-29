@@ -1,4 +1,4 @@
-# Product Context: TrekBooker
+# Product Context: Bengaluru Trekkers
 
 **Problem Solved:** Planning and booking trekking trips can be fragmented and time-consuming. Users need a centralized platform to discover treks, get reliable information, compare options, and book securely. Trek operators need an efficient system to manage their offerings, schedules (batches), bookings, and customer data.
 

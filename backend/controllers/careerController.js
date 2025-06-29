@@ -26,7 +26,7 @@ exports.createCareerApplication = async (req, res) => {
     // Send notification email to admin
     try {
       await sendEmail({
-        to: process.env.ADMIN_EMAIL || 'admin@trekbooker.com',
+        to: process.env.ADMIN_EMAIL || 'admin@bengalurutrekkers.com',
         subject: 'New Career Application Received',
         html: `
           <h2>New Career Application</h2>
@@ -47,12 +47,12 @@ exports.createCareerApplication = async (req, res) => {
     try {
       await sendEmail({
         to: email,
-        subject: 'Career Application Received - TrekBooker',
+        subject: 'Career Application Received - Bengaluru Trekkers',
         html: `
           <h2>Thank you for your application!</h2>
           <p>Dear ${name},</p>
           <p>We have received your career application and will review it carefully. We will get back to you soon.</p>
-          <p>Best regards,<br>The TrekBooker Team</p>
+          <p>Best regards,<br>The Bengaluru Trekkers Team</p>
         `
       });
     } catch (emailError) {
@@ -158,7 +158,7 @@ exports.updateCareerApplicationStatus = async (req, res) => {
           <p>Dear ${application.name},</p>
           <p>${statusMessages[status]}</p>
           ${notes ? `<p><strong>Additional Notes:</strong> ${notes}</p>` : ''}
-          <p>Best regards,<br>The TrekBooker Team</p>
+          <p>Best regards,<br>The Bengaluru Trekkers Team</p>
         `
       });
     } catch (emailError) {
