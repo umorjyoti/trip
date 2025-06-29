@@ -22,9 +22,11 @@ function TrekForm(props) {
     endingPoint: '',
     highlights: [],
     bestTimeToVisit: '',
-    price: 0
+    price: 0,
+    isCustom: false
   });
   const [regions, setRegions] = useState([]);
+  const [customAccessUrl, setCustomAccessUrl] = useState('');
 
   const isEditMode = !!id;
 
@@ -95,8 +97,14 @@ function TrekForm(props) {
         await updateTrek(id, formData);
         toast.success('Trek updated successfully!');
       } else {
-        await createTrek(formData);
+        const response = await createTrek(formData);
         toast.success('Trek created successfully!');
+        
+        // If it's a custom trek, show the access URL
+        if (response.isCustom && response.customAccessUrl) {
+          setCustomAccessUrl(response.customAccessUrl);
+          toast.info('Custom trek created! Share this link with your customer: ' + response.customAccessUrl);
+        }
       }
       
       // Call the onSuccess callback if provided
@@ -340,6 +348,64 @@ function TrekForm(props) {
               className="form-input"
             />
           </div>
+          
+          {/* Custom Trek Toggle */}
+          <div className="md:col-span-2">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="isCustom"
+                name="isCustom"
+                checked={formData.isCustom}
+                onChange={(e) => setFormData(prev => ({ ...prev, isCustom: e.target.checked }))}
+                className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isCustom" className="ml-2 block text-sm text-gray-900">
+                This is a custom trek (private booking only)
+              </label>
+            </div>
+            {formData.isCustom && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-sm text-blue-800">
+                  <strong>Custom Trek Features:</strong>
+                  <br />• Hidden from public listings
+                  <br />• 2-week expiration date
+                  <br />• Simplified booking process
+                  <br />• Direct confirmation after booking
+                  <br />• Single custom batch
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Custom Access URL Display */}
+          {customAccessUrl && (
+            <div className="md:col-span-2">
+              <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                <label className="block text-sm font-medium text-green-800 mb-1">
+                  Custom Trek Access URL:
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={customAccessUrl}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-green-300 rounded-md bg-white text-green-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(customAccessUrl);
+                      toast.success('URL copied to clipboard!');
+                    }}
+                    className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="mt-6">

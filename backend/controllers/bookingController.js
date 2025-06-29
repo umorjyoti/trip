@@ -3,6 +3,110 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const { sendEmail, sendBookingConfirmationEmail } = require('../utils/email');
 
+// Create a custom trek booking (simplified flow)
+const createCustomTrekBooking = async (req, res) => {
+  try {
+    const {
+      trekId,
+      numberOfParticipants,
+      userDetails,
+      totalPrice,
+    } = req.body;
+
+    // Validate required fields
+    if (!trekId || !numberOfParticipants || !userDetails) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields" });
+    }
+
+    // Validate user details
+    if (!userDetails.name || !userDetails.email || !userDetails.phone) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all user details" });
+    }
+
+    // Ensure numberOfParticipants is a number
+    const participantsCount = Number(numberOfParticipants);
+    if (isNaN(participantsCount) || participantsCount < 1) {
+      return res.status(400).json({ message: "Invalid number of participants" });
+    }
+
+    // Find the trek and check if it exists
+    const trek = await Trek.findById(trekId);
+    if (!trek) {
+      return res.status(404).json({ message: "Trek not found" });
+    }
+
+    // Check if trek is enabled and is a custom trek
+    if (!trek.isEnabled) {
+      return res
+        .status(400)
+        .json({ message: "This trek is currently unavailable for booking" });
+    }
+
+    if (!trek.isCustom) {
+      return res
+        .status(400)
+        .json({ message: "This is not a custom trek" });
+    }
+
+    // Check if custom link has expired
+    if (trek.customLinkExpiry && new Date() > trek.customLinkExpiry) {
+      return res.status(410).json({ message: "This custom trek link has expired." });
+    }
+
+    // Find the custom batch (should be the first/only batch for custom treks)
+    const customBatch = trek.batches[0];
+    if (!customBatch) {
+      return res.status(404).json({ message: "Custom batch not found" });
+    }
+
+    // Check if batch is full
+    if (customBatch.currentParticipants + participantsCount > customBatch.maxParticipants) {
+      return res
+        .status(400)
+        .json({ message: "Not enough spots available in this custom trek" });
+    }
+
+    // Create booking with confirmed status directly
+    const booking = new Booking({
+      user: req.user._id,
+      trek: trekId,
+      batch: customBatch._id,
+      numberOfParticipants: participantsCount,
+      addOns: [],
+      userDetails,
+      totalPrice,
+      status: "confirmed", // Direct confirmation for custom treks
+    });
+
+    // Save booking
+    await booking.save();
+
+    // Update batch participants count
+    customBatch.currentParticipants += participantsCount;
+    await trek.save();
+
+    // Send confirmation email
+    try {
+      await sendBookingConfirmationEmail(booking, trek, customBatch);
+    } catch (emailError) {
+      console.error('Error sending confirmation email:', emailError);
+      // Don't fail the booking if email fails
+    }
+
+    res.status(201).json({
+      ...booking.toObject(),
+      message: "Custom trek booking confirmed successfully!"
+    });
+  } catch (error) {
+    console.error("Error creating custom trek booking:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Create a new booking
 const createBooking = async (req, res) => {
   try {
@@ -968,5 +1072,6 @@ module.exports = {
   updateBooking,
   exportBookings,
   updateParticipantDetails,
-  markTrekCompleted
+  markTrekCompleted,
+  createCustomTrekBooking
 };

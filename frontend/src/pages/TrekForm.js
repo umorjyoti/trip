@@ -153,7 +153,8 @@ function TrekForm() {
     gstType: 'excluded',
     gatewayPercent: '',
     gatewayType: 'customer',
-    itineraryPdfUrl: ''
+    itineraryPdfUrl: '',
+    isCustom: false
   });
   const [batches, setBatches] = useState([{ startDate: '', endDate: '', price: '', maxParticipants: 10, currentParticipants: 0 }]);
   const [itinerary, setItinerary] = useState([{ title: 'Day 1', description: '', accommodation: '', meals: '', activities: [''] }]);
@@ -163,6 +164,7 @@ function TrekForm() {
   const [faqs, setFaqs] = useState([{ question: '', answer: '' }]);
   const [formErrors, setFormErrors] = useState({});
   const [pdfUploading, setPdfUploading] = useState(false);
+  const [customAccessUrl, setCustomAccessUrl] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -206,7 +208,8 @@ function TrekForm() {
             gstType: trekData.gstType || 'excluded',
             gatewayPercent: trekData.gatewayPercent || '',
             gatewayType: trekData.gatewayType || 'customer',
-            itineraryPdfUrl: trekData.itineraryPdfUrl || ''
+            itineraryPdfUrl: trekData.itineraryPdfUrl || '',
+            isCustom: trekData.isCustom !== undefined ? trekData.isCustom : false
           });
 
           setBatches(trekData.batches?.length > 0 ? trekData.batches.map(b => ({ ...b, startDate: b.startDate?.split('T')[0] || '', endDate: b.endDate?.split('T')[0] || '' })) : [{ startDate: '', endDate: '', price: '', maxParticipants: 10, currentParticipants: 0 }]);
@@ -524,6 +527,12 @@ function TrekForm() {
       } else {
         savedTrek = await createTrek(trekPayload);
         toast.success('Trek created successfully!');
+        
+        // If it's a custom trek, show the access URL
+        if (savedTrek.isCustom && savedTrek.customAccessUrl) {
+          setCustomAccessUrl(savedTrek.customAccessUrl);
+          toast.info('Custom trek created! Share this link with your customer: ' + savedTrek.customAccessUrl);
+        }
       }
       navigate('/admin/treks');
     } catch (error) {
@@ -704,6 +713,35 @@ function TrekForm() {
               </div>
               {formErrors.highlights && (
                 <p className="mt-1 text-xs text-red-600">{formErrors.highlights}</p>
+              )}
+            </div>
+
+            {/* Custom Trek Toggle */}
+            <div className="md:col-span-2">
+              <div className="flex items-center p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <input
+                  type="checkbox"
+                  id="isCustom"
+                  name="isCustom"
+                  checked={formData.isCustom}
+                  onChange={(e) => setFormData(prev => ({ ...prev, isCustom: e.target.checked }))}
+                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                />
+                <label htmlFor="isCustom" className="ml-3 block text-sm font-medium text-gray-900">
+                  This is a custom trek (private booking only)
+                </label>
+              </div>
+              {formData.isCustom && (
+                <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Custom Trek Features:</strong>
+                    <br />• Hidden from public listings
+                    <br />• 2-week expiration date
+                    <br />• Simplified booking process
+                    <br />• Direct confirmation after booking
+                    <br />• Single custom batch
+                  </p>
+                </div>
               )}
             </div>
 
@@ -1157,6 +1195,38 @@ function TrekForm() {
             </button>
           </div>
         </FormSection>
+
+        {/* Custom Access URL Display */}
+        {customAccessUrl && (
+          <FormSection title="Custom Trek Access URL">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <label className="block text-sm font-medium text-green-800 mb-2">
+                Custom Trek Access URL:
+              </label>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  value={customAccessUrl}
+                  readOnly
+                  className="flex-1 px-3 py-2 border border-green-300 rounded-md bg-white text-green-800"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(customAccessUrl);
+                    toast.success('URL copied to clipboard!');
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                >
+                  Copy
+                </button>
+              </div>
+              <p className="mt-2 text-sm text-green-700">
+                Share this link with your customer to access the custom trek booking page.
+              </p>
+            </div>
+          </FormSection>
+        )}
 
         <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
           <Button variant="secondary" onClick={() => navigate('/admin/treks')} disabled={loading}>

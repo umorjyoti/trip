@@ -74,7 +74,7 @@ function HeroSection() {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="text-xl md:text-2xl text-center max-w-3xl mb-12"
         >
-          Explore breathtaking trails and create unforgettable memories with TrekBooker
+          Explore breathtaking trails and create unforgettable memories with Bengaluru Trekkers
         </motion.p>
         
         {/* Search Form */}

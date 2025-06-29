@@ -1,6 +1,6 @@
-# Project Brief: TrekBooker
+# Project Brief: Bengaluru Trekkers
 
-**Core Goal:** To develop a comprehensive web application, "TrekBooker," for managing and booking trekking adventures.
+**Core Goal:** To develop a comprehensive web application, "Bengaluru Trekkers," for managing and booking trekking adventures.
 
 **Key Objectives:**
 

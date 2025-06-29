@@ -1,6 +1,7 @@
 const Trek = require('../models/Trek'); // Make sure this path is correct
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking'); // Implied import for Booking model
+const crypto = require('crypto');
 
 // Get trek statistics
 exports.getTrekStats = async (req, res) => {
@@ -45,7 +46,20 @@ exports.getTrekStats = async (req, res) => {
 // Get all treks
 exports.getAllTreks = async (req, res) => {
   try {
-    const treks = await Trek.find().sort({ createdAt: -1 });
+    const { showCustom } = req.query;
+    
+    let query = {};
+    
+    // If showCustom is not specified or false, exclude custom treks
+    if (!showCustom || showCustom === 'false') {
+      query.isCustom = { $ne: true };
+    } else if (showCustom === 'true') {
+      query.isCustom = true;
+    }
+    
+    const treks = await Trek.find(query)
+      .select('+customAccessToken')
+      .sort({ createdAt: -1 });
     res.json(treks);
   } catch (error) {
     console.error('Error fetching all treks:', error);
@@ -109,6 +123,62 @@ exports.getTrekById = async (req, res) => {
   }
 };
 
+// Get trek by custom access token
+exports.getTrekByCustomToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    if (!token) {
+      return res.status(400).json({ message: 'Access token is required' });
+    }
+    
+    const trek = await Trek.findOne({ 
+      customAccessToken: token,
+      isCustom: true 
+    }).select('+gstPercent +gstType +gatewayPercent +gatewayType');
+    
+    if (!trek) {
+      return res.status(404).json({ message: 'Custom trek not found' });
+    }
+    
+    // Get current date for filtering batches
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    
+    // Filter batches manually to ensure proper date comparison
+    trek.batches = trek.batches.filter(batch => {
+      const batchStartDate = new Date(batch.startDate);
+      batchStartDate.setHours(0, 0, 0, 0);
+      
+      return (
+        // Batch hasn't started yet
+        batchStartDate > currentDate &&
+        // Has available spots
+        batch.currentParticipants < batch.maxParticipants
+      );
+    });
+    
+    // Ensure GST and gateway details are included in the response
+    const response = trek.toObject();
+    response.gstDetails = {
+      percent: trek.gstPercent || 0,
+      type: trek.gstType || 'excluded'
+    };
+    response.gatewayDetails = {
+      percent: trek.gatewayPercent || 0,
+      type: trek.gatewayType || 'customer'
+    };
+    
+    console.log('Custom trek found:', trek.name);
+    console.log('Available future batches:', trek.batches.length);
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting custom trek by token:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 exports.createTrek = async (req, res) => {
   try {
     console.log('Creating trek with data:', req.body);
@@ -125,6 +195,27 @@ exports.createTrek = async (req, res) => {
       gatewayPercent: Number(req.body.gatewayPercent) || 0,
       gatewayType: req.body.gatewayType || 'customer'
     };
+    
+    // Handle custom trek creation
+    if (trekData.isCustom) {
+      // Generate unique access token
+      trekData.customAccessToken = crypto.randomBytes(32).toString('hex');
+      
+      // Set expiration date to 2 weeks from now
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 14);
+      trekData.customLinkExpiry = expiryDate;
+      
+      // Create a single custom batch
+      trekData.batches = [{
+        startDate: new Date(),
+        endDate: new Date(),
+        price: trekData.displayPrice,
+        maxParticipants: 999, // Large number for custom treks
+        currentParticipants: 0,
+        status: 'upcoming'
+      }];
+    }
     
     // Ensure itinerary meals are strings
     if (trekData.itinerary && Array.isArray(trekData.itinerary)) {
@@ -143,7 +234,15 @@ exports.createTrek = async (req, res) => {
     await trek.save();
     
     console.log('Trek created successfully with ID:', trek._id);
-    res.status(201).json(trek);
+    
+    // If it's a custom trek, include the access token in response
+    if (trek.isCustom) {
+      const response = trek.toObject();
+      response.customAccessUrl = `/trek/${trek.name.replace(/\s+/g, '-').toLowerCase()}?token=${trek.customAccessToken}`;
+      res.status(201).json(response);
+    } else {
+      res.status(201).json(trek);
+    }
   } catch (error) {
     console.error('Error creating trek:', error);
     if (error.name === 'ValidationError') {
@@ -168,7 +267,7 @@ exports.updateTrek = async (req, res) => {
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns, highlights, batches, faqs, thingsToPack,
       gstPercent, gstType, gatewayPercent, gatewayType,
-      tags, itineraryPdfUrl , customFields
+      tags, itineraryPdfUrl , customFields, isCustom
     } = req.body;
 
     // Filter out empty highlights
@@ -193,7 +292,8 @@ exports.updateTrek = async (req, res) => {
       tags, itineraryPdfUrl,
       faqs: faqs || trek.faqs,
       thingsToPack: thingsToPack || trek.thingsToPack,
-      customFields: customFields || trek.customFields
+      customFields: customFields || trek.customFields,
+      isCustom: isCustom !== undefined ? isCustom : trek.isCustom
     };
 
     // Handle batches update
@@ -477,7 +577,8 @@ exports.getTreks = async (req, res) => {
       duration,
       sort,
       category,
-      includeDisabled
+      includeDisabled,
+      showCustom
     } = req.query;
 
     // Build filter object
@@ -486,6 +587,13 @@ exports.getTreks = async (req, res) => {
     // Only show enabled treks for non-admin users
     if (!includeDisabled) {
       filter.isEnabled = true;
+    }
+
+    // Always exclude custom treks unless showCustom=true is explicitly set
+    if (!showCustom || showCustom === 'false') {
+      filter.isCustom = { $ne: true };
+    } else if (showCustom === 'true') {
+      filter.isCustom = true;
     }
 
     if (search) {
@@ -518,7 +626,7 @@ exports.getTreks = async (req, res) => {
 
     // Fetch treks with populated batches and include GST/gateway fields
     let treks = await Trek.find(filter)
-      .select('+gstPercent +gstType +gatewayPercent +gatewayType')
+      .select('+gstPercent +gstType +gatewayPercent +gatewayType +customAccessToken')
       .populate({
         path: 'batches',
         match: !req.user?.isAdmin ? {
@@ -1355,6 +1463,76 @@ exports.exportBatchParticipants = async (req, res) => {
 
   } catch (error) {
     console.error('Error exporting batch participants:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Send custom trek link via email
+exports.sendCustomTrekLink = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // Only allow admin (assume req.user.isAdmin is set by auth middleware)
+    if (!req.user || !req.user.isAdmin) {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+
+    const trek = await Trek.findById(id);
+    if (!trek || !trek.isCustom) {
+      return res.status(404).json({ message: 'Custom trek not found' });
+    }
+
+    // Generate booking link
+    const bookingLink = `${process.env.FRONTEND_URL || 'https://yourfrontend.com'}/custom-trek/${trek._id}`;
+
+    // Get region name (handle both populated and ID cases)
+    let regionName = 'N/A';
+    if (trek.region && typeof trek.region === 'object' && trek.region.name) {
+      regionName = trek.region.name;
+    } else if (typeof trek.region === 'string') {
+      regionName = trek.region;
+    }
+
+    // Compose HTML email (modern, banner, mobile-friendly, agency branding, no <style> tag)
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(16,185,129,0.10); overflow: hidden;">
+        <div style="background: #10b981; padding: 18px 0; text-align: center;">
+          <span style="color: #fff; font-size: 1.6rem; font-weight: bold; letter-spacing: 1px;">Bengaluru Trekkers</span>
+        </div>
+        <img src="${trek.imageUrl || (trek.images && trek.images[0]) || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80'}" alt="${trek.name}" style="width: 100%; max-height: 280px; object-fit: cover; display: block;">
+        <div style="padding: 24px 12px 20px 12px;">
+          <h2 style="color: #10b981; font-size: 2rem; margin-bottom: 8px; font-weight: bold;">${trek.name}</h2>
+          <p style="color: #374151; margin-bottom: 18px; font-size: 1.1rem; line-height: 1.6;">${trek.description || ''}</p>
+          <div style="margin-bottom: 18px;">
+            <span style="display: inline-block; background: #f3f4f6; color: #10b981; border-radius: 6px; padding: 4px 12px; font-size: 0.95rem; margin-right: 8px;">${regionName}</span>
+            <span style="display: inline-block; background: #f3f4f6; color: #6366f1; border-radius: 6px; padding: 4px 12px; font-size: 0.95rem; margin-right: 8px;">${trek.difficulty}</span>
+            <span style="display: inline-block; background: #f3f4f6; color: #f59e42; border-radius: 6px; padding: 4px 12px; font-size: 0.95rem;">${trek.duration} days</span>
+          </div>
+          <div style="margin-bottom: 18px;">
+            <div style="margin-bottom: 8px;"><strong>Price:</strong> ₹${trek.displayPrice}</div>
+            <div style="margin-bottom: 8px;"><strong>Best Season:</strong> ${trek.season || 'N/A'}</div>
+            <div style="margin-bottom: 8px;"><strong>Highlights:</strong> ${Array.isArray(trek.highlights) ? trek.highlights.join(', ') : ''}</div>
+          </div>
+          <a href="${bookingLink}" style="display: block; width: 100%; background: linear-gradient(90deg, #10b981 0%, #059669 100%); color: #fff; padding: 18px 0; border-radius: 10px; text-decoration: none; font-size: 1.2rem; font-weight: bold; text-align: center; margin-top: 18px; box-shadow: 0 2px 8px rgba(16,185,129,0.10); max-width: 100%;">Book Your Private Trek Now</a>
+        </div>
+        <div style="background: #f3f4f6; text-align: center; padding: 18px 0; color: #6b7280; font-size: 1rem; border-radius: 0 0 16px 16px;">
+          &copy; ${new Date().getFullYear()} Bengaluru Trekkers
+        </div>
+      </div>
+    `;
+
+    const subject = `Your Custom Trek: ${trek.name}`;
+    const text = `You have been invited to a private trek: ${trek.name}\n\nDetails:\nRegion: ${trek.region?.name || trek.region}\nDuration: ${trek.duration} days\nDifficulty: ${trek.difficulty}\nPrice: ₹${trek.displayPrice}\nHighlights: ${(trek.highlights || []).join(', ')}\n\nBooking link: ${bookingLink}`;
+
+    // Send email
+    const { sendEmail } = require('../utils/email');
+    const result = await sendEmail({ to: email, subject, text, html });
+    if (!result) return res.status(500).json({ message: 'Failed to send email' });
+    res.json({ message: 'Custom trek link sent successfully' });
+  } catch (error) {
+    console.error('Error sending custom trek link:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 }; 

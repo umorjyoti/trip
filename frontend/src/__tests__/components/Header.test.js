@@ -24,7 +24,7 @@ describe('Header Component', () => {
       </BrowserRouter>
     );
     
-    expect(screen.getByText(/TrekBooker/i)).toBeInTheDocument();
+    expect(screen.getByText(/Bengaluru Trekkers/i)).toBeInTheDocument();
     expect(screen.getByText(/Treks/i)).toBeInTheDocument();
     expect(screen.getByText(/About/i)).toBeInTheDocument();
     expect(screen.getByText(/Contact/i)).toBeInTheDocument();
