@@ -1,7 +1,8 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment } = require('../utils/email');
+const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 
 // Create a custom trek booking (simplified flow)
 const createCustomTrekBooking = async (req, res) => {
@@ -92,8 +93,23 @@ const createCustomTrekBooking = async (req, res) => {
     // Send confirmation email
     try {
       await sendBookingConfirmationEmail(booking, trek, customBatch);
+      // Generate and send invoice for direct confirmation
+      await booking.populate('trek').populate('user');
+      const paymentDetails = booking.paymentDetails || {
+        id: booking._id.toString(),
+        amount: booking.totalPrice * 100,
+        method: 'Manual/Offline',
+      };
+      const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+      await sendEmailWithAttachment({
+        to: booking.userDetails.email,
+        subject: `Your Invoice for Booking ${booking._id}`,
+        text: `Dear ${booking.userDetails.name},\n\nYour booking is confirmed! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+        attachmentBuffer: invoiceBuffer,
+        attachmentFilename: `Invoice-${booking._id}.pdf`
+      });
     } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
+      console.error('Error sending confirmation email or invoice:', emailError);
       // Don't fail the booking if email fails
     }
 
@@ -183,6 +199,26 @@ const createBooking = async (req, res) => {
     // Update batch participants count
     batch.currentParticipants += participantsCount;
     await trek.save();
+
+    // Generate and send invoice for pending payment
+    try {
+      await booking.populate('trek').populate('user');
+      const paymentDetails = booking.paymentDetails || {
+        id: booking._id.toString(),
+        amount: booking.totalPrice * 100,
+        method: 'Pending',
+      };
+      const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+      await sendEmailWithAttachment({
+        to: booking.userDetails.email,
+        subject: `Your Invoice for Booking ${booking._id}`,
+        text: `Dear ${booking.userDetails.name},\n\nThank you for your booking! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+        attachmentBuffer: invoiceBuffer,
+        attachmentFilename: `Invoice-${booking._id}.pdf`
+      });
+    } catch (invoiceError) {
+      console.error('Error generating or sending invoice after booking creation:', invoiceError);
+    }
 
     res.status(201).json(booking);
   } catch (error) {
@@ -438,6 +474,29 @@ const updateBookingStatus = async (req, res) => {
     // Update status
     booking.status = status;
     await booking.save();
+
+    // If status is confirmed, generate and send invoice
+    if (status === 'confirmed') {
+      try {
+        // Populate trek and user for invoice
+        await booking.populate('trek').populate('user');
+        // Use booking.totalPrice as payment amount, and mark as 'Manual/Offline' if no paymentDetails
+        const paymentDetails = booking.paymentDetails || {
+          id: booking._id.toString(),
+          amount: booking.totalPrice * 100, // in paise for consistency
+        };
+        const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+        await sendEmailWithAttachment({
+          to: booking.user.email,
+          subject: `Your Invoice for Booking ${booking._id}`,
+          text: `Dear ${booking.user.name},\n\nYour booking is confirmed! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${booking.trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+          attachmentBuffer: invoiceBuffer,
+          attachmentFilename: `Invoice-${booking._id}.pdf`
+        });
+      } catch (invoiceError) {
+        console.error('Error generating or sending invoice after confirmation:', invoiceError);
+      }
+    }
 
     res.json(booking);
   } catch (error) {
