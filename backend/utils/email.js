@@ -837,9 +837,52 @@ For support, contact us through our website or mobile app.
   });
 };
 
+/**
+ * Send an email with a PDF attachment (e.g., invoice)
+ * @param {Object} options
+ * @param {string} options.to - Recipient email address
+ * @param {string} options.subject - Email subject
+ * @param {string} options.text - Email text content
+ * @param {Buffer} options.attachmentBuffer - PDF buffer
+ * @param {string} options.attachmentFilename - Filename for the PDF
+ */
+const sendEmailWithAttachment = async ({ to, subject, text, attachmentBuffer, attachmentFilename }) => {
+  try {
+    const transporter = await transporterPromise;
+    if (!transporter) {
+      console.warn('Transporter not initialized.');
+      return null;
+    }
+    const mailOptions = {
+      from: `"NoReply" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      text,
+      attachments: [
+        {
+          filename: attachmentFilename,
+          content: attachmentBuffer
+        }
+      ]
+    };
+    console.log('--- SENDING EMAIL WITH ATTACHMENT ---');
+    console.log('To:', to);
+    console.log('Subject:', subject);
+    console.log('Attachment:', attachmentFilename);
+    console.log('---------------------');
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email with attachment sent:', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending email with attachment:', error);
+    return null;
+  }
+};
+
 module.exports = { 
   sendEmail, 
   sendBookingConfirmationEmail, 
   sendPaymentReceivedEmail,
-  sendBookingReminderEmail
+  sendBookingReminderEmail,
+  sendEmailWithAttachment
 };
