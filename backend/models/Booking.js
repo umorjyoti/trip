@@ -63,6 +63,10 @@ const ParticipantDetailSchema = new mongoose.Schema({
   },
   refundDate: {
     type: Date
+  },
+  cancellationReason: {
+    type: String,
+    default: ''
   }
 }, { _id: false });
 
@@ -185,6 +189,10 @@ const BookingSchema = new mongoose.Schema({
   additionalRequests: {
     type: String,
     trim: true
+  },
+  cancellationReason: {
+    type: String,
+    default: ''
   }
 }, { 
   timestamps: true,

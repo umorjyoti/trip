@@ -3,6 +3,8 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment } = require('../utils/email');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
+const { getRefundAmount } = require('../utils/refundUtils');
+const { refundPayment } = require('../utils/razorpayUtils');
 
 // Create a custom trek booking (simplified flow)
 const createCustomTrekBooking = async (req, res) => {
@@ -382,13 +384,11 @@ const getBookingById = async (req, res) => {
 // Cancel a booking
 const cancelBooking = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
-
+    const { reason, refundType } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('trek');
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-
-    // Check if user is authorized (either admin or the booking owner)
     if (
       booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
@@ -396,10 +396,71 @@ const cancelBooking = async (req, res) => {
     ) {
       return res.status(401).json({ message: "Not authorized" });
     }
-
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ message: 'Booking already cancelled' });
+    }
+    const trek = booking.trek;
+    const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+    const now = new Date();
+    if (batch && batch.startDate && new Date(batch.startDate) <= now) {
+      return res.status(400).json({ message: 'Cannot cancel booking after trek has started' });
+    }
+    // Refund logic for all participants
+    let totalRefund = 0;
+    let paymentId = booking.paymentDetails?.paymentId;
+    let refundStatus = 'not_applicable';
+    let refundDate = null;
+    booking.cancellationReason = reason || '';
+    booking.cancelledAt = new Date();
+    booking.participantDetails.forEach(p => {
+      if (!p.isCancelled) {
+        p.isCancelled = true;
+        p.cancelledAt = new Date();
+        p.cancellationReason = reason || '';
+        // Per-participant refund
+        const perPrice = booking.totalPrice / booking.participantDetails.length;
+        let refundAmount = batch ? getRefundAmount(perPrice, batch.startDate, now, refundType || 'auto') : perPrice;
+        p.refundAmount = refundAmount;
+        p.refundStatus = 'not_applicable';
+        p.refundDate = null;
+        totalRefund += refundAmount;
+      }
+    });
+    if ((booking.status === 'payment_completed' || booking.status === 'confirmed') && totalRefund > 0 && paymentId) {
+      refundStatus = 'processing';
+      const razorpayRes = await refundPayment(paymentId, totalRefund * 100);
+      if (razorpayRes.success) {
+        refundStatus = 'success';
+        refundDate = new Date();
+        booking.participantDetails.forEach(p => {
+          p.refundStatus = 'success';
+          p.refundDate = refundDate;
+        });
+      } else {
+        refundStatus = 'failed';
+        booking.participantDetails.forEach(p => {
+          p.refundStatus = 'failed';
+        });
+      }
+    }
     booking.status = "cancelled";
+    booking.refundStatus = refundStatus;
+    booking.refundAmount = totalRefund;
+    booking.refundDate = refundDate;
+    if (batch) {
+      batch.currentParticipants = Math.max(0, batch.currentParticipants - booking.numberOfParticipants);
+      await trek.save();
+    }
     await booking.save();
-
+    try {
+      await sendEmail({
+        to: booking.userDetails?.email || booking.user?.email,
+        subject: `Booking Cancelled - ${trek?.name || 'Trek'}`,
+        text: `Dear ${booking.userDetails?.name || booking.user?.name},\n\nYour booking (ID: ${booking._id}) for ${trek?.name || 'the trek'} has been cancelled.\nReason: ${reason || 'N/A'}\nRefund Amount: ₹${totalRefund}\nRefund Status: ${refundStatus}\n\nIf you have any questions, please contact support.\n\nBest regards,\nTrek Adventures Team`
+      });
+    } catch (emailError) {
+      console.error('Error sending cancellation/refund email:', emailError);
+    }
     res.json({ message: "Booking cancelled successfully", booking });
   } catch (error) {
     console.error("Error cancelling booking:", error);
@@ -552,13 +613,11 @@ const restoreBooking = async (req, res) => {
 const cancelParticipant = async (req, res) => {
   try {
     const { id, participantId } = req.params;
-
-    const booking = await Booking.findById(id);
+    const { reason, refundType, refundAmount: customRefundAmount } = req.body;
+    const booking = await Booking.findById(id).populate('trek');
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-
-    // Check if user is authorized (either admin or the booking owner)
     if (
       booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
@@ -566,37 +625,70 @@ const cancelParticipant = async (req, res) => {
     ) {
       return res.status(401).json({ message: "Not authorized" });
     }
-
-    // Find the participant
-    const participant = booking.participantDetails.find(
-      (p) => p._id === participantId
-    );
-
+    const participant = booking.participantDetails.find((p) => p._id === participantId);
     if (!participant) {
       return res.status(404).json({ message: "Participant not found" });
     }
-
     if (participant.isCancelled) {
-      return res
-        .status(400)
-        .json({ message: "Participant is already cancelled" });
+      return res.status(400).json({ message: "Participant is already cancelled" });
     }
-
-    // Mark participant as cancelled
+    const trek = booking.trek;
+    const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+    const now = new Date();
+    if (batch && batch.startDate && new Date(batch.startDate) <= now) {
+      return res.status(400).json({ message: 'Cannot cancel participant after trek has started' });
+    }
+    // Refund logic
+    let refundAmount = 0;
+    let paymentId = booking.paymentDetails?.paymentId;
+    let refundStatus = 'not_applicable';
+    let refundDate = null;
+    const perPrice = booking.totalPrice / booking.participantDetails.length;
+    let effectiveRefundType = refundType || 'auto';
+    if (!req.user.isAdmin) effectiveRefundType = 'auto';
+    if (effectiveRefundType === 'custom' && req.user.isAdmin && typeof customRefundAmount === 'number') {
+      refundAmount = customRefundAmount;
+    } else {
+      refundAmount = batch ? getRefundAmount(perPrice, batch.startDate, now, effectiveRefundType) : perPrice;
+    }
+    if ((booking.status === 'payment_completed' || booking.status === 'confirmed') && refundAmount > 0 && paymentId) {
+      refundStatus = 'processing';
+      const razorpayRes = await refundPayment(paymentId, refundAmount * 100);
+      if (razorpayRes.success) {
+        refundStatus = 'success';
+        refundDate = new Date();
+      } else {
+        refundStatus = 'failed';
+      }
+    }
     participant.isCancelled = true;
     participant.cancelledAt = new Date();
-
-    // Update the total price by subtracting the price for this participant
-    const batch = await Trek.findById(booking.trek).then((trek) =>
-      trek.batches.id(booking.batch)
-    );
-
+    participant.cancellationReason = reason || '';
+    participant.refundStatus = refundStatus;
+    participant.refundAmount = refundAmount;
+    participant.refundDate = refundDate;
     if (batch) {
-      booking.totalPrice -= batch.price;
+      booking.totalPrice = Math.max(0, booking.totalPrice - perPrice);
+      batch.currentParticipants = Math.max(0, batch.currentParticipants - 1);
+      await trek.save();
     }
-
     await booking.save();
-
+    // If all participants are cancelled, set booking.status = 'cancelled'
+    if (booking.participantDetails.every(p => p.isCancelled)) {
+      booking.status = 'cancelled';
+      booking.cancelledAt = new Date();
+      booking.cancellationReason = reason || '';
+      await booking.save();
+    }
+    try {
+      await sendEmail({
+        to: booking.userDetails?.email || booking.user?.email,
+        subject: `Participant Cancelled - ${trek?.name || 'Trek'}`,
+        text: `Dear ${booking.userDetails?.name || booking.user?.name},\n\nA participant in your booking (ID: ${booking._id}) for ${trek?.name || 'the trek'} has been cancelled.\nReason: ${reason || 'N/A'}\nRefund Amount: ₹${refundAmount}\nRefund Status: ${refundStatus}\n\nIf you have any questions, please contact support.\n\nBest regards,\nTrek Adventures Team`
+      });
+    } catch (emailError) {
+      console.error('Error sending participant cancellation/refund email:', emailError);
+    }
     res.json({ message: "Participant cancelled successfully", booking });
   } catch (error) {
     console.error("Error cancelling participant:", error);
