@@ -350,6 +350,9 @@ const getBookingById = async (req, res) => {
       return res.status(404).json({ message: "Batch not found in trek.batches" });
     }
 
+    const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled);
+    const activeParticipantCount = activeParticipants.length;
+
     // Format the response data
     const responseData = {
       _id: booking._id,
@@ -372,6 +375,8 @@ const getBookingById = async (req, res) => {
       cancelledAt: booking.cancelledAt,
       userDetails: booking.userDetails,
       addOns: booking.addOns,
+      activeParticipants,
+      activeParticipantCount
     };
 
     res.json(responseData);
@@ -625,7 +630,9 @@ const cancelParticipant = async (req, res) => {
     ) {
       return res.status(401).json({ message: "Not authorized" });
     }
-    const participant = booking.participantDetails.find((p) => p._id === participantId);
+    const participant = booking.participantDetails.find(
+      (p) => p._id && p._id.toString() === participantId.toString()
+    );
     if (!participant) {
       return res.status(404).json({ message: "Participant not found" });
     }
@@ -667,6 +674,7 @@ const cancelParticipant = async (req, res) => {
     participant.refundStatus = refundStatus;
     participant.refundAmount = refundAmount;
     participant.refundDate = refundDate;
+    participant.status = 'bookingCancelled';
     if (batch) {
       booking.totalPrice = Math.max(0, booking.totalPrice - perPrice);
       batch.currentParticipants = Math.max(0, batch.currentParticipants - 1);
@@ -717,7 +725,7 @@ const restoreParticipant = async (req, res) => {
 
     // Find the participant
     const participant = booking.participantDetails.find(
-      (p) => p._id === participantId
+      (p) => p._id && p._id.toString() === participantId.toString()
     );
 
     if (!participant) {
@@ -731,6 +739,7 @@ const restoreParticipant = async (req, res) => {
     // Mark participant as restored
     participant.isCancelled = false;
     participant.cancelledAt = null;
+    participant.status = 'confirmed';
 
     // Update the total price by adding the price for this participant
     const batch = await Trek.findById(booking.trek).then((trek) =>

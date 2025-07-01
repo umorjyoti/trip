@@ -67,6 +67,11 @@ const ParticipantDetailSchema = new mongoose.Schema({
   cancellationReason: {
     type: String,
     default: ''
+  },
+  status: {
+    type: String,
+    enum: ['confirmed', 'bookingCancelled'],
+    default: 'confirmed'
   }
 }, { _id: false });
 
@@ -175,7 +180,12 @@ const BookingSchema = new mongoose.Schema({
       fieldType: String,
       value: mongoose.Schema.Types.Mixed,
       options: [String]
-    }]
+    }],
+    status: {
+      type: String,
+      enum: ['confirmed', 'bookingCancelled'],
+      default: 'confirmed'
+    }
   }],
   // Add pickup and drop location fields
   pickupLocation: {
