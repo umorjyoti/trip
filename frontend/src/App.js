@@ -13,6 +13,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoutes from "./routes/ProtectedRoutes";
 import OTPVerification from "./components/OTPVerification";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Pages
 import Home from "./pages/Home";
@@ -113,6 +114,7 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+      <ScrollToTop />
       <Header />
       <main className="flex-grow">
         <AnimatePresence mode="wait">
