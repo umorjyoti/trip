@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import RichTextEditor from '../../components/RichTextEditor';
 import { debounce } from 'lodash';
 import api from '../../services/api';
+import { getBlogRegions } from '../../services/api';
 
 function BlogEditor() {
   const navigate = useNavigate();
@@ -16,11 +17,13 @@ function BlogEditor() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [errors, setErrors] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [blogRegions, setBlogRegions] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     excerpt: '',
     bannerImage: '',
+    region: '',
     metaTitle: '',
     metaDescription: '',
     keywords: '',
@@ -41,6 +44,7 @@ function BlogEditor() {
     if (id) {
       fetchBlog();
     }
+    fetchBlogRegions();
   }, [id]);
 
   // Prevent background scrolling when modal is open
@@ -82,16 +86,27 @@ function BlogEditor() {
     return () => autoSave.cancel();
   }, [formData, id, autoSave]);
 
+  const fetchBlogRegions = async () => {
+    try {
+      const response = await getBlogRegions();
+      setBlogRegions(response);
+    } catch (error) {
+      console.error('Error fetching blog regions:', error);
+      toast.error('Failed to fetch blog regions');
+    }
+  };
+
   const fetchBlog = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/blogs/admin/${id}`);
+      const response = await api.get(`/blogs/admin/${id}`);
       const blog = response.data;
       setFormData({
         title: blog.title,
         content: blog.content,
         excerpt: blog.excerpt,
         bannerImage: blog.bannerImage,
+        region: blog.region || '',
         metaTitle: blog.metaTitle,
         metaDescription: blog.metaDescription,
         keywords: blog.keywords.join(', '),
@@ -122,6 +137,9 @@ function BlogEditor() {
       newErrors.excerpt = 'Excerpt is required';
     } else if (formData.excerpt.trim().length < 50) {
       newErrors.excerpt = 'Excerpt must be at least 50 characters long';
+    }
+    if (!formData.region) {
+      newErrors.region = 'Please select a region';
     }
     if (!formData.metaTitle.trim()) {
       newErrors.metaTitle = 'Meta title is required';
@@ -530,6 +548,67 @@ function BlogEditor() {
               {formData.excerpt.length > 0 && formData.excerpt.length < 50 && (
                 <p className="mt-1 text-xs text-yellow-600">
                   {50 - formData.excerpt.length} more characters needed
+                </p>
+              )}
+            </div>
+
+            {/* Region */}
+            <div>
+              <label className="block text-base font-medium text-gray-800 mb-2">
+                Region <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={formData.region}
+                  onChange={(e) => {
+                    setFormData({ ...formData, region: e.target.value });
+                    setErrors(prev => ({ ...prev, region: '' }));
+                  }}
+                  className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base transition-all duration-200 ${
+                    errors.region 
+                      ? 'border-red-300 bg-red-50' 
+                      : formData.region 
+                        ? 'border-emerald-300 bg-emerald-50' 
+                        : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+                  }`}
+                  required
+                >
+                  <option value="">Select a region for your blog</option>
+                  {blogRegions.map((region) => (
+                    <option key={region._id} value={region._id}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+                {formData.region && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  </div>
+                )}
+              </div>
+              {errors.region && (
+                <div className="mt-2 flex items-center text-sm text-red-600">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.region}
+                </div>
+              )}
+              {blogRegions.length === 0 && (
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm text-yellow-800">
+                      No blog regions available. Please create blog regions first in the Blog Management page.
+                    </span>
+                  </div>
+                </div>
+              )}
+              {blogRegions.length > 0 && !formData.region && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Choose a region to categorize your blog content for better organization.
                 </p>
               )}
             </div>

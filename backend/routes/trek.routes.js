@@ -30,7 +30,7 @@ router.patch('/:id/toggle-status', [protect, admin], trekController.toggleTrekSt
 router.get('/:id/performance', [protect, admin], trekController.getTrekPerformance);
 
 // General routes - these should come AFTER more specific routes
-router.get('/:id', protect, (req, res, next) => {
+router.get('/:id', (req, res, next) => {
   console.log(`ID route matched with id: ${req.params.id}`);
   next();
 }, trekController.getTrekById);

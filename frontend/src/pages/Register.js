@@ -31,6 +31,7 @@ function Register() {
 
       // Open Google OAuth URL in a popup window
       const baseUrl = process.env.REACT_APP_API_URL;
+      console.log('baseUrl', baseUrl);
       const googleAuthUrl = `${baseUrl}/auth/google`;
       
       console.log('Opening Google auth URL:', googleAuthUrl);

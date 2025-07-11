@@ -1202,3 +1202,104 @@ export const sendCustomTrekLink = async (trekId, email) => {
     throw error;
   }
 };
+
+// Blog APIs
+export const getBlogs = async (params = {}) => {
+  try {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/blogs${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching blogs:', error);
+    throw error;
+  }
+};
+
+export const getBlogBySlug = async (slug) => {
+  const response = await api.get(`/blogs/${slug}`);
+  return response.data;
+};
+
+export const createBlog = async (blogData) => {
+  const response = await api.post('/blogs', blogData);
+  return response.data;
+};
+
+export const updateBlog = async (id, blogData) => {
+  const response = await api.put(`/blogs/${id}`, blogData);
+  return response.data;
+};
+
+export const deleteBlog = async (id) => {
+  const response = await api.delete(`/blogs/${id}`);
+  return response.data;
+};
+
+export const getAdminBlogs = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const response = await api.get(`/blogs/admin${queryString ? `?${queryString}` : ''}`);
+  return response.data;
+};
+
+export const getAdminBlog = async (id) => {
+  const response = await api.get(`/blogs/admin/${id}`);
+  return response.data;
+};
+
+export const uploadBlogImage = async (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await api.post('/blogs/upload-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
+};
+
+// Blog Region APIs
+export const getBlogRegions = async () => {
+  const response = await api.get('/blog-regions/enabled');
+  return response.data;
+};
+
+export const getAllBlogRegions = async () => {
+  const response = await api.get('/blog-regions');
+  return response.data;
+};
+
+export const getBlogRegionBySlug = async (slug) => {
+  const response = await api.get(`/blog-regions/slug/${slug}`);
+  return response.data;
+};
+
+export const getBlogRegionById = async (id) => {
+  const response = await api.get(`/blog-regions/${id}`);
+  return response.data;
+};
+
+export const createBlogRegion = async (regionData) => {
+  const response = await api.post('/blog-regions', regionData);
+  return response.data;
+};
+
+export const updateBlogRegion = async (id, regionData) => {
+  const response = await api.put(`/blog-regions/${id}`, regionData);
+  return response.data;
+};
+
+export const deleteBlogRegion = async (id) => {
+  const response = await api.delete(`/blog-regions/${id}`);
+  return response.data;
+};
+
+export const getBlogsByRegion = async (regionId, params = {}) => {
+  try {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/blogs/region/${regionId}${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching blogs by region:', error);
+    throw error;
+  }
+};

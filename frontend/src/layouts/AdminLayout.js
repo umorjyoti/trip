@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaMountain, FaMapMarkedAlt, FaCalendarAlt, FaUsers, FaTicketAlt, FaChartLine, FaLayerGroup, FaUserFriends } from 'react-icons/fa';
+import { FaHome, FaMountain, FaMapMarkedAlt, FaCalendarAlt, FaUsers, FaTicketAlt, FaChartLine, FaLayerGroup, FaUserFriends, FaBlog, FaGlobe } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 
 function AdminLayout({ children }) {
@@ -59,6 +59,7 @@ function AdminLayout({ children }) {
                 {renderNavItem('/admin/sales', <FaChartLine className="mr-3 h-5 w-5 text-emerald-300" />, 'Sales', 'salesDashboard')}
                 {renderNavItem('/admin/trek-sections', <FaLayerGroup className="mr-3 h-5 w-5 text-emerald-300" />, 'Trek Sections', 'trekSections')}
                 {renderNavItem('/admin/user-groups', <FaUserFriends className="mr-3 h-5 w-5 text-emerald-300" />, 'User Groups', 'manageUserGroups')}
+                {renderNavItem('/admin/blogs', <FaBlog className="mr-3 h-5 w-5 text-emerald-300" />, 'Blogs', 'manageBlogs')}
               </nav>
             </div>
           </div>
