@@ -74,6 +74,15 @@ router.put('/:id/batches/:batchId',
   trekController.updateBatch
 );
 
+router.patch('/:id/batches/:batchId', 
+  protect, 
+  checkMultiplePermissions([
+    { category: 'sections', name: 'treks' },
+    { category: 'quickActions', name: 'createBatch' }
+  ]), 
+  trekController.updateBatch
+);
+
 router.delete('/:id/batches/:batchId', 
   protect, 
   checkMultiplePermissions([

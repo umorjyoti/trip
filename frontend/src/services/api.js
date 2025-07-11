@@ -321,6 +321,16 @@ export const removeBatch = async (trekId, batchId) => {
   return response.data;
 };
 
+export const updateBatch = async (trekId, batchId, batchData) => {
+  try {
+    const response = await api.patch(`/treks/${trekId}/batches/${batchId}`, batchData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating batch:', error);
+    throw error;
+  }
+};
+
 // Admin APIs
 export const getAllUsers = async () => {
   try {

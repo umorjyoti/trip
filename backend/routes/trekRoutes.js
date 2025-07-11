@@ -37,6 +37,7 @@ router.delete('/:id', protect, admin, trekController.deleteTrek);
 
 // Batch routes
 router.post('/:id/batches', protect, admin, trekController.addBatch);
+router.patch('/:id/batches/:batchId', protect, admin, trekController.updateBatch);
 // router.put('/:id/batches/:batchId', protect, admin, trekController.updateBatch);
 // router.delete('/:id/batches/:batchId', protect, admin, trekController.deleteBatch);
 
