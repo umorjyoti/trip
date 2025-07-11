@@ -1313,3 +1313,34 @@ export const getBlogsByRegion = async (regionId, params = {}) => {
     throw error;
   }
 };
+
+// Helper function to convert trek name to URL-friendly slug
+export const createTrekSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .trim('-'); // Remove leading/trailing hyphens
+};
+
+// Helper function to get trek ID from slug
+export const getTrekIdFromSlug = async (slug) => {
+  try {
+    const response = await api.get(`/treks/slug/${slug}`);
+    return response.data._id;
+  } catch (error) {
+    console.error('Error fetching trek ID from slug:', error);
+    throw error;
+  }
+};
+
+export const getTrekBySlug = async (slug) => {
+  try {
+    const response = await api.get(`/treks/slug/${slug}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trek by slug:', error);
+    throw error;
+  }
+};

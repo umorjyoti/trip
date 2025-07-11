@@ -140,8 +140,8 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/treks" element={<SearchResults />} />
-              <Route path="/treks/:id" element={<TrekDetail />} />
-              <Route path="/treks/:id/book" element={<BookingPage />} />
+              <Route path="/treks/:name" element={<TrekDetail />} />
+              <Route path="/treks/:name/book" element={<BookingPage />} />
 
               {/* Protected Routes */}
               <Route path="/profile" element={<Profile />} />

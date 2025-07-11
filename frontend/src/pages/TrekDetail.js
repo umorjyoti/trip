@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   getTrekById,
+  getTrekBySlug,
   getActiveOffers,
   addToWishlist,
   removeFromWishlist,
@@ -220,8 +221,9 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
 };
 
 function TrekDetail() {
-  const { id } = useParams();
+  const { name } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [trek, setTrek] = useState(null);
   const [relatedTreks, setRelatedTreks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -290,8 +292,19 @@ function TrekDetail() {
       try {
         setLoading(true);
 
-        // Fetch trek details
-        const trekData = await getTrekById(id);
+        // Get trek ID from location state or fetch by slug
+        let trekId = location?.state?.trekId;
+        let trekData;
+
+        if (trekId) {
+          // Use ID from location state
+          trekData = await getTrekById(trekId);
+        } else {
+          // Fetch by slug/name
+          trekData = await getTrekBySlug(name);
+          trekId = trekData._id;
+        }
+
         setTrek(trekData);
 
         // Fetch active offers
@@ -300,7 +313,7 @@ function TrekDetail() {
 
         // Find applicable offer for this trek
         const offer = offers.find((o) =>
-          o.applicableTreks.some((t) => t._id === id)
+          o.applicableTreks.some((t) => t._id === trekId)
         );
 
         if (offer) {
@@ -344,7 +357,7 @@ function TrekDetail() {
     };
 
     fetchData();
-  }, [id, currentUser]);
+  }, [name, currentUser, location?.state?.trekId]);
 
   useEffect(() => {
     const fetchRegionName = async () => {
@@ -369,7 +382,8 @@ function TrekDetail() {
   const checkWishlistStatus = async () => {
     try {
       const wishlist = await getUserWishlist();
-      const isInList = wishlist.some((item) => item._id === id);
+      const trekId = location?.state?.trekId || trek?._id;
+      const isInList = wishlist.some((item) => item._id === trekId);
       // setIsInWishlist(isInList);
     } catch (err) {
       console.error("Error checking wishlist status:", err);
@@ -465,10 +479,11 @@ function TrekDetail() {
     console.log("Selected batch:", batch);
 
     // If all checks pass, proceed with booking
-    navigate(`/treks/${id}/book`, { 
+    navigate(`/treks/${name}/book`, { 
       state: { 
         selectedBatchId: batch._id,
         trekName: trek.name,
+        trekId: trek._id,
         batchDates: {
           startDate: batch.startDate,
           endDate: batch.endDate
@@ -480,24 +495,30 @@ function TrekDetail() {
   const handleBookNowClick = () => {
     if (!currentUser) {
       toast.info("Please log in to book this trek");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
-    navigate(`/treks/${id}/book`);
+    navigate(`/treks/${name}/book`, { 
+      state: { 
+        trekId: trek._id,
+        trekName: trek.name 
+      } 
+    });
   };
 
   const handleBatchBookNowClick = (batch) => {
     if (!currentUser) {
       toast.info("Please log in to book this trek");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
-    navigate(`/treks/${id}/book`, { 
+    navigate(`/treks/${name}/book`, { 
       state: { 
         selectedBatchId: batch._id,
         trekName: trek.name,
+        trekId: trek._id,
         batchDates: {
           startDate: batch.startDate,
           endDate: batch.endDate
@@ -1619,7 +1640,7 @@ function TrekDetail() {
                   isTrekDisabled={isTrekDisabled}
                   currentUser={currentUser}
                   navigate={navigate}
-                  trekId={id}
+                  trekId={trek._id}
                 />
               </div>
             )}

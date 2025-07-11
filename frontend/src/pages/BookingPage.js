@@ -6,7 +6,7 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import { useAuth } from "../contexts/AuthContext";
 
 function BookingPage() {
-  const { id } = useParams();
+  const { name } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
@@ -42,7 +42,7 @@ function BookingPage() {
       } catch (error) {
         console.error('Error fetching Razorpay key:', error);
         if (error.message === 'Please log in to proceed with booking') {
-          navigate('/login', { state: { from: `/treks/${id}/book` } });
+          navigate('/login', { state: { from: `/treks/${name}/book` } });
         } else {
           toast.error(error.message || 'Failed to initialize payment. Please try again.');
         }
@@ -50,13 +50,24 @@ function BookingPage() {
     };
 
     fetchRazorpayKey();
-  }, [currentUser, id, navigate]);
+  }, [currentUser, name, navigate]);
 
   useEffect(() => {
     const fetchTrek = async () => {
       try {
         setLoading(true);
-        const data = await getTrekById(id);
+        // Get trek ID from location state or fetch by slug
+        const trekId = location?.state?.trekId;
+        let data;
+        
+        if (trekId) {
+          data = await getTrekById(trekId);
+        } else {
+          // Import getTrekBySlug and use it
+          const { getTrekBySlug } = await import('../services/api');
+          data = await getTrekBySlug(name);
+        }
+        
         setTrek(data);
         
         // Set tax information from API response
@@ -85,7 +96,7 @@ function BookingPage() {
     };
 
     fetchTrek();
-  }, [id, location.state]);
+  }, [name, location.state]);
 
   const handleBatchSelect = (batch) => {
     setSelectedBatch(batch);
@@ -142,7 +153,7 @@ function BookingPage() {
   const handleApplyCoupon = async () => {
     if (!currentUser) {
       toast.info("Please log in to apply coupon");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
@@ -156,7 +167,8 @@ function BookingPage() {
       const basePrice = calculateBasePrice();
       
       // Validate coupon with order value
-      const response = await validateCoupon(couponCode, id, basePrice);
+      const trekId = location?.state?.trekId || trek?._id;
+      const response = await validateCoupon(couponCode, trekId, basePrice);
       setAppliedCoupon(response);
       setCouponError(null);
     } catch (error) {
@@ -199,7 +211,7 @@ function BookingPage() {
 
     if (!currentUser) {
       toast.info("Please log in to book this trek");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
@@ -215,7 +227,7 @@ function BookingPage() {
         .map(({ _id, name, price }) => ({ _id, name, price }));
 
       const bookingData = {
-        trekId: id,
+        trekId: location?.state?.trekId || trek?._id,
         batchId: selectedBatch._id,
         numberOfParticipants: formData.numberOfParticipants,
         addOns: validAddOns,
@@ -258,7 +270,7 @@ function BookingPage() {
                 paymentStatus: 'success',
                 numberOfParticipants: formData.numberOfParticipants,
                 addOns: formData.addOns,
-                trekId: id,
+                trekId: location?.state?.trekId || trek?._id,
                 batchId: selectedBatch._id
               } 
             });
@@ -398,7 +410,8 @@ function BookingPage() {
                   <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
                 </svg>
                 <Link
-                  to={`/treks/${id}`}
+                  to={`/treks/${name}`}
+                  state={{ trekId: trek._id, trekName: trek.name }}
                   className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700"
                 >
                   {trek.name}
