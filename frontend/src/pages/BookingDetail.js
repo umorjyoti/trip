@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { getBookingById, cancelParticipant } from '../services/api';
+import { getBookingById, cancelParticipant, cancelBooking } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CreateTicketModal from '../components/CreateTicketModal';
@@ -16,6 +16,7 @@ function BookingDetail() {
   const [cancelModal, setCancelModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -109,17 +110,35 @@ function BookingDetail() {
     setShowTicketModal(true);
   };
 
-  const handleCancelParticipant = async (participantId) => {
+  // Cancel a single participant
+  const handleCancelParticipant = async (participant) => {
+    if (!window.confirm(`Are you sure you want to cancel ${participant.name}?`)) return;
+    setCancelling(true);
     try {
-      const response = await cancelParticipant(id, participantId);
-      if (response) {
-        // Fetch the latest booking data to get updated total price
-        const updatedBooking = await getBookingById(id);
-        setBooking(updatedBooking);
-        toast.success('Participant cancelled successfully');
-      }
+      await cancelParticipant(id, participant._id, { reason: 'User requested cancellation' });
+      toast.success('Participant cancelled successfully');
+      const updatedBooking = await getBookingById(id);
+      setBooking(updatedBooking);
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || 'Failed to cancel participant');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Cancel the entire booking
+  const handleCancelEntireBooking = async () => {
+    if (!window.confirm('Are you sure you want to cancel the entire booking?')) return;
+    setCancelling(true);
+    try {
+      await cancelBooking(id, { reason: 'User requested full cancellation' });
+      toast.success('Booking cancelled successfully');
+      const updatedBooking = await getBookingById(id);
+      setBooking(updatedBooking);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to cancel booking');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -169,46 +188,28 @@ function BookingDetail() {
     );
   }
 
-  const ParticipantList = ({ participants, onCancelParticipant }) => {
+  const ParticipantList = ({ participants }) => {
     return (
       <div className="space-y-4">
         {participants.map((participant) => (
-          <div key={participant._id} className="bg-white p-4 rounded-lg shadow">
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="font-medium">{participant.name}</h4>
-                <p className="text-sm text-gray-600">Age: {participant.age}</p>
-                <p className="text-sm text-gray-600">Gender: {participant.gender}</p>
-              </div>
-              {participant.isCancelled ? (
-                <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                  Cancelled
-                </span>
-              ) : participants.length > 1 ? (
-                <></>
-              ) : null}
+          <div key={participant._id} className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">{participant.name}</h4>
+              <p className="text-sm text-gray-600">Age: {participant.age}</p>
+              <p className="text-sm text-gray-600">Gender: {participant.gender}</p>
+              <div className="text-xs text-gray-500">Status: {participant.status || (participant.isCancelled ? 'bookingCancelled' : 'confirmed')}</div>
             </div>
-            {participant.isCancelled && (
-              <>
-                <p className="text-xs text-gray-500 mt-2">
-                  Cancelled on: {participant.cancelledAt ? new Date(participant.cancelledAt).toLocaleDateString() : 'N/A'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Refund Status: {participant.refundStatus && participant.refundStatus !== 'not_applicable' ? (
-                    <>
-                      <span className="capitalize">{participant.refundStatus}</span>
-                      {participant.refundAmount > 0 && (
-                        <span> &mdash; Amount: <span className="font-semibold">₹{participant.refundAmount}</span></span>
-                      )}
-                      {participant.refundDate && (
-                        <span> &mdash; Date: {formatDate(participant.refundDate)}</span>
-                      )}
-                    </>
-                  ) : (
-                    <span>No refund</span>
-                  )}
-                </p>
-              </>
+            {participant.status === 'confirmed' && (
+              <button
+                className="px-3 py-1 bg-red-600 text-white rounded disabled:opacity-50"
+                onClick={() => handleCancelParticipant(participant)}
+                disabled={cancelling}
+              >
+                Cancel
+              </button>
+            )}
+            {participant.status === 'bookingCancelled' && (
+              <span className="text-xs text-red-500">Cancelled</span>
             )}
           </div>
         ))}
@@ -371,12 +372,19 @@ function BookingDetail() {
           </div>
           <div className="border-t border-gray-200">
             <div className="divide-y divide-gray-200">
-              <ParticipantList 
-                participants={booking.participantDetails} 
-                onCancelParticipant={handleCancelParticipant}
-              />
+              <ParticipantList participants={booking.participantDetails} />
             </div>
           </div>
+          {/* Full booking cancel button */}
+          {booking.participantDetails.some(p => (p.status || (p.isCancelled ? 'bookingCancelled' : 'confirmed')) === 'confirmed') && (
+            <button
+              className="mt-4 px-4 py-2 bg-red-700 text-white rounded disabled:opacity-50"
+              onClick={handleCancelEntireBooking}
+              disabled={cancelling}
+            >
+              Cancel Entire Booking
+            </button>
+          )}
         </div>
       </div>
 

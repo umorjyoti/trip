@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserBookings } from '../services/api';
+import { getUserBookings, cancelBooking } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -9,6 +9,7 @@ function MyBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -121,6 +122,22 @@ function MyBookings() {
   const filteredBookings = showIncompleteOnly 
     ? bookings.filter(booking => isIncompleteBooking(booking.status))
     : bookings;
+
+  const handleCancelBooking = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    setCancellingId(bookingId);
+    try {
+      await cancelBooking(bookingId, { reason: 'User cancelled from My Bookings' });
+      toast.success('Booking cancelled successfully');
+      // Refresh bookings
+      const data = await getUserBookings();
+      setBookings(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to cancel booking');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -394,6 +411,15 @@ function MyBookings() {
                               >
                                 View
                               </Link>
+                              {(booking.status === 'confirmed' || booking.status === 'pending_payment') && (
+                                <button
+                                  onClick={() => handleCancelBooking(booking._id)}
+                                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                                  disabled={cancellingId === booking._id}
+                                >
+                                  {cancellingId === booking._id ? 'Cancelling...' : 'Cancel'}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
