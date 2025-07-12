@@ -799,37 +799,22 @@ exports.toggleWeekendGetaway = async (req, res) => {
 // Add this method to your trekController.js file
 exports.updateBatch = async (req, res) => {
   try {
-    const { id, batchId } = req.params;
-    const { startDate, endDate, price, availableSlots, status } = req.body;
-    
-    console.log(`Updating batch ${batchId} for trek ${id}`);
-    
-    const trek = await Trek.findById(id);
-    
+    const { id: trekId, batchId } = req.params;
+    const updateData = req.body;
+    const trek = await Trek.findById(trekId);
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
     }
-    
-    // Find the batch to update
-    const batchIndex = trek.batches.findIndex(batch => batch._id.toString() === batchId);
-    
-    if (batchIndex === -1) {
+    const batch = trek.batches.id(batchId);
+    if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
     }
-    
-    // Update batch fields
-    if (startDate) trek.batches[batchIndex].startDate = startDate;
-    if (endDate) trek.batches[batchIndex].endDate = endDate;
-    if (price) trek.batches[batchIndex].price = price;
-    if (availableSlots !== undefined) trek.batches[batchIndex].availableSlots = availableSlots;
-    if (status) trek.batches[batchIndex].status = status;
-    
-    await trek.save();
-    
-    res.json({
-      message: 'Batch updated successfully',
-      batch: trek.batches[batchIndex]
+    // Update only provided fields
+    Object.keys(updateData).forEach(key => {
+      batch[key] = updateData[key];
     });
+    await trek.save();
+    res.json(batch);
   } catch (error) {
     console.error('Error updating batch:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

@@ -13,6 +13,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoutes from "./routes/ProtectedRoutes";
 import OTPVerification from "./components/OTPVerification";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Pages
 import Home from "./pages/Home";
@@ -60,10 +61,13 @@ import UserDashboard from './pages/UserDashboard';
 import PaymentPage from './pages/PaymentPage';
 import BlogList from './pages/BlogList';
 import BlogDetail from './pages/BlogDetail';
+import BlogRegionPage from './pages/BlogRegionPage';
 import BlogManagement from './pages/admin/BlogManagement';
 import LoginSuccess from './pages/LoginSuccess';
 import ParticipantDetailsPage from "./pages/ParticipantDetailsPage";
 import BlogEditor from './pages/admin/BlogEditor';
+import BlogRegionListPage from './pages/admin/BlogRegionListPage';
+import BlogRegionFormPage from './pages/admin/BlogRegionFormPage';
 import BookingPreviewPage from './pages/BookingPreviewPage';
 import Career from './pages/Career';
 import AdminCareers from './pages/AdminCareers';
@@ -110,6 +114,7 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+      <ScrollToTop />
       <Header />
       <main className="flex-grow">
         <AnimatePresence mode="wait">
@@ -135,8 +140,8 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/treks" element={<SearchResults />} />
-              <Route path="/treks/:id" element={<TrekDetail />} />
-              <Route path="/treks/:id/book" element={<BookingPage />} />
+              <Route path="/treks/:name" element={<TrekDetail />} />
+              <Route path="/treks/:name/book" element={<BookingPage />} />
 
               {/* Protected Routes */}
               <Route path="/profile" element={<Profile />} />
@@ -492,6 +497,32 @@ function App() {
                             </ProtectedRoutes>
                           }
                         />
+
+                        {/* Blog Region Management Routes */}
+                        <Route
+                          path="blog-regions"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                              <BlogRegionListPage />
+                            </ProtectedRoutes>
+                          }
+                        />
+                        <Route
+                          path="blog-regions/new"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                            <BlogRegionFormPage />
+                          </ProtectedRoutes>
+                          }
+                        />
+                        <Route
+                          path="blog-regions/edit/:id"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                              <BlogRegionFormPage />
+                            </ProtectedRoutes>
+                          }
+                        />
                       </Routes>
                     </AdminLayout>
                   </AdminRoute>
@@ -531,6 +562,7 @@ function App() {
 
               {/* Blog Routes */}
               <Route path="/blogs" element={<BlogList />} />
+              <Route path="/blogs/region/:slug" element={<BlogRegionPage />} />
               <Route path="/blogs/:slug" element={<BlogDetail />} />
 
               {/* Login Success Route */}

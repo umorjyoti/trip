@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { FaChevronLeft, FaChevronRight, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaArrowRight, FaMountain } from 'react-icons/fa';
-import { formatCurrency, getRegionById } from '../services/api';
+import { formatCurrency, getRegionById, createTrekSlug } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Add Helper Functions Here ---
@@ -188,7 +188,11 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
                  whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
                  className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 ease-in-out h-full flex flex-col"
               >
-                <Link to={`/treks/${trek._id}`} className="group flex flex-col h-full">
+                <Link 
+                  to={`/treks/${createTrekSlug(trek.name)}`} 
+                  state={{ trekId: trek._id, trekName: trek.name }}
+                  className="group flex flex-col h-full"
+                >
                   <div className="relative h-40 w-full overflow-hidden">
                     {trek.images && trek.images.length > 0 ? (
                       <img src={trek.images[0]} alt={trek.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"/>

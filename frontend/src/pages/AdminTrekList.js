@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getTreks, deleteTrek, toggleTrekStatus, getAllTreksWithCustomToggle, sendCustomTrekLink } from '../services/api';
+import { getTreks, deleteTrek, toggleTrekStatus, getAllTreksWithCustomToggle, sendCustomTrekLink, updateTrek, removeBatch, addBatch, updateBatch, getAllRegions } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
@@ -18,9 +18,27 @@ function AdminTrekList() {
   const [emailInputs, setEmailInputs] = useState({}); // { [trekId]: email }
   const [showEmailInput, setShowEmailInput] = useState({}); // { [trekId]: boolean }
   const [sending, setSending] = useState({}); // { [trekId]: boolean }
+  // 1. Add state for editing trek and batch
+  const [editingTrekId, setEditingTrekId] = useState(null);
+  const [trekEditData, setTrekEditData] = useState({});
+  const [editingBatchId, setEditingBatchId] = useState(null);
+  const [batchEditData, setBatchEditData] = useState({});
+  const [newBatchData, setNewBatchData] = useState({ startDate: '', endDate: '', price: '', maxParticipants: 10 });
+  const [batchLoading, setBatchLoading] = useState(false);
+  const DIFFICULTY_OPTIONS = ['Easy', 'Moderate', 'Difficult', 'Very Difficult'];
+  const [regions, setRegions] = useState([]);
 
   useEffect(() => {
     fetchTreks();
+    // Fetch regions for dropdown
+    (async () => {
+      try {
+        const data = await getAllRegions();
+        setRegions(data);
+      } catch (err) {
+        setRegions([]);
+      }
+    })();
   }, [showCustomTreks]);
 
   const fetchTreks = async () => {
@@ -122,6 +140,103 @@ function AdminTrekList() {
   const getCustomTrekLink = (trek) => {
     const frontendUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
     return `${frontendUrl}/custom-trek/${trek._id}`;
+  };
+
+  // 2. Add handlers for trek edit
+  const handleTrekEditChange = (e, trek) => {
+    const { name, value } = e.target;
+    setTrekEditData(prev => ({ ...prev, [name]: value }));
+  };
+  const startEditingTrek = (trek) => {
+    setEditingTrekId(trek._id);
+    setTrekEditData({
+      name: trek.name,
+      region: trek.region,
+      difficulty: trek.difficulty,
+      duration: trek.duration,
+    });
+  };
+  const cancelEditingTrek = () => {
+    setEditingTrekId(null);
+    setTrekEditData({});
+  };
+  const saveTrekEdit = async (trek) => {
+    try {
+      setLoading(true);
+      await updateTrek(trek._id, trekEditData);
+      toast.success('Trek updated successfully!');
+      fetchTreks();
+      setEditingTrekId(null);
+      setTrekEditData({});
+    } catch (err) {
+      toast.error('Failed to update trek');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Add handlers for batch edit
+  const startEditingBatch = (batch) => {
+    setEditingBatchId(batch._id);
+    setBatchEditData({
+      startDate: batch.startDate?.slice(0, 10),
+      endDate: batch.endDate?.slice(0, 10) || '',
+      price: batch.price,
+      maxParticipants: batch.maxParticipants,
+    });
+  };
+  const handleBatchEditChange = (e) => {
+    const { name, value } = e.target;
+    setBatchEditData(prev => ({ ...prev, [name]: value }));
+  };
+  const cancelEditingBatch = () => {
+    setEditingBatchId(null);
+    setBatchEditData({});
+  };
+  const saveBatchEdit = async (trekId, batchId) => {
+    try {
+      setBatchLoading(true);
+      await updateBatch(trekId, batchId, batchEditData);
+      toast.success('Batch updated successfully!');
+      fetchTreks();
+      setEditingBatchId(null);
+      setBatchEditData({});
+    } catch (err) {
+      toast.error('Failed to update batch');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+  const deleteBatch = async (trekId, batchId) => {
+    try {
+      setBatchLoading(true);
+      await removeBatch(trekId, batchId);
+      toast.success('Batch deleted successfully!');
+      fetchTreks();
+    } catch (err) {
+      toast.error('Failed to delete batch');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  // 4. Add handler for new batch creation
+  const handleNewBatchChange = (e) => {
+    const { name, value } = e.target;
+    setNewBatchData(prev => ({ ...prev, [name]: value }));
+  };
+  const addNewBatch = async (trekId) => {
+    try {
+      setBatchLoading(true);
+      await addBatch(trekId, newBatchData);
+      toast.success('Batch added successfully!');
+      fetchTreks();
+      setNewBatchData({ startDate: '', endDate: '', price: '', maxParticipants: 10 });
+    } catch (err) {
+      toast.error('Failed to add batch');
+    } finally {
+      setBatchLoading(false);
+    }
   };
 
   if (loading) {
@@ -271,14 +386,23 @@ function AdminTrekList() {
                       >
                         {trek.isEnabled ? <FaEye className="w-4 h-4" /> : <FaEyeSlash className="w-4 h-4" />}
                       </button>
-                      <Link
-                        to={`/admin/treks/edit/${trek._id}`}
-                        className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
-                      >
-                        <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                        </svg>
-                      </Link>
+                      {editingTrekId === trek._id ? (
+                        <Link
+                          to={`/admin/treks/edit/${trek._id}`}
+                          className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                          title="Edit Trek"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => startEditingTrek(trek)}
+                          className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                          title="Edit Trek"
+                        >
+                          <FaEdit className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => openDeleteModal(trek)}
                         className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
@@ -293,65 +417,51 @@ function AdminTrekList() {
                   {/* Expanded Batch Information */}
                   {expandedTreks.has(trek._id) && (
                     <div className="mt-4 border-t pt-4">
-                      <div className="space-y-4">
-                        {trek.batches && trek.batches.length > 0 ? (
-                          trek.batches.map((batch) => (
-                            <div 
-                              key={batch._id} 
-                              className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors duration-200"
-                              onClick={() => {
-                                window.location.href = `/admin/treks/${trek._id}/performance?batchId=${batch._id}`;
-                              }}
-                            >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-900">
-                                    Batch {new Date(batch.startDate).toLocaleDateString('en-GB', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric'
-                                    })} - {new Date(batch.endDate).toLocaleDateString('en-GB', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric'
-                                    })}
-                                  </h4>
-                                  <div className="mt-1 text-sm text-gray-500">
-                                    <p>Price: ₹{batch.price}</p>
-                                    <p>Total Slots: {batch.maxParticipants}</p>
-                                    <p>Available Slots: {batch.maxParticipants - (batch.currentParticipants || 0)}</p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {batch.currentParticipants || 0} Bookings
-                                  </span>
-                                </div>
-                              </div>
-                              {batch.bookings && batch.bookings.length > 0 && (
-                                <div className="mt-3">
-                                  <h5 className="text-sm font-medium text-gray-900 mb-2">Recent Bookings</h5>
-                                  <div className="space-y-2">
-                                    {batch.bookings.slice(0, 3).map((booking) => (
-                                      <div key={booking._id} className="flex justify-between text-sm">
-                                        <span>{booking.customerName}</span>
-                                        <span>{new Date(booking.bookingDate).toLocaleDateString('en-GB', {
-                                          day: '2-digit',
-                                          month: 'short',
-                                          year: 'numeric'
-                                        })}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center text-gray-500 py-4">
-                            No batches available for this trek
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {/* Add New Batch Card */}
+                        {editingBatchId === null && (
+                          <div className="bg-white border border-dashed border-emerald-400 rounded-lg p-4 flex flex-col items-center justify-center shadow min-h-[220px]">
+                            <h4 className="text-sm font-semibold mb-2">Add New Batch</h4>
+                            <input type="date" name="startDate" value={newBatchData.startDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                            <input type="date" name="endDate" value={newBatchData.endDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                            <input type="number" name="price" value={newBatchData.price} onChange={handleNewBatchChange} placeholder="Price" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                            <input type="number" name="maxParticipants" value={newBatchData.maxParticipants} onChange={handleNewBatchChange} placeholder="Max Slots" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                            <button onClick={() => addNewBatch(trek._id)} className="w-full py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium mt-2" disabled={batchLoading}>Add</button>
                           </div>
                         )}
+                        {/* Batch Cards */}
+                        {trek.batches && trek.batches.length > 0 && trek.batches.map((batch) => (
+                          <div key={batch._id} className="bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative">
+                            {/* Icon container with reserved space */}
+                            <div className="absolute top-2 right-2 z-10 flex space-x-1">
+                              <button onClick={() => startEditingBatch(batch)} className="p-1 rounded-full hover:bg-gray-200"><FaEdit className="w-4 h-4 text-blue-600" /></button>
+                              <button onClick={() => deleteBatch(trek._id, batch._id)} className="p-1 rounded-full hover:bg-gray-200"><FaTrash className="w-4 h-4 text-red-600" /></button>
+                            </div>
+                            <div className="pt-8"> {/* Add top padding to avoid overlap */}
+                              {editingBatchId === batch._id ? (
+                                <>
+                                  <input type="date" name="startDate" value={batchEditData.startDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                  <input type="date" name="endDate" value={batchEditData.endDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                  <input type="number" name="price" value={batchEditData.price} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                  <input type="number" name="maxParticipants" value={batchEditData.maxParticipants} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                  <div className="flex space-x-2 mt-2">
+                                    <button onClick={() => saveBatchEdit(trek._id, batch._id)} className="flex-1 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium" disabled={batchLoading}>Save</button>
+                                    <button onClick={cancelEditingBatch} className="flex-1 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs font-medium">Cancel</button>
+                                    <button onClick={() => deleteBatch(trek._id, batch._id)} className="flex-1 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium" disabled={batchLoading}>Delete</button>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{new Date(batch.startDate).toLocaleDateString('en-GB')} - {new Date(batch.endDate).toLocaleDateString('en-GB')}</h4>
+                                  <div className="text-xs text-gray-500 mb-2">Price: <span className="font-semibold">₹{batch.price}</span></div>
+                                  <div className="text-xs text-gray-500 mb-2">Slots: <span className="font-semibold">{batch.maxParticipants}</span></div>
+                                  <div className="text-xs text-gray-500 mb-2">Available: <span className="font-semibold">{batch.maxParticipants - (batch.currentParticipants || 0)}</span></div>
+                                  <div className="text-xs text-blue-700 font-semibold mt-auto">{batch.currentParticipants || 0} Bookings</div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

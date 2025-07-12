@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserWishlist, removeFromWishlist } from '../services/api';
+import { getUserWishlist, removeFromWishlist, createTrekSlug } from '../services/api';
 import { toast } from 'react-toastify';
 import { FaHeart, FaCalendarAlt, FaMapMarkerAlt, FaRupeeSign } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -127,7 +127,11 @@ function Wishlist() {
             </div>
             
             <div className="p-5">
-              <Link to={`/treks/${trek._id}`} className="block">
+              <Link 
+                to={`/treks/${createTrekSlug(trek.name)}`} 
+                state={{ trekId: trek._id, trekName: trek.name }}
+                className="block"
+              >
                 <h3 className="text-lg font-medium text-gray-900 hover:text-emerald-600">{trek.name}</h3>
               </Link>
               
@@ -150,7 +154,8 @@ function Wishlist() {
                 </div>
                 
                 <Link
-                  to={`/treks/${trek._id}`}
+                  to={`/treks/${createTrekSlug(trek.name)}`}
+                  state={{ trekId: trek._id, trekName: trek.name }}
                   className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                 >
                   View Details
