@@ -1,19 +1,24 @@
+
 const Booking = require('../models/Booking');
 const { getRefundAmount } = require('../utils/refundUtils');
 const { refundPayment } = require('../utils/razorpayUtils');
 const { sendEmail } = require('../utils/email');
 
 exports.cancelBooking = async (req, res) => {
+  console.log("cancelBooking biakshhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh");
   try {
     const { id } = req.params;
-    const { refund, refundType, participantId } = req.body;
-    const booking = await Booking.findById(id).populate('batch');
+    const { refund, refundType, participantId, reason } = req.body;
+    const booking = await Booking.findById(id).populate('trek');
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
     let refundAmount = 0;
     let paymentId = booking.paymentDetails?.paymentId;
     let refundStatus = 'not_applicable';
     let refundDate = null;
+    
+    // Get the batch from trek
+    const batch = booking.trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
 
     // Cancel participant or whole booking
     if (participantId) {
@@ -23,11 +28,13 @@ exports.cancelBooking = async (req, res) => {
 
       participant.isCancelled = true;
       participant.cancelledAt = new Date();
+      participant.cancellationReason = reason || 'Admin cancelled';
+      participant.status = 'bookingCancelled';
 
       if (refund) {
         // Calculate per-participant price
         const perPrice = booking.totalPrice / booking.participantDetails.length;
-        refundAmount = booking.batch ? getRefundAmount(perPrice, booking.batch.startDate, new Date(), refundType) : perPrice;
+        refundAmount = batch ? getRefundAmount(perPrice, batch.startDate, new Date(), refundType) : perPrice;
         if (refundAmount > 0 && paymentId) {
           participant.refundStatus = 'processing';
           const razorpayRes = await refundPayment(paymentId, refundAmount * 100);
@@ -42,14 +49,21 @@ exports.cancelBooking = async (req, res) => {
           participant.refundStatus = 'not_applicable';
         }
       }
+
+      // Update batch participant count for single participant cancellation
+      if (batch) {
+        batch.currentParticipants = Math.max(0, batch.currentParticipants - 1);
+        await booking.trek.save();
+      }
     } else {
       // Cancel whole booking
       if (booking.status === 'cancelled') return res.status(400).json({ message: 'Already cancelled' });
       booking.status = 'cancelled';
       booking.cancelledAt = new Date();
+      booking.cancellationReason = reason || 'Admin cancelled';
 
       if (refund) {
-        refundAmount = booking.batch ? getRefundAmount(booking.totalPrice, booking.batch.startDate, new Date(), refundType) : booking.totalPrice;
+        refundAmount = batch ? getRefundAmount(booking.totalPrice, batch.startDate, new Date(), refundType) : booking.totalPrice;
         if (refundAmount > 0 && paymentId) {
           booking.refundStatus = 'processing';
           const razorpayRes = await refundPayment(paymentId, refundAmount * 100);
@@ -69,7 +83,15 @@ exports.cancelBooking = async (req, res) => {
       booking.participantDetails.forEach(p => {
         p.isCancelled = true;
         p.cancelledAt = new Date();
+        p.cancellationReason = reason || 'Admin cancelled';
+        p.status = 'bookingCancelled';
       });
+
+      // Update batch participant count
+      if (batch) {
+        batch.currentParticipants = Math.max(0, batch.currentParticipants - booking.participantDetails.length);
+        await booking.trek.save();
+      }
     }
 
     await booking.save();
@@ -134,6 +156,7 @@ For support, contact us through our website or mobile app.`;
 
     res.json({ success: true, booking });
   } catch (error) {
+    console.error('Admin cancellation error:', error);
     res.status(500).json({ message: error.message });
   }
 }; 

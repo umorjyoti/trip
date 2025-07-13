@@ -1190,14 +1190,14 @@ export const verifyPayment = async (paymentData) => {
   }
 };
 
-export async function adminCancelBooking({ bookingId, refund, refundType, participantId }) {
-  const res = await fetch(`/api/admin/bookings/${bookingId}/cancel`, {
+export async function adminCancelBooking({ bookingId, refund, refundType, participantId, reason }) {
+  const res = await fetch(`/admin/bookings/${bookingId}/cancel`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       ...getAuthHeader(),
     },
-    body: JSON.stringify({ refund, refundType, participantId }),
+    body: JSON.stringify({ refund, refundType, participantId, reason }),
   });
   if (!res.ok) throw new Error((await res.json()).message || 'Failed to cancel booking');
   return res.json();

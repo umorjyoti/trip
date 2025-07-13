@@ -158,6 +158,7 @@ function AdminBookings() {
         bookingId: cancelModal.booking._id,
         refund: true,
         refundType: cancelModal.refundType,
+        reason: 'Admin cancelled booking',
       });
       toast.success('Booking cancelled and refund processed (if applicable)');
       closeCancelModal();

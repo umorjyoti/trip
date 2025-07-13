@@ -99,6 +99,7 @@ function BookingDetailsPage() {
         bookingId: booking._id,
         refund: true,
         refundType,
+        reason: 'Admin cancelled booking',
       });
       toast.success('Booking cancelled and refund processed');
       setShowCancelModal(false);
