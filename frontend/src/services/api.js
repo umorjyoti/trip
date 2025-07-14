@@ -412,7 +412,9 @@ export const getAllBookings = async (page = 1, filters = {}) => {
       ...(filters.trekId && { trekId: filters.trekId }),
       ...(filters.batchId && { batchId: filters.batchId }),
       ...(filters.startDate && { startDate: filters.startDate }),
-      ...(filters.endDate && { endDate: filters.endDate })
+      ...(filters.endDate && { endDate: filters.endDate }),
+      ...(filters.status && filters.status !== 'all' && { status: filters.status }),
+      ...(filters.search && { search: filters.search })
     });
 
     const response = await api.get(`/bookings?${queryParams.toString()}`);

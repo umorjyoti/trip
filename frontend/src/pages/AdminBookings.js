@@ -7,6 +7,16 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import ExportBookingsModal from '../components/ExportBookingsModal';
 
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'All Status' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'pending_payment', label: 'Pending Payment' },
+  { value: 'payment_completed', label: 'Payment Completed' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'trek_completed', label: 'Trek Completed' },
+  { value: 'cancelled', label: 'Cancelled' }
+];
+
 function AdminBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +39,8 @@ function AdminBookings() {
   useEffect(() => {
     fetchTreks();
     fetchBookings();
-  }, [currentPage, selectedTrek, selectedBatch, startDate, endDate]);
+    // eslint-disable-next-line
+  }, [filter]);
 
   const fetchTreks = async () => {
     try {
@@ -44,7 +55,7 @@ function AdminBookings() {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      console.log('Fetching all bookings for admin...');
+      console.log('Fetching bookings with status:', filter);
       const data = await getAllBookings(currentPage, {
         status: filter !== 'all' ? filter : undefined,
         trekId: selectedTrek || undefined,
@@ -201,9 +212,9 @@ function AdminBookings() {
               onChange={handleFilterChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
             >
-              <option value="all">All Status</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="cancelled">Cancelled</option>
+              {STATUS_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
 

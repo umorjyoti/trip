@@ -491,14 +491,68 @@ const getBookings = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
+    // Build filter query
+    const filterQuery = {};
+
+    // Status filter
+    if (req.query.status && req.query.status !== 'all') {
+      filterQuery.status = req.query.status;
+    }
+
+    // Trek filter
+    if (req.query.trekId) {
+      filterQuery.trek = req.query.trekId;
+    }
+
+    // Batch filter
+    if (req.query.batchId) {
+      filterQuery.batch = req.query.batchId;
+    }
+
+    // Date range filters
+    if (req.query.startDate || req.query.endDate) {
+      filterQuery.createdAt = {};
+      if (req.query.startDate) {
+        filterQuery.createdAt.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        filterQuery.createdAt.$lte = new Date(req.query.endDate);
+      }
+    }
+
+    // Search filter (for bookingId and user name)
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      const searchTerm = req.query.search;
+      
+      // Check if search term looks like a booking ID (starts with BK)
+      if (searchTerm.toUpperCase().startsWith('BK')) {
+        // Extract the ID part and search by _id
+        const idPart = searchTerm.substring(2);
+        filterQuery.$or = [
+          { _id: { $regex: idPart, $options: 'i' } },
+          { 'userDetails.name': searchRegex },
+          { 'userDetails.email': searchRegex }
+        ];
+      } else {
+        filterQuery.$or = [
+          { _id: { $regex: searchRegex } },
+          { 'userDetails.name': searchRegex },
+          { 'userDetails.email': searchRegex }
+        ];
+      }
+    }
+
+    console.log("Filter query:", filterQuery);
+
     const [bookings, total] = await Promise.all([
-      Booking.find({})
+      Booking.find(filterQuery)
         .populate("user", "name email")
         .populate("trek", "name")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Booking.countDocuments({})
+      Booking.countDocuments(filterQuery)
     ]);
 
     res.json({

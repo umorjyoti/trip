@@ -225,6 +225,11 @@ BookingSchema.virtual('formattedDates').get(function() {
   return { startDate: 'N/A', endDate: 'N/A' };
 });
 
+// Add virtual for booking ID
+BookingSchema.virtual('bookingId').get(function() {
+  return `BK${this._id.toString().slice(-8).toUpperCase()}`;
+});
+
 // Add virtual for batch details
 BookingSchema.virtual('batchDetails', {
   ref: 'Batch',
