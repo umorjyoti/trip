@@ -5,6 +5,7 @@ const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment } = req
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
 const { refundPayment } = require('../utils/razorpayUtils');
+const mongoose = require('mongoose');
 
 // Create a custom trek booking (simplified flow)
 const createCustomTrekBooking = async (req, res) => {
@@ -520,27 +521,31 @@ const getBookings = async (req, res) => {
       }
     }
 
-    // Search filter (for bookingId and user name)
+    // Enhanced search logic for trek name
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
       const searchTerm = req.query.search;
-      
-      // Check if search term looks like a booking ID (starts with BK)
-      if (searchTerm.toUpperCase().startsWith('BK')) {
-        // Extract the ID part and search by _id
-        const idPart = searchTerm.substring(2);
-        filterQuery.$or = [
-          { _id: { $regex: idPart, $options: 'i' } },
-          { 'userDetails.name': searchRegex },
-          { 'userDetails.email': searchRegex }
-        ];
-      } else {
-        filterQuery.$or = [
-          { _id: { $regex: searchRegex } },
-          { 'userDetails.name': searchRegex },
-          { 'userDetails.email': searchRegex }
-        ];
+      let trekIds = [];
+      // Find trek IDs matching the search
+      const treks = await require('../models/Trek').find({ name: searchRegex }, '_id');
+      if (treks && treks.length > 0) {
+        trekIds = treks.map(t => t._id);
       }
+      const orFilters = [
+        { 'userDetails.name': searchRegex },
+        { 'userDetails.email': searchRegex },
+        // Partial match for status
+        { status: { $regex: searchRegex } },
+        // Partial match for booking ID (ObjectId as string)
+        { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: req.query.search, options: 'i' } } },
+        // Partial match for trek ID (ObjectId as string)
+        { $expr: { $regexMatch: { input: { $toString: '$trek' }, regex: req.query.search, options: 'i' } } }
+      ];
+      // Add trek ID matches from trek name search
+      if (trekIds.length > 0) {
+        orFilters.push({ trek: { $in: trekIds } });
+      }
+      filterQuery.$or = orFilters;
     }
 
     console.log("Filter query:", filterQuery);
