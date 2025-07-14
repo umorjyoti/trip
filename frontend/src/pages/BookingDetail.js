@@ -492,7 +492,7 @@ function BookingDetail() {
           bookingId={booking._id}
           onClose={() => setShowTicketModal(false)}
           onSuccess={() => {
-            toast.success('Support ticket created successfully');
+            // Removed duplicate toast.success here
           }}
         />
       )}
