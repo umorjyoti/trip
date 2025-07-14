@@ -288,6 +288,9 @@ function TrekDetail() {
     );
 
   useEffect(() => {
+
+    console.log("location",location)
+
     const fetchData = async () => {
       try {
         setLoading(true);
