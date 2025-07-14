@@ -304,11 +304,11 @@ function Header() {
             exit="closed"
             variants={mobileMenuVariants}
             transition={mobileMenuTransition}
-            className="sm:hidden fixed  left-0 w-64 bg-white shadow-xl z-50 overflow-y-auto"
+            className="sm:hidden fixed left-0 w-64 bg-white shadow-xl z-50 overflow-y-auto"
             id="mobile-menu"
           >
             <div className="pt-5 pb-6 px-2 space-y-1">
-               <div className="flex justify-end px-2 mb-2">
+               {/* <div className="flex justify-end px-2 mb-2">
                  <motion.button
                    whileTap={{ scale: 0.9 }}
                    onClick={toggleMobileMenu}
@@ -317,7 +317,7 @@ function Header() {
                    <span className="sr-only">Close menu</span>
                    <FaTimes className="h-6 w-6" aria-hidden="true" />
                  </motion.button>
-               </div>
+               </div> */}
               <MobileNavLink to="/" onClick={() => setMobileMenuOpen(false)}>Home</MobileNavLink>
               <MobileNavLink to="/treks" onClick={() => setMobileMenuOpen(false)}>Treks</MobileNavLink>
               <MobileNavLink to="/weekend-getaways" onClick={() => setMobileMenuOpen(false)}>Weekend Getaways</MobileNavLink>
@@ -325,33 +325,9 @@ function Header() {
               <MobileNavLink to="/contact" onClick={() => setMobileMenuOpen(false)}>Contact</MobileNavLink>
               <MobileNavLink to="/regions" onClick={() => setMobileMenuOpen(false)}>Regions</MobileNavLink>
             </div>
-            <div className="py-6 px-5 border-t border-gray-200">
-              {currentUser ? (
-                <div className="space-y-1">
-                   <div className="flex items-center mb-4">
-                     <div className="flex-shrink-0 h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold ring-2 ring-white">
-                       {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <FaUser size={18} />}
-                     </div>
-                     <div className="ml-3 min-w-0">
-                       <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name || 'User'}</p>
-                       <p className="text-xs text-gray-500 truncate">{currentUser.email}</p>
-                     </div>
-                   </div>
-                  <MobileNavLink to="/profile" onClick={() => setMobileMenuOpen(false)}>Your Profile</MobileNavLink>
-                  <MobileNavLink to="/wishlist" onClick={() => setMobileMenuOpen(false)}>Wishlist</MobileNavLink>
-                  <MobileNavLink to="/my-bookings" onClick={() => setMobileMenuOpen(false)}>My Bookings</MobileNavLink>
-                  <MobileNavLink to="/tickets" onClick={() => setMobileMenuOpen(false)}>Support Tickets</MobileNavLink>
-                  {currentUser.isAdmin && (
-                    <MobileNavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>Admin Dashboard</MobileNavLink>
-                  )}
-                  <button
-                    onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
-                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              ) : (
+            {/* Only show sign in/up if not logged in */}
+            {!currentUser && (
+              <div className="py-6 px-5 border-t border-gray-200">
                 <div className="space-y-2">
                   <Link
                     to="/register"
@@ -367,8 +343,8 @@ function Header() {
                     </Link>
                   </p>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -43,7 +43,7 @@ function WeekendGetawayManager() {
   useEffect(() => {
     fetchTreks();
   }, []);
-
+  
   const fetchTreks = async () => {
     try {
       setLoading(true);
@@ -63,7 +63,7 @@ function WeekendGetawayManager() {
       setLoading(false);
     }
   };
-
+  
   const handleAddToWeekendGetaways = async (trek) => {
     try {
       await toggleWeekendGetaway(trek._id, { isWeekendGetaway: true });
@@ -74,7 +74,7 @@ function WeekendGetawayManager() {
       toast.error('Failed to add trek to weekend getaways');
     }
   };
-
+  
   const confirmRemoveFromWeekendGetaways = async () => {
     if (!trekToDelete) return;
     
@@ -89,7 +89,7 @@ function WeekendGetawayManager() {
       toast.error('Failed to remove trek from weekend getaways');
     }
   };
-
+  
   const isShortDuration = (trek) => {
     return trek.duration <= 3;
   };
@@ -110,7 +110,7 @@ function WeekendGetawayManager() {
     const matchesRegion = !filterRegion || trek.region === filterRegion;
     return matchesSearch && matchesRegion;
   });
-
+  
   const sortedRegularTreks = [...filteredRegularTreks].sort((a, b) => {
     let aValue = a[sortBy];
     let bValue = b[sortBy];
@@ -135,7 +135,7 @@ function WeekendGetawayManager() {
     const slug = createTrekSlug(trek.name);
     return `/treks/${slug}`;
   };
-
+  
   const renderTrekCard = (trek, isWeekendGetaway = false) => (
     <div key={trek._id} className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-200">
       <div className="relative">
@@ -235,7 +235,7 @@ function WeekendGetawayManager() {
       </div>
     );
   }
-
+  
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -244,11 +244,11 @@ function WeekendGetawayManager() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
               <FaUmbrellaBeach className="mr-3 text-emerald-600" />
-              Weekend Getaway Manager
+          Weekend Getaway Manager
             </h1>
             <p className="text-gray-600 mt-2">
-              Manage which treks are featured as weekend getaways on the website.
-            </p>
+          Manage which treks are featured as weekend getaways on the website.
+        </p>
           </div>
           <div className="flex items-center space-x-3">
             <button
@@ -260,7 +260,7 @@ function WeekendGetawayManager() {
           </div>
         </div>
       </div>
-
+      
       {/* Search and Filter Bar */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -307,7 +307,7 @@ function WeekendGetawayManager() {
         </div>
       </div>
 
-      {/* Current Weekend Getaways */}
+          {/* Current Weekend Getaways */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center">
@@ -315,8 +315,8 @@ function WeekendGetawayManager() {
             Current Weekend Getaways ({weekendGetaways.length})
           </h2>
         </div>
-        
-        {weekendGetaways.length === 0 ? (
+            
+            {weekendGetaways.length === 0 ? (
           <div className="p-12 text-center">
             <FaUmbrellaBeach className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No weekend getaways</h3>
@@ -346,14 +346,14 @@ function WeekendGetawayManager() {
                       <tr key={trek._id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <img 
-                              className="h-10 w-10 rounded-full object-cover" 
+                              <img 
+                                className="h-10 w-10 rounded-full object-cover" 
                               src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'} 
-                              alt={trek.name} 
+                                alt={trek.name} 
                               onError={(e) => {
                                 e.target.src = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80';
                               }}
-                            />
+                              />
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{trek.name}</div>
                               <div className="text-sm text-gray-500">{trek.difficulty}</div>
@@ -394,11 +394,11 @@ function WeekendGetawayManager() {
                 </table>
               </div>
             )}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      {/* Available Treks */}
+          
+          {/* Available Treks */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center">
@@ -406,7 +406,7 @@ function WeekendGetawayManager() {
             Available Treks ({filteredRegularTreks.length})
           </h2>
         </div>
-        
+            
         {filteredRegularTreks.length === 0 ? (
           <div className="p-12 text-center">
             <FaTimes className="mx-auto h-12 w-12 text-gray-400" />
@@ -438,14 +438,14 @@ function WeekendGetawayManager() {
                       <tr key={trek._id} className={`hover:bg-gray-50 ${isShortDuration(trek) ? 'bg-green-50' : ''}`}>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <img 
-                              className="h-10 w-10 rounded-full object-cover" 
+                              <img 
+                                className="h-10 w-10 rounded-full object-cover" 
                               src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'} 
-                              alt={trek.name} 
+                                alt={trek.name} 
                               onError={(e) => {
                                 e.target.src = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80';
                               }}
-                            />
+                              />
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">{trek.name}</div>
                               <div className="text-sm text-gray-500">{trek.difficulty}</div>
@@ -471,13 +471,13 @@ function WeekendGetawayManager() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-3">
-                            <button
-                              onClick={() => handleAddToWeekendGetaways(trek)}
-                              className="text-emerald-600 hover:text-emerald-900 flex items-center"
+                          <button
+                            onClick={() => handleAddToWeekendGetaways(trek)}
+                            className="text-emerald-600 hover:text-emerald-900 flex items-center"
                               title="Add to weekend getaways"
-                            >
-                              <FaPlus className="mr-1" /> Add
-                            </button>
+                          >
+                            <FaPlus className="mr-1" /> Add
+                          </button>
                             <Link
                               to={getViewLink(trek)}
                               state={{ trekId: trek._id, trekName: trek.name }}
@@ -495,11 +495,11 @@ function WeekendGetawayManager() {
               </div>
             )}
           </div>
-        )}
-      </div>
-
+      )}
+                </div>
+                
       {/* Delete Confirmation Modal */}
-      <Modal
+        <Modal 
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         title="Remove from Weekend Getaways"
@@ -508,24 +508,24 @@ function WeekendGetawayManager() {
           <p className="text-gray-600 mb-6">
             Are you sure you want to remove <strong>{trekToDelete?.name}</strong> from weekend getaways?
           </p>
-          
-          <div className="flex justify-end space-x-3">
-            <button
+            
+            <div className="flex justify-end space-x-3">
+              <button
               onClick={() => setShowDeleteModal(false)}
               className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            
-            <button
+              >
+                Cancel
+              </button>
+              
+              <button
               onClick={confirmRemoveFromWeekendGetaways}
               className="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition-colors"
-            >
+              >
               Remove
-            </button>
+              </button>
+            </div>
           </div>
-        </div>
-      </Modal>
+        </Modal>
     </div>
   );
 }
