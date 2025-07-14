@@ -86,6 +86,34 @@ export const logout = async () => {
   }
 };
 
+// Forgot password
+export const forgotPassword = async (email) => {
+  try {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  } catch (error) {
+    console.error('Forgot password API error:', error);
+    throw error;
+  }
+};
+
+// Reset password
+export const resetPassword = async (token, password) => {
+  try {
+    const response = await api.post('/auth/reset-password', { token, password });
+    
+    // Set the Authorization header with the token from the response
+    if (response.data.token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Reset password API error:', error);
+    throw error;
+  }
+};
+
 export const getCurrentUser = async () => {
   try {
     const response = await api.get('/auth/me');

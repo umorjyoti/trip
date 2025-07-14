@@ -72,6 +72,8 @@ import BookingPreviewPage from './pages/BookingPreviewPage';
 import Career from './pages/Career';
 import AdminCareers from './pages/AdminCareers';
 import CustomTrekDetail from './pages/CustomTrekDetail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -136,6 +138,14 @@ function App() {
               <Route
                 path="/register"
                 element={currentUser ? <Navigate to="/" /> : <Register />}
+              />
+              <Route
+                path="/forgot-password"
+                element={currentUser ? <Navigate to="/" /> : <ForgotPassword />}
+              />
+              <Route
+                path="/reset-password/:token"
+                element={currentUser ? <Navigate to="/" /> : <ResetPassword />}
               />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
