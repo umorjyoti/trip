@@ -683,39 +683,6 @@ api.interceptors.response.use(
   }
 );
 
-// Get user's wishlist
-export const getUserWishlist = async () => {
-  try {
-    const response = await api.get('/wishlist');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching wishlist:', error);
-    throw error;
-  }
-};
-
-// Add trek to wishlist
-export const addToWishlist = async (trekId) => {
-  try {
-    const response = await api.post(`/wishlist/${trekId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error adding to wishlist:', error);
-    throw error;
-  }
-};
-
-// Remove trek from wishlist
-export const removeFromWishlist = async (trekId) => {
-  try {
-    const response = await api.delete(`/wishlist/${trekId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error removing from wishlist:', error);
-    throw error;
-  }
-};
-
 // Add this function to set the auth token for all requests
 export const setAuthToken = (token) => {
   if (token) {

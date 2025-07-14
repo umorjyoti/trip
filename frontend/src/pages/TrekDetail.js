@@ -5,9 +5,6 @@ import {
   getTrekById,
   getTrekBySlug,
   getActiveOffers,
-  addToWishlist,
-  removeFromWishlist,
-  getUserWishlist,
   getTreksByRegion,
   getRegionById,
 } from "../services/api";
@@ -334,11 +331,6 @@ function TrekDetail() {
           setDiscountedPrice(discounted);
         }
 
-        // Check if trek is in user's wishlist
-        if (currentUser) {
-          checkWishlistStatus();
-        }
-
         // Fetch related treks from the same region
         if (trekData.region) {
           const relatedTreksData = await getTreksByRegion(trekData.region);
@@ -381,17 +373,6 @@ function TrekDetail() {
       fetchRegionName();
     }
   }, [trek]);
-
-  const checkWishlistStatus = async () => {
-    try {
-      const wishlist = await getUserWishlist();
-      const trekId = location?.state?.trekId || trek?._id;
-      const isInList = wishlist.some((item) => item._id === trekId);
-      // setIsInWishlist(isInList);
-    } catch (err) {
-      console.error("Error checking wishlist status:", err);
-    }
-  };
 
   // Helper function to get price from different possible locations
   const getPrice = (trekData) => {

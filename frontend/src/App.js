@@ -42,7 +42,6 @@ import UserTickets from "./pages/UserTickets";
 import UserTicketDetail from "./pages/UserTicketDetail";
 import SalesDashboard from "./pages/SalesDashboard";
 import AdminLeads from "./pages/AdminLeads";
-import Wishlist from "./pages/Wishlist";
 import TrekSectionsPage from "./pages/TrekSectionsPage";
 import RegionDetail from "./pages/RegionDetail";
 import RegionList from "./pages/RegionList";
@@ -207,14 +206,6 @@ function App() {
               <Route
                 path="/booking/:bookingId/preview"
                 element={<BookingPreviewPage />}
-              />
-              <Route
-                path="/wishlist"
-                element={
-                  <PrivateRoute>
-                    <Wishlist />
-                  </PrivateRoute>
-                }
               />
 
               {/* Admin Routes */}

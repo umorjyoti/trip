@@ -238,7 +238,6 @@ function Header() {
                           </p>
                         </div>
                         <DropdownLink to="/profile" icon={FaUser}>Profile</DropdownLink>
-                        <DropdownLink to="/wishlist" icon={FaHeart}>Wishlist</DropdownLink>
                         <DropdownLink to="/dashboard" icon={FaCog}>Dashboard</DropdownLink>
                         <DropdownLink to="/my-bookings" icon={FaClipboardList}>My Bookings</DropdownLink>
                         <DropdownLink to="/tickets" icon={FaTicketAlt}>Support Tickets</DropdownLink>
