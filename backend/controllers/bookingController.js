@@ -1218,6 +1218,45 @@ const markTrekCompleted = async (req, res) => {
   }
 };
 
+// Download invoice for a booking
+const downloadInvoice = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('trek')
+      .populate('user');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user has permission to download this invoice
+    if (!req.user.isAdmin && booking.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to download this invoice' });
+    }
+
+    // Create payment details object for invoice generation
+    const paymentDetails = booking.paymentDetails || {
+      id: booking._id.toString(),
+      amount: booking.totalPrice * 100, // Convert to paise for consistency
+      method: booking.paymentDetails?.method || 'Manual/Offline'
+    };
+
+    // Generate invoice PDF
+    const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+
+    // Set response headers for file download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Invoice-${booking._id}.pdf`);
+    res.setHeader('Content-Length', invoiceBuffer.length);
+
+    // Send the PDF buffer
+    res.send(invoiceBuffer);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    res.status(500).json({ message: 'Failed to generate invoice', error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -1233,5 +1272,6 @@ module.exports = {
   exportBookings,
   updateParticipantDetails,
   markTrekCompleted,
-  createCustomTrekBooking
+  createCustomTrekBooking,
+  downloadInvoice
 };

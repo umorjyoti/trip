@@ -220,4 +220,7 @@ router.put('/:id/complete-trek',
 // Export bookings
 router.get('/admin/export', protect, admin, bookingController.exportBookings);
 
+// Download invoice for a booking
+router.get('/:id/invoice', protect, bookingController.downloadInvoice);
+
 module.exports = router; 

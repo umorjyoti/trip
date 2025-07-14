@@ -68,7 +68,6 @@ function Header() {
       setIsDropdownOpen(false);
       
       navigate('/');
-      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error in Header:', error);
       toast.error('Failed to log out');
