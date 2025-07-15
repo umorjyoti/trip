@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaCalculator, FaUser, FaUsers, FaRupeeSign } from 'react-icons/fa';
 import Modal from './Modal';
+import { getBookingById } from '../services/api';
 
 const CancellationModal = ({ 
   isOpen, 
   onClose, 
   booking, 
+  bookingId, // New prop for bookingId
   trek, 
   onConfirmCancellation 
 }) => {
@@ -15,6 +17,8 @@ const CancellationModal = ({
   const [customRefundAmount, setCustomRefundAmount] = useState(0);
   const [cancellationReason, setCancellationReason] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bookingData, setBookingData] = useState(null);
+  const [fetchingBooking, setFetchingBooking] = useState(false);
 
   // Calculate refund based on cancellation policy
   const calculateRefund = (amount, startDate, refundType = 'auto') => {
@@ -58,14 +62,14 @@ const CancellationModal = ({
   // Calculate total refund for selected participants
   const calculateTotalRefund = () => {
     if (cancellationType === 'entire') {
-      const policy = getCancellationPolicyDescription(booking.batch?.startDate);
-      return calculateRefund(booking.totalPrice, booking.batch?.startDate, refundType);
+      const policy = getCancellationPolicyDescription(bookingData?.batch?.startDate);
+      return calculateRefund(bookingData?.totalPrice, bookingData?.batch?.startDate, refundType);
     } else {
-      const perParticipantPrice = booking.totalPrice / booking.participantDetails.length;
+      const perParticipantPrice = bookingData?.totalPrice / bookingData?.participantDetails.length;
       return selectedParticipants.reduce((total, participantId) => {
-        const participant = booking.participantDetails.find(p => p._id === participantId);
+        const participant = bookingData?.participantDetails.find(p => p._id === participantId);
         if (participant && !participant.isCancelled) {
-          return total + calculateRefund(perParticipantPrice, booking.batch?.startDate, refundType);
+          return total + calculateRefund(perParticipantPrice, bookingData?.batch?.startDate, refundType);
         }
         return total;
       }, 0);
@@ -90,7 +94,7 @@ const CancellationModal = ({
       setSelectedParticipants([]);
     } else {
       // Select all non-cancelled participants by default
-      const nonCancelledParticipants = booking.participantDetails
+      const nonCancelledParticipants = bookingData?.participantDetails
         .filter(p => !p.isCancelled)
         .map(p => p._id);
       setSelectedParticipants(nonCancelledParticipants);
@@ -112,6 +116,7 @@ const CancellationModal = ({
     setLoading(true);
     try {
       await onConfirmCancellation({
+        bookingId: bookingData._id,
         cancellationType,
         selectedParticipants,
         refundType,
@@ -127,6 +132,27 @@ const CancellationModal = ({
     }
   };
 
+  // Fetch booking data when modal opens
+  useEffect(() => {
+    const fetchBooking = async () => {
+      if (isOpen && bookingId && !bookingData) {
+        setFetchingBooking(true);
+        try {
+          const data = await getBookingById(bookingId);
+          setBookingData(data);
+        } catch (error) {
+          console.error('Error fetching booking:', error);
+          alert('Failed to fetch booking details.');
+          onClose();
+        } finally {
+          setFetchingBooking(false);
+        }
+      }
+    };
+
+    fetchBooking();
+  }, [isOpen, bookingId]); // Remove bookingData from dependencies to avoid infinite loops
+
   // Reset form when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -135,14 +161,29 @@ const CancellationModal = ({
       setRefundType('auto');
       setCustomRefundAmount(0);
       setCancellationReason('');
+    } else {
+      // Reset booking data when modal closes
+      setBookingData(null);
     }
   }, [isOpen]);
 
-  if (!isOpen || !booking) return null;
+  if (!isOpen || !bookingData) return null;
 
-  const policy = getCancellationPolicyDescription(booking.batch?.startDate);
+  // Show loading state while fetching booking data
+  if (fetchingBooking) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} title="Cancel Booking">
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Loading booking details...</span>
+        </div>
+      </Modal>
+    );
+  }
+
+  const policy = getCancellationPolicyDescription(bookingData.batch?.startDate);
   const totalRefund = calculateTotalRefund();
-  const nonCancelledParticipants = booking.participantDetails.filter(p => !p.isCancelled);
+  const nonCancelledParticipants = bookingData.participantDetails.filter(p => !p.isCancelled);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Cancel Booking">
@@ -153,7 +194,7 @@ const CancellationModal = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="font-medium text-gray-600">Booking ID:</span>
-              <span className="ml-2 text-gray-900">{booking._id}</span>
+              <span className="ml-2 text-gray-900">{bookingData._id}</span>
             </div>
             <div>
               <span className="font-medium text-gray-600">Trek:</span>
@@ -162,12 +203,12 @@ const CancellationModal = ({
             <div>
               <span className="font-medium text-gray-600">Batch:</span>
               <span className="ml-2 text-gray-900">
-                {booking.batch?.startDate ? new Date(booking.batch.startDate).toLocaleDateString() : 'N/A'}
+                {bookingData.batch?.startDate ? new Date(bookingData.batch.startDate).toLocaleDateString() : 'N/A'}
               </span>
             </div>
             <div>
               <span className="font-medium text-gray-600">Total Amount:</span>
-              <span className="ml-2 text-gray-900">₹{booking.totalPrice}</span>
+              <span className="ml-2 text-gray-900">₹{bookingData.totalPrice}</span>
             </div>
           </div>
         </div>
@@ -181,7 +222,7 @@ const CancellationModal = ({
           <div className="text-sm">
             <p className={`font-medium ${policy.color}`}>{policy.text}</p>
             <p className="text-gray-600 mt-1">
-              Days until trek: {Math.ceil((new Date(booking.batch?.startDate) - new Date()) / (1000 * 60 * 60 * 24))}
+              Days until trek: {Math.ceil((new Date(bookingData.batch?.startDate) - new Date()) / (1000 * 60 * 60 * 24))}
             </p>
           </div>
         </div>
@@ -294,7 +335,7 @@ const CancellationModal = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter refund amount"
               min="0"
-              max={cancellationType === 'entire' ? booking.totalPrice : booking.totalPrice / booking.participantDetails.length * selectedParticipants.length}
+              max={cancellationType === 'entire' ? bookingData.totalPrice : bookingData.totalPrice / bookingData.participantDetails.length * selectedParticipants.length}
             />
           </div>
         )}

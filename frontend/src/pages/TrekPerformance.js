@@ -190,7 +190,7 @@ const TrekPerformance = () => {
 
   const handleCancellationConfirm = async (cancellationData) => {
     try {
-      await cancelBooking(selectedBooking.bookingId, cancellationData);
+      await cancelBooking(cancellationData.bookingId || selectedBooking.bookingId, cancellationData);
       toast.success('Booking cancelled successfully');
       // Refresh the batch details
       if (selectedBatch) {
@@ -532,7 +532,7 @@ const TrekPerformance = () => {
       <CancellationModal
         isOpen={showCancellationModal}
         onClose={() => setShowCancellationModal(false)}
-        booking={selectedBooking}
+        bookingId={selectedBooking?.bookingId}
         trek={performanceData?.trek}
         onConfirmCancellation={handleCancellationConfirm}
       />
