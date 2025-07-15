@@ -557,12 +557,35 @@ export const getAllTickets = async () => {
 };
 
 // Sales Dashboard APIs
-export const getSalesStats = async (timeRange = 'month') => {
+export const getSalesStats = async (params = {}) => {
   try {
-    const response = await api.get(`/stats/sales?timeRange=${timeRange}`);
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/stats/sales${queryString ? `?${queryString}` : ''}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching sales stats:', error);
+    throw error;
+  }
+};
+
+export const getSalesTreks = async () => {
+  try {
+    const response = await api.get('/stats/sales/treks');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching sales treks:', error);
+    throw error;
+  }
+};
+
+export const getSalesBatches = async (trekId = null) => {
+  try {
+    const params = trekId ? { trekId } : {};
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/stats/sales/batches${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching sales batches:', error);
     throw error;
   }
 };
