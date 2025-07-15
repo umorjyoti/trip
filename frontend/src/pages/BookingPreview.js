@@ -159,6 +159,14 @@ function BookingPreview() {
                         {participant.medicalConditions && (
                           <p>Medical Conditions: {participant.medicalConditions}</p>
                         )}
+                        {participant.emergencyContact && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded">
+                            <p className="font-medium text-gray-700">Emergency Contact:</p>
+                            <p>Name: {participant.emergencyContact.name}</p>
+                            <p>Phone: {participant.emergencyContact.phone}</p>
+                            <p>Relation: {participant.emergencyContact.relation}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}

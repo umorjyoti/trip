@@ -168,6 +168,11 @@ const BookingSchema = new mongoose.Schema({
     },
     allergies: String,
     extraComment: String,
+    emergencyContact: {
+      name: String,
+      phone: String,
+      relation: String
+    },
     customFields: {
       type: Map,
       of: String

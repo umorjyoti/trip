@@ -20,6 +20,11 @@ function ParticipantDetailsPage() {
       gender: "",
       allergies: "",
       extraComment: "",
+      emergencyContact: {
+        name: "",
+        phone: "",
+        relation: ""
+      },
       customFields: {}
     }))
   );
@@ -42,13 +47,26 @@ function ParticipantDetailsPage() {
             trek.participantFields.forEach(f => {
               newFields[f.name] = "";
             });
-            return { ...p, ...newFields };
+            return { 
+              ...p, 
+              ...newFields,
+              emergencyContact: {
+                name: "",
+                phone: "",
+                relation: ""
+              }
+            };
           }));
         }
         if (Array.isArray(trek.customFields)) {
           setCustomFields(trek.customFields);
           setParticipants(prev => prev.map(p => ({
             ...p,
+            emergencyContact: {
+              name: "",
+              phone: "",
+              relation: ""
+            },
             customFields: trek.customFields.reduce((acc, field) => {
               acc[field.fieldName] = "";
               return acc;
@@ -82,6 +100,11 @@ function ParticipantDetailsPage() {
             gender: "",
             allergies: "",
             extraComment: "",
+            emergencyContact: {
+              name: "",
+              phone: "",
+              relation: ""
+            },
             customFields: {}
           }));
         }
@@ -106,6 +129,20 @@ function ParticipantDetailsPage() {
         customFields: {
           ...updated[idx].customFields,
           [fieldName]: value
+        }
+      };
+      return updated;
+    });
+  };
+
+  const handleEmergencyContactChange = (idx, field, value) => {
+    setParticipants(prev => {
+      const updated = [...prev];
+      updated[idx] = {
+        ...updated[idx],
+        emergencyContact: {
+          ...updated[idx].emergencyContact,
+          [field]: value
         }
       };
       return updated;
@@ -234,6 +271,48 @@ function ParticipantDetailsPage() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Extra Comment</label>
                 <textarea name="extraComment" value={p.extraComment} onChange={e => handleChange(idx, e)} placeholder="Any extra comment?" className="border p-2 rounded w-full" rows={2} />
+              </div>
+              
+              {/* Emergency Contact Section */}
+              <div className="md:col-span-2">
+                <h4 className="text-lg font-semibold text-emerald-700 mb-3 border-b pb-2">Emergency Contact</h4>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name *</label>
+                <input 
+                  value={p.emergencyContact?.name || ""} 
+                  onChange={e => handleEmergencyContactChange(idx, 'name', e.target.value)} 
+                  required 
+                  placeholder="Emergency Contact Name" 
+                  className="border p-2 rounded w-full" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Phone *</label>
+                <input 
+                  value={p.emergencyContact?.phone || ""} 
+                  onChange={e => handleEmergencyContactChange(idx, 'phone', e.target.value)} 
+                  required 
+                  placeholder="Emergency Contact Phone" 
+                  className="border p-2 rounded w-full" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Relation to Participant *</label>
+                <select 
+                  value={p.emergencyContact?.relation || ""} 
+                  onChange={e => handleEmergencyContactChange(idx, 'relation', e.target.value)} 
+                  required 
+                  className="border p-2 rounded w-full"
+                >
+                  <option value="">Select Relation</option>
+                  <option value="Parent">Parent</option>
+                  <option value="Spouse">Spouse</option>
+                  <option value="Sibling">Sibling</option>
+                  <option value="Friend">Friend</option>
+                  <option value="Relative">Relative</option>
+                  <option value="Other">Other</option>
+                </select>
               </div>
             </div>
             {addOns.length > 0 && (

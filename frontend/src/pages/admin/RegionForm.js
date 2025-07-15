@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createRegion, updateRegion, getRegionById } from '../../services/api';
+import SingleImageUploader from '../../components/SingleImageUploader';
 
 const RegionForm = () => {
   const navigate = useNavigate();
@@ -10,7 +11,7 @@ const RegionForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    image: '',
+    coverImage: '',
     status: 'active'
   });
 
@@ -103,14 +104,11 @@ const RegionForm = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Image URL</label>
-          <input
-            type="text"
-            name="image"
-            value={formData.image}
-            onChange={handleChange}
-            required
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+          <SingleImageUploader
+            imageUrl={formData.coverImage}
+            onChange={(url) => setFormData(prev => ({ ...prev, coverImage: url }))}
+            label="Cover Image"
+            maxSize={5}
           />
         </div>
 
