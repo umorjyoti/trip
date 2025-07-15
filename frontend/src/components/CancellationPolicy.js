@@ -71,7 +71,7 @@ const CancellationPolicy = () => {
                   Booking Amount
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">
-                  Refunded in mode of Credit Note
+                  Refunded in mode of original payment
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-900">
                   Adjusted in Refund Deduction
