@@ -1,7 +1,16 @@
 # Active Context
 
 ## Current Focus
-**Fixed Forgot Password Reset Link Issue** - Resolved the issue where password reset links were redirecting to localhost instead of the correct domain.
+**Added Admin Team Management Feature** - Created a new quick action in the admin dashboard to manage admin users specifically, with the `manageTeam` permission.
+
+## Recent Changes (Latest Session)
+- **New Admin Team Management**: Added a new quick action "Manage Team" in the admin dashboard
+- **Permission System**: Added `manageTeam` permission to UserGroup model for controlling access
+- **Backend API**: Created `/users/admins` endpoint to fetch only admin users
+- **Frontend Page**: Created AdminTeam.js page similar to AdminUsers but filtered for admins only
+- **Navigation**: Added "Team" navigation item in AdminLayout sidebar
+- **Route Protection**: Added protected route `/admin/team` with `manageTeam` permission requirement
+- **UI Consistency**: AdminTeam page uses same UI design as AdminUsers for consistency
 
 ## Recent Changes (Latest Session)
 - **FRONTEND_URL Environment Variable Issue**: Fixed the problem where `process.env.FRONTEND_URL` was undefined, causing reset links to be malformed
@@ -14,47 +23,61 @@
 - **Consistent URL Generation**: All password reset and authentication redirects now use the same logic
 
 ## Key Implementation Details
-- **Root Cause**: `process.env.FRONTEND_URL` was not set in environment variables
-- **Solution**: Created centralized helper function with environment-aware fallbacks
+- **Permission System**: Added `manageTeam` permission to UserGroup model for granular access control
+- **Backend Implementation**:
+  - Updated UserGroup model to include `manageTeam` permission
+  - Enhanced userController.js with `getAdmins()` function to fetch only admin users
+  - Added `/users/admins` route with `manageTeam` permission check
+- **Frontend Implementation**:
+  - Created AdminTeam.js page with same UI as AdminUsers but filtered for admins
+  - Added "Manage Team" quick action to AdminDashboard with `manageTeam` permission
+  - Added navigation item in AdminLayout sidebar
+  - Added protected route `/admin/team` in App.js
+  - Updated API service to use correct `/users/admins` endpoint
 - **Files Modified**:
-  - `backend/utils/config.js` (new file)
-  - `backend/controllers/authController.js`
-  - `backend/routes/auth.routes.js`
-- **Fallback Logic**: 
-  ```javascript
-  process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
-    ? 'https://bengalurutrekkers.com' 
-    : 'http://localhost:3000')
-  ```
+  - `backend/models/UserGroup.js` - Added manageTeam permission
+  - `backend/controllers/userController.js` - Enhanced getAdmins function
+  - `backend/routes/userRoutes.js` - Updated route permission
+  - `frontend/src/services/api.js` - Fixed getAdmins endpoint
+  - `frontend/src/pages/AdminTeam.js` - New page (created)
+  - `frontend/src/pages/AdminDashboard.js` - Added quick action
+  - `frontend/src/App.js` - Added route and import
+  - `frontend/src/layouts/AdminLayout.js` - Added navigation item
 
 ## Current Status
-✅ **COMPLETED**: Forgot password reset link issue is fully resolved
-- Password reset emails now contain correct URLs
-- Google authentication redirects work properly
-- Environment-aware URL generation for development and production
-- Centralized configuration for consistent URL handling
-- Tested with backend server to confirm functionality
+✅ **COMPLETED**: Admin Team Management feature is fully implemented
+- New "Manage Team" quick action added to admin dashboard
+- `manageTeam` permission added to UserGroup model
+- Backend API endpoint `/users/admins` created and working
+- AdminTeam page created with same UI as AdminUsers
+- Navigation and routing properly configured
+- Permission-based access control implemented
+- All admin users can be viewed and managed in dedicated interface
 
 ## User Experience Flow
-1. **Request Password Reset**: User enters email on forgot password page
-2. **Email Sent**: System generates reset token and sends email with correct URL
-3. **Click Reset Link**: User clicks link in email (now points to correct domain)
-4. **Reset Password**: User sets new password on reset page
-5. **Login**: User can now login with new password
+1. **Admin Access**: Admin navigates to admin dashboard
+2. **Quick Action**: Admin sees "Manage Team" quick action (if they have `manageTeam` permission)
+3. **Team Management**: Admin clicks "Manage Team" to view admin users only
+4. **User Management**: Admin can view, edit roles, and assign user groups to admin users
+5. **Navigation**: Admin can also access team management via sidebar navigation
+6. **Permission Control**: Only users with `manageTeam` permission can access this feature
 
 ## Technical Notes
-- The fix ensures reset links work in both development and production environments
-- No changes needed to frontend code - the issue was purely backend configuration
-- All authentication redirects now use consistent URL generation
-- Helper function can be reused for other URL generation needs
-- Backward compatible - existing FRONTEND_URL environment variable still works if set
+- The `manageTeam` permission provides granular access control for team management
+- Backend API filters users by `role: 'admin'` to show only admin users
+- Frontend uses same UI components as AdminUsers for consistency
+- Permission system ensures only authorized users can access team management
+- Navigation integrates seamlessly with existing admin layout
+- API endpoint `/users/admins` is protected by `manageTeam` permission
+- All existing user management functionality preserved in AdminTeam page
 
 ## Next Steps
-- Test the complete password reset flow end-to-end
-- Verify reset links work in production environment
-- Consider setting FRONTEND_URL environment variable for explicit control
-- Monitor for any other URL generation issues
-- Test Google authentication flow to ensure redirects work correctly
+- Test the complete team management flow end-to-end
+- Verify that only users with `manageTeam` permission can access the feature
+- Test role changes and user group assignments in AdminTeam page
+- Consider adding additional team management features (bulk operations, etc.)
+- Monitor for any permission-related issues
+- Test navigation between AdminUsers and AdminTeam pages
 
 ## Previous Focus
 **Fixed Admin Weekend Getaway UI** - Successfully improved the admin weekend getaway management interface with modern design, better UX, and enhanced functionality.

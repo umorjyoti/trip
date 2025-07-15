@@ -27,6 +27,7 @@ const AdminDashboard = () => {
     { title: 'Manage Regions', permission: 'manageRegions', icon: FaMapMarkedAlt, link: '/admin/regions' },
     { title: 'Manage Bookings', permission: 'manageBookings', icon: FaCalendarAlt, link: '/admin/bookings' },
     { title: 'Manage Users', permission: 'manageUsers', icon: FaUsers, link: '/admin/users' },
+    { title: 'Manage Team', permission: 'manageTeam', icon: FaUsers, link: '/admin/team' },
     { title: 'Support Tickets', permission: 'supportTickets', icon: MdSupportAgent, link: '/admin/support' },
     { title: 'Sales Dashboard', permission: 'salesDashboard', icon: MdDashboard, link: '/admin/sales' },
     { title: 'Manage Leads', permission: 'manageLeads', icon: MdManageAccounts, link: '/admin/leads' },
@@ -127,8 +128,8 @@ const AdminDashboard = () => {
     );
   };
 
-  const permittedStats = getPermittedStats();
-  const permittedActions = getPermittedActions();
+      const permittedStats = getPermittedStats();
+    const permittedActions = getPermittedActions();
 
   return (
     <div className="p-6">

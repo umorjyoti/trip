@@ -11,6 +11,13 @@ router.get('/',
   userController.getAllUsers
 );
 
+// Get all admins (admin only) - MUST be before /:id route
+router.get('/admins', 
+  protect, 
+  checkPermission('quickActions', 'manageTeam'), 
+  userController.getAdmins
+);
+
 // Get user by ID (admin or users with users section permission)
 router.get('/:id', 
   protect, 
@@ -67,11 +74,6 @@ router.delete('/groups/:id',
   userController.deleteUserGroup
 );
 
-// Get all admins (admin only)
-router.get('/admins', 
-  protect, 
-  checkPermission('quickActions', 'manageUsers'), 
-  userController.getAdmins
-);
+
 
 module.exports = router; 

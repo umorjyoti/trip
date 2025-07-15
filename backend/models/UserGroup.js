@@ -22,6 +22,7 @@ const userGroupSchema = new mongoose.Schema({
       manageRegions: Boolean,
       manageBookings: Boolean,
       manageUsers: Boolean,
+      manageTeam: Boolean,
       supportTickets: Boolean,
       salesDashboard: Boolean,
       manageLeads: Boolean,

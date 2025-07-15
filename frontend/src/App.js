@@ -36,6 +36,7 @@ import TrekForm from "./pages/TrekForm";
 import RegionManager from "./pages/RegionManager";
 import AdminBookings from "./pages/AdminBookings";
 import AdminUsers from "./pages/AdminUsers";
+import AdminTeam from "./pages/AdminTeam";
 import NotFound from "./pages/NotFound";
 import AdminSupport from "./pages/AdminSupport";
 import TicketDetail from "./pages/TicketDetail";
@@ -354,6 +355,18 @@ function App() {
                               permissions={permissions}
                             >
                               <AdminUsers />
+                            </ProtectedRoutes>
+                          }
+                        />
+
+                        <Route
+                          path="team"
+                          element={
+                            <ProtectedRoutes
+                              permissionKey="manageTeam"
+                              permissions={permissions}
+                            >
+                              <AdminTeam />
                             </ProtectedRoutes>
                           }
                         />
