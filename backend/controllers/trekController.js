@@ -1332,7 +1332,7 @@ exports.exportBatchParticipants = async (req, res) => {
       if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
         booking.participantDetails.forEach(participant => {
           console.log('Processing participant:', participant);
-          const row = fieldsToExport.map(field => {
+          const row = selectedFields.map(field => {
             switch (field) {
               case 'participantName':
                 return participant.name || 'N/A';
@@ -1348,7 +1348,7 @@ exports.exportBatchParticipants = async (req, res) => {
                   contactPhone: participant.contactPhone,
                   allKeys: Object.keys(participant)
                 });
-                return participant.contactNumber || participant.phone || participant.contactPhone || 'N/A';
+                return participant.phone || 'N/A';
               case 'emergencyContactName':
                 return participant.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
