@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { sendEmail } = require('../utils/email');
+const { getFrontendUrl } = require('../utils/config');
 const crypto = require('crypto');
 
 // Temporary storage for pending registrations (in production, use Redis)
@@ -1383,13 +1384,13 @@ exports.googleCallback = async (req, res) => {
 
     if (!req.user) {
       console.error('No user data received from Google');
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_user`);
+      return res.redirect(`${getFrontendUrl()}/login?error=google_auth_failed&reason=no_user`);
     }
 
     // Check if email exists
     if (!req.user.email) {
       console.error('No email provided by Google');
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_email`);
+      return res.redirect(`${getFrontendUrl()}/login?error=google_auth_failed&reason=no_email`);
     }
 
     // Check if this is a new user (recently created)
@@ -1448,7 +1449,7 @@ exports.googleCallback = async (req, res) => {
     }));
 
     // Redirect to frontend success page with authentication data
-    return res.redirect(`${process.env.FRONTEND_URL}/login/success?data=${encodedData}`);
+    return res.redirect(`${getFrontendUrl()}/login/success?data=${encodedData}`);
   } catch (error) {
     console.error('Google callback error:', error);
     let errorReason = 'unknown';
@@ -1459,7 +1460,7 @@ exports.googleCallback = async (req, res) => {
     } else if (error.code === 11000) {
       errorReason = 'duplicate_email';
     }
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=${errorReason}`);
+    res.redirect(`${getFrontendUrl()}/login?error=google_auth_failed&reason=${errorReason}`);
   }
 };
 
@@ -1547,8 +1548,8 @@ exports.forgotPassword = async (req, res) => {
     const resetToken = user.getResetPasswordToken();
     await user.save({ validateBeforeSave: false });
     
-    // Create reset url
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    // Create reset url with fallback
+    const resetUrl = `${getFrontendUrl()}/reset-password/${resetToken}`;
     
     // Send email
     await sendPasswordResetEmail(user, resetUrl);

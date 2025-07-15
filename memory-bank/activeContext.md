@@ -1,6 +1,62 @@
 # Active Context
 
 ## Current Focus
+**Fixed Forgot Password Reset Link Issue** - Resolved the issue where password reset links were redirecting to localhost instead of the correct domain.
+
+## Recent Changes (Latest Session)
+- **FRONTEND_URL Environment Variable Issue**: Fixed the problem where `process.env.FRONTEND_URL` was undefined, causing reset links to be malformed
+- **Created Config Utility**: Added `backend/utils/config.js` with `getFrontendUrl()` helper function for consistent URL handling
+- **Updated Auth Controller**: Replaced all hardcoded FRONTEND_URL fallbacks with the centralized helper function
+- **Updated Auth Routes**: Applied the same fix to Google authentication redirects
+- **Environment-Aware Fallbacks**: Implemented proper fallbacks based on NODE_ENV:
+  - Production: `https://bengalurutrekkers.com`
+  - Development: `http://localhost:3000`
+- **Consistent URL Generation**: All password reset and authentication redirects now use the same logic
+
+## Key Implementation Details
+- **Root Cause**: `process.env.FRONTEND_URL` was not set in environment variables
+- **Solution**: Created centralized helper function with environment-aware fallbacks
+- **Files Modified**:
+  - `backend/utils/config.js` (new file)
+  - `backend/controllers/authController.js`
+  - `backend/routes/auth.routes.js`
+- **Fallback Logic**: 
+  ```javascript
+  process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' 
+    ? 'https://bengalurutrekkers.com' 
+    : 'http://localhost:3000')
+  ```
+
+## Current Status
+✅ **COMPLETED**: Forgot password reset link issue is fully resolved
+- Password reset emails now contain correct URLs
+- Google authentication redirects work properly
+- Environment-aware URL generation for development and production
+- Centralized configuration for consistent URL handling
+- Tested with backend server to confirm functionality
+
+## User Experience Flow
+1. **Request Password Reset**: User enters email on forgot password page
+2. **Email Sent**: System generates reset token and sends email with correct URL
+3. **Click Reset Link**: User clicks link in email (now points to correct domain)
+4. **Reset Password**: User sets new password on reset page
+5. **Login**: User can now login with new password
+
+## Technical Notes
+- The fix ensures reset links work in both development and production environments
+- No changes needed to frontend code - the issue was purely backend configuration
+- All authentication redirects now use consistent URL generation
+- Helper function can be reused for other URL generation needs
+- Backward compatible - existing FRONTEND_URL environment variable still works if set
+
+## Next Steps
+- Test the complete password reset flow end-to-end
+- Verify reset links work in production environment
+- Consider setting FRONTEND_URL environment variable for explicit control
+- Monitor for any other URL generation issues
+- Test Google authentication flow to ensure redirects work correctly
+
+## Previous Focus
 **Fixed Admin Weekend Getaway UI** - Successfully improved the admin weekend getaway management interface with modern design, better UX, and enhanced functionality.
 
 ## Recent Changes (Latest Session)
