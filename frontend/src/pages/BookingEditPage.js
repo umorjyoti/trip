@@ -385,6 +385,59 @@ function BookingEditPage() {
               </div>
             </div>
 
+            {/* Payment Information */}
+            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+              <h4 className="text-md font-medium text-gray-900 mb-4">
+                Payment Information
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Total Amount
+                  </label>
+                  <div className="mt-1 text-lg font-semibold text-emerald-600">
+                    ₹{booking.totalPrice}
+                  </div>
+                  {(() => {
+                    // Calculate total refunded amount (booking-level + participant-level)
+                    let refunded = 0;
+                    if (booking.refundStatus === 'success') {
+                      refunded += booking.refundAmount || 0;
+                    }
+                    if (Array.isArray(booking.participantDetails)) {
+                      refunded += booking.participantDetails.reduce((rSum, p) => {
+                        if (p.refundStatus === 'success') {
+                          return rSum + (p.refundAmount || 0);
+                        }
+                        return rSum;
+                      }, 0);
+                    }
+                    
+                    if (refunded > 0) {
+                      return (
+                        <div className="text-sm text-red-600 mt-1">
+                          Refunded: ₹{refunded}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Payment Status
+                  </label>
+                  <span className={`mt-1 px-2 py-1 text-xs font-medium rounded-full ${
+                    booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                    booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {booking.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Contact Information Form */}
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h4 className="text-md font-medium text-gray-900 mb-4">

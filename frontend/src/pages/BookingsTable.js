@@ -72,7 +72,33 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
                     {booking.participants}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ₹{booking.totalPrice}
+                    {(() => {
+                      const paid = booking.totalPrice;
+                      // Calculate total refunded amount (booking-level + participant-level)
+                      let refunded = 0;
+                      if (booking.refundStatus === 'success') {
+                        refunded += booking.refundAmount || 0;
+                      }
+                      if (Array.isArray(booking.participantDetails)) {
+                        refunded += booking.participantDetails.reduce((rSum, p) => {
+                          if (p.refundStatus === 'success') {
+                            return rSum + (p.refundAmount || 0);
+                          }
+                          return rSum;
+                        }, 0);
+                      }
+                      
+                      // Show refunded amount for any booking that has refunds, not just cancelled ones
+                      if (refunded > 0) {
+                        return (
+                          <div>
+                            <div className="font-medium">₹{paid}</div>
+                            <div className="text-xs text-red-600">Refunded: ₹{refunded}</div>
+                          </div>
+                        );
+                      }
+                      return `₹${paid}`;
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -93,12 +119,14 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
                     >
                       View
                     </Link>
-                    <Link
-                      to={`/admin/bookings/${booking._id}/edit`}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                    >
-                      Edit
-                    </Link>
+                    {booking.status !== 'cancelled' && (
+                      <Link
+                        to={`/admin/bookings/${booking._id}/edit`}
+                        className="text-blue-600 hover:text-blue-900 mr-3"
+                      >
+                        Edit
+                      </Link>
+                    )}
                     <button
                       onClick={() => openCancelModal(booking)}
                       className="text-red-600 hover:text-red-800 text-sm font-medium"

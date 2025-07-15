@@ -333,8 +333,8 @@ export const getUserBookings = async () => {
   }
 };
 
-export const cancelBooking = async (id, reason = '') => {
-  const response = await api.put(`/bookings/${id}/cancel`, { reason });
+export const cancelBooking = async (id, cancellationData = {}) => {
+  const response = await api.put(`/bookings/${id}/cancel`, cancellationData);
   return response.data;
 };
 

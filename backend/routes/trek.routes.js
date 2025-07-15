@@ -123,4 +123,11 @@ router.get('/:id/batches/:batchId/export-participants',
 
 router.post('/:id/send-custom-link', protect, admin, sendCustomTrekLink);
 
+// Recalculate batch participant counts
+router.post('/:id/recalculate-participants', 
+  protect, 
+  admin, 
+  trekController.recalculateBatchParticipants
+);
+
 module.exports = router; 

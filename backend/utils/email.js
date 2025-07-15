@@ -1356,6 +1356,282 @@ const sendEmailWithAttachment = async ({ to, subject, text, attachmentBuffer, at
   }
 };
 
+/**
+ * Send cancellation notification email with professional template
+ * @param {Object} booking - Booking object
+ * @param {Object} trek - Trek object
+ * @param {Object} user - User object
+ * @param {string} cancellationType - 'entire' or 'individual'
+ * @param {Array} cancelledParticipants - Array of cancelled participant IDs
+ * @param {number} refundAmount - Refund amount
+ * @param {string} cancellationReason - Reason for cancellation
+ * @param {string} refundType - 'auto' or 'custom'
+ */
+const sendCancellationEmail = async (booking, trek, user, cancellationType, cancelledParticipants, refundAmount, cancellationReason, refundType) => {
+  const emailSubject = `❌ Booking Cancelled - ${trek?.name || 'Trek Booking'}`;
+  
+  // Get cancelled participant names
+  const cancelledParticipantNames = cancelledParticipants.length > 0 
+    ? booking.participantDetails
+        .filter(p => cancelledParticipants.includes(p._id))
+        .map(p => p.name)
+        .join(', ')
+    : 'All participants';
+  
+  const emailContent = `
+Dear ${user.name},
+
+We regret to inform you that your booking has been cancelled as requested.
+
+📋 CANCELLATION DETAILS:
+Booking ID: ${booking._id}
+Trek: ${trek?.name || 'N/A'}
+Cancellation Type: ${cancellationType === 'entire' ? 'Entire Booking' : 'Individual Participants'}
+Cancelled Participants: ${cancelledParticipantNames}
+Cancellation Date: ${new Date().toLocaleDateString()}
+Cancellation Time: ${new Date().toLocaleTimeString()}
+Reason: ${cancellationReason || 'Not specified'}
+
+💰 REFUND INFORMATION:
+Refund Type: ${refundType === 'auto' ? 'Auto-calculated (based on policy)' : 'Custom amount'}
+${refundAmount > 0 ? 
+  `✅ Refund Amount: ₹${refundAmount}
+Refund Status: Processing
+Expected Credit: 5-7 business days to your original payment method` :
+  '❌ No refund applicable (within cancellation policy)'
+}
+
+📊 CANCELLATION POLICY APPLIED:
+${refundType === 'auto' ? 
+  'The refund was calculated based on our standard cancellation policy based on the time remaining until the trek start date.' :
+  'A custom refund amount was applied as requested.'
+}
+
+❓ NEXT STEPS:
+${refundAmount > 0 ? 
+  '• Your refund will be processed to your original payment method\n• You will receive a confirmation email once the refund is completed\n• Please allow 5-7 business days for the refund to appear in your account' :
+  '• No further action is required from your side'
+}
+
+🏔️ FUTURE BOOKINGS:
+We hope to see you on another adventure soon! Feel free to browse our other exciting treks and book again when you're ready.
+
+If you have any questions about this cancellation or would like to book another trek, please don't hesitate to contact our support team.
+
+We appreciate your understanding.
+
+Best regards,
+The Trek Adventures Team
+
+---
+This is an automated message. Please do not reply to this email.
+For support, contact us through our website or mobile app.
+  `;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${emailSubject}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #ef4444;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .cancellation-container {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        .booking-id {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .details-section {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .detail-value {
+            color: #1f2937;
+        }
+        .refund-section {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+        }
+        .refund-amount {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .contact-info {
+            background-color: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .warning-box {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+        
+        <div class="cancellation-container">
+            <h1 style="margin: 0; font-size: 28px;">❌ Booking Cancelled</h1>
+            <div class="booking-id">${booking._id}</div>
+            <p style="margin: 0; font-size: 18px;">Cancellation processed successfully</p>
+        </div>
+        
+        <div class="details-section">
+            <h3 style="margin-top: 0; color: #374151;">📋 Cancellation Details</h3>
+            <div class="detail-row">
+                <span class="detail-label">Booking ID:</span>
+                <span class="detail-value">${booking._id}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Trek:</span>
+                <span class="detail-value">${trek?.name || 'N/A'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancellation Type:</span>
+                <span class="detail-value">${cancellationType === 'entire' ? 'Entire Booking' : 'Individual Participants'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancelled Participants:</span>
+                <span class="detail-value">${cancelledParticipantNames}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancellation Date:</span>
+                <span class="detail-value">${new Date().toLocaleDateString()}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancellation Time:</span>
+                <span class="detail-value">${new Date().toLocaleTimeString()}</span>
+            </div>
+            ${cancellationReason ? `
+            <div class="detail-row">
+                <span class="detail-label">Reason:</span>
+                <span class="detail-value">${cancellationReason}</span>
+            </div>
+            ` : ''}
+        </div>
+        
+        ${refundAmount > 0 ? `
+        <div class="refund-section">
+            <h3 style="margin-top: 0; text-align: center;">💰 Refund Information</h3>
+            <div class="refund-amount">₹${refundAmount}</div>
+            <p style="text-align: center; margin: 0;">
+                <strong>Refund Type:</strong> ${refundType === 'auto' ? 'Auto-calculated (based on policy)' : 'Custom amount'}<br>
+                <strong>Status:</strong> Processing<br>
+                <strong>Expected Credit:</strong> 5-7 business days
+            </p>
+        </div>
+        ` : `
+        <div class="warning-box">
+            <h4 style="margin-top: 0; color: #92400e;">⚠️ No Refund Applicable</h4>
+            <p style="margin: 5px 0; color: #92400e;">The cancellation falls within our no-refund policy period.</p>
+        </div>
+        `}
+        
+        <div class="contact-info">
+            <h4 style="margin-top: 0; color: #374151;">🏔️ Future Bookings</h4>
+            <p style="margin: 5px 0;">We hope to see you on another adventure soon! Feel free to browse our other exciting treks.</p>
+        </div>
+        
+        <div class="footer">
+            <p>Best regards,<br>The Trek Adventures Team</p>
+            <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+
+  return await sendEmail({
+    to: user.email,
+    subject: emailSubject,
+    text: emailContent,
+    html: htmlContent
+  });
+};
+
 module.exports = { 
   sendEmail, 
   sendBookingConfirmationEmail, 
@@ -1363,5 +1639,6 @@ module.exports = {
   sendBookingReminderEmail,
   sendBatchShiftNotificationEmail,
   sendProfessionalInvoiceEmail,
+  sendCancellationEmail,
   sendEmailWithAttachment
 };

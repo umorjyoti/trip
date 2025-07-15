@@ -1040,32 +1040,87 @@ exports.getBatchPerformance = async (req, res) => {
       },
       revenue: {
         total: safeBookings.reduce((sum, booking) => {
-          return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+          const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+          // Only subtract refunds if they were successfully processed
+          let refunded = 0;
+          if (booking && booking.refundStatus === 'success') {
+            refunded += booking.refundAmount || 0;
+          }
+          // Participant-level refunds (for partial cancellations) - only successful ones
+          if (booking && Array.isArray(booking.participantDetails)) {
+            refunded += booking.participantDetails.reduce((rSum, p) => {
+              if (p.refundStatus === 'success') {
+                return rSum + (p.refundAmount || 0);
+              }
+              return rSum;
+            }, 0);
+          }
+          return sum + (paid - refunded);
         }, 0),
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Only subtract refunds if they were successfully processed
+            let refunded = 0;
+            if (booking && booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            if (booking && Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            return sum + (paid - refunded);
           }, 0),
         cancelled: safeBookings
           .filter(b => b && b.status === 'cancelled')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Only subtract refunds if they were successfully processed
+            let refunded = 0;
+            if (booking && booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            if (booking && Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            return sum + (paid - refunded);
           }, 0)
       },
       participants: {
         total: safeBookings.reduce((sum, booking) => {
-          return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+          // Count only non-cancelled participants
+          const activeParticipants = booking && booking.participantDetails ? 
+            booking.participantDetails.filter(p => !p.isCancelled).length : 
+            (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+          return sum + activeParticipants;
         }, 0),
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            // Count only non-cancelled participants from confirmed bookings
+            const activeParticipants = booking && booking.participantDetails ? 
+              booking.participantDetails.filter(p => !p.isCancelled).length : 
+              (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            return sum + activeParticipants;
           }, 0),
         cancelled: safeBookings
           .filter(b => b && b.status === 'cancelled')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            // Count cancelled participants
+            const cancelledParticipants = booking && booking.participantDetails ? 
+              booking.participantDetails.filter(p => p.isCancelled).length : 
+              (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            return sum + cancelledParticipants;
           }, 0)
       },
       bookingDetails: safeBookings.map(booking => {
@@ -1167,7 +1222,22 @@ exports.getTrekPerformance = async (req, res) => {
 
     // Calculate total revenue and bookings with null safety
     const totalRevenue = safeBookings.reduce((sum, booking) => {
-      return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+      const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+      // Only subtract refunds if they were successfully processed
+      let refunded = 0;
+      if (booking && booking.refundStatus === 'success') {
+        refunded += booking.refundAmount || 0;
+      }
+      // Participant-level refunds (for partial cancellations) - only successful ones
+      if (booking && Array.isArray(booking.participantDetails)) {
+        refunded += booking.participantDetails.reduce((rSum, p) => {
+          if (p.refundStatus === 'success') {
+            return rSum + (p.refundAmount || 0);
+          }
+          return rSum;
+        }, 0);
+      }
+      return sum + (paid - refunded);
     }, 0);
     const totalBookings = safeBookings.length;
 
@@ -1189,11 +1259,33 @@ exports.getTrekPerformance = async (req, res) => {
           });
           
           const revenue = batchBookings.reduce((sum, booking) => {
-            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Only subtract refunds if they were successfully processed
+            let refunded = 0;
+            if (booking && booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            if (booking && Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            return sum + (paid - refunded);
           }, 0);
           
           const currentParticipants = batchBookings.reduce((sum, booking) => {
-            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            // Only count participants from confirmed bookings
+            if (booking && booking.status === 'confirmed') {
+              // Count only non-cancelled participants
+              const activeParticipants = booking.participantDetails ? 
+                booking.participantDetails.filter(p => !p.isCancelled).length : 
+                booking.numberOfParticipants || 0;
+              return sum + activeParticipants;
+            }
+            return sum;
           }, 0);
 
           let status = 'upcoming';
@@ -1516,5 +1608,68 @@ exports.sendCustomTrekLink = async (req, res) => {
   } catch (error) {
     console.error('Error sending custom trek link:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+}; 
+
+// Recalculate batch participant counts for a trek
+exports.recalculateBatchParticipants = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate MongoDB ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid trek ID format' });
+    }
+    
+    const trek = await Trek.findById(id);
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+    
+    if (!trek.batches || trek.batches.length === 0) {
+      return res.status(400).json({ message: 'No batches found for this trek' });
+    }
+    
+    const { updateBatchParticipantCount } = require('../utils/batchUtils');
+    const results = [];
+    
+    // Recalculate participant counts for all batches
+    for (const batch of trek.batches) {
+      try {
+        const newCount = await updateBatchParticipantCount(trek._id, batch._id);
+        results.push({
+          batchId: batch._id,
+          batchName: `${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`,
+          oldCount: batch.currentParticipants,
+          newCount: newCount,
+          status: 'success'
+        });
+      } catch (error) {
+        console.error(`Error updating batch ${batch._id}:`, error);
+        results.push({
+          batchId: batch._id,
+          batchName: `${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`,
+          oldCount: batch.currentParticipants,
+          newCount: null,
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      message: 'Batch participant counts recalculated',
+      trek: {
+        _id: trek._id,
+        name: trek.name
+      },
+      results: results
+    });
+  } catch (error) {
+    console.error('Error recalculating batch participants:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message 
+    });
   }
 }; 

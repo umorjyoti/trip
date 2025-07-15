@@ -236,7 +236,31 @@ function BookingDetailsPage() {
             <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
               <dt className="text-sm font-medium text-gray-500">Total Price</dt>
               <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                ₹{booking.totalPrice}
+                <div className="font-medium">₹{booking.totalPrice}</div>
+                {(() => {
+                  // Calculate total refunded amount (booking-level + participant-level)
+                  let refunded = 0;
+                  if (booking.refundStatus === 'success') {
+                    refunded += booking.refundAmount || 0;
+                  }
+                  if (Array.isArray(booking.participantDetails)) {
+                    refunded += booking.participantDetails.reduce((rSum, p) => {
+                      if (p.refundStatus === 'success') {
+                        return rSum + (p.refundAmount || 0);
+                      }
+                      return rSum;
+                    }, 0);
+                  }
+                  
+                  if (refunded > 0) {
+                    return (
+                      <div className="text-sm text-red-600 mt-1">
+                        Refunded: ₹{refunded}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </dd>
             </div>
             <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">

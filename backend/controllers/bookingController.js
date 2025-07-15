@@ -1,7 +1,8 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail } = require('../utils/email');
+const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
 const { refundPayment } = require('../utils/razorpayUtils');
@@ -454,16 +455,26 @@ const cancelBooking = async (req, res) => {
     booking.refundAmount = totalRefund;
     booking.refundDate = refundDate;
     if (batch) {
-      batch.currentParticipants = Math.max(0, batch.currentParticipants - booking.numberOfParticipants);
-      await trek.save();
+      try {
+        await updateBatchParticipantCount(booking.trek, booking.batch);
+      } catch (error) {
+        console.error('Error updating batch participant count:', error);
+        // Continue with the cancellation even if count update fails
+      }
     }
     await booking.save();
     try {
-      await sendEmail({
-        to: booking.userDetails?.email || booking.user?.email,
-        subject: `Booking Cancelled - ${trek?.name || 'Trek'}`,
-        text: `Dear ${booking.userDetails?.name || booking.user?.name},\n\nYour booking (ID: ${booking._id}) for ${trek?.name || 'the trek'} has been cancelled.\nReason: ${reason || 'N/A'}\nRefund Amount: ₹${totalRefund}\nRefund Status: ${refundStatus}\n\nIf you have any questions, please contact support.\n\nBest regards,\nTrek Adventures Team`
-      });
+      // Use the professional cancellation email template
+      await sendCancellationEmail(
+        booking,
+        trek,
+        booking.user || { name: booking.userDetails?.name, email: booking.userDetails?.email },
+        'entire', // This is for entire booking cancellation
+        booking.participantDetails.map(p => p._id), // All participants cancelled
+        totalRefund,
+        reason,
+        'auto' // Default to auto-calculated refund
+      );
     } catch (emailError) {
       console.error('Error sending cancellation/refund email:', emailError);
     }
@@ -736,8 +747,12 @@ const cancelParticipant = async (req, res) => {
     participant.status = 'bookingCancelled';
     if (batch) {
       booking.totalPrice = Math.max(0, booking.totalPrice - perPrice);
-      batch.currentParticipants = Math.max(0, batch.currentParticipants - 1);
-      await trek.save();
+      try {
+        await updateBatchParticipantCount(booking.trek, booking.batch);
+      } catch (error) {
+        console.error('Error updating batch participant count:', error);
+        // Continue with the cancellation even if count update fails
+      }
     }
     await booking.save();
     // If all participants are cancelled, set booking.status = 'cancelled'
@@ -748,11 +763,17 @@ const cancelParticipant = async (req, res) => {
       await booking.save();
     }
     try {
-      await sendEmail({
-        to: booking.userDetails?.email || booking.user?.email,
-        subject: `Participant Cancelled - ${trek?.name || 'Trek'}`,
-        text: `Dear ${booking.userDetails?.name || booking.user?.name},\n\nA participant in your booking (ID: ${booking._id}) for ${trek?.name || 'the trek'} has been cancelled.\nReason: ${reason || 'N/A'}\nRefund Amount: ₹${refundAmount}\nRefund Status: ${refundStatus}\n\nIf you have any questions, please contact support.\n\nBest regards,\nTrek Adventures Team`
-      });
+      // Use the professional cancellation email template for participant cancellation
+      await sendCancellationEmail(
+        booking,
+        trek,
+        booking.user || { name: booking.userDetails?.name, email: booking.userDetails?.email },
+        'individual', // This is for individual participant cancellation
+        [participantId], // Only the cancelled participant
+        refundAmount,
+        reason,
+        'auto' // Default to auto-calculated refund
+      );
     } catch (emailError) {
       console.error('Error sending participant cancellation/refund email:', emailError);
     }

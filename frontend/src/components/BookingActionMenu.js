@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaEllipsisV, FaEnvelope, FaCheck, FaFileInvoice, FaEdit, FaTimes, FaExchangeAlt, FaEye } from 'react-icons/fa';
-import { toast } from 'react-toastify';
 
 const BookingActionMenu = ({ booking, onAction }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,50 +24,63 @@ const BookingActionMenu = ({ booking, onAction }) => {
     onAction(action, booking);
   };
 
-  const menuItems = [
+  // Define all possible menu items
+  const allMenuItems = [
     {
       id: 'view',
       label: 'View Booking',
       icon: <FaEye className="w-4 h-4" />,
-      color: 'text-gray-600 hover:bg-gray-50'
+      color: 'text-gray-600 hover:bg-gray-50',
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled']
     },
     {
       id: 'reminder',
       label: 'Send Reminder Email',
       icon: <FaEnvelope className="w-4 h-4" />,
-      color: 'text-blue-600 hover:bg-blue-50'
+      color: 'text-blue-600 hover:bg-blue-50',
+      showFor: ['confirmed']
     },
     {
       id: 'confirmation',
       label: 'Send Confirmation Email Again',
       icon: <FaCheck className="w-4 h-4" />,
-      color: 'text-green-600 hover:bg-green-50'
+      color: 'text-green-600 hover:bg-green-50',
+      showFor: ['confirmed', 'trek_completed']
     },
     {
       id: 'invoice',
       label: 'Send Invoice Again',
       icon: <FaFileInvoice className="w-4 h-4" />,
-      color: 'text-purple-600 hover:bg-purple-50'
+      color: 'text-purple-600 hover:bg-purple-50',
+      showFor: ['confirmed', 'trek_completed']
     },
     {
       id: 'edit',
       label: 'Edit Booking Data',
       icon: <FaEdit className="w-4 h-4" />,
-      color: 'text-orange-600 hover:bg-orange-50'
+      color: 'text-orange-600 hover:bg-orange-50',
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed']
     },
     {
       id: 'cancel',
       label: 'Cancel Booking',
       icon: <FaTimes className="w-4 h-4" />,
-      color: 'text-red-600 hover:bg-red-50'
+      color: 'text-red-600 hover:bg-red-50',
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed']
     },
     {
       id: 'shift',
       label: 'Shift to Another Batch',
       icon: <FaExchangeAlt className="w-4 h-4" />,
-      color: 'text-indigo-600 hover:bg-indigo-50'
+      color: 'text-indigo-600 hover:bg-indigo-50',
+      showFor: ['confirmed']
     }
   ];
+
+  // Filter menu items based on booking status
+  const menuItems = allMenuItems.filter(item => 
+    item.showFor.includes(booking.status)
+  );
 
   return (
     <div className="relative" ref={menuRef}>

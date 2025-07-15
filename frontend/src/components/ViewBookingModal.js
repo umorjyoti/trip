@@ -41,10 +41,34 @@ const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Total Amount</p>
-              <p className="font-medium text-lg text-emerald-600 flex items-center">
+              <div className="font-medium text-lg text-emerald-600 flex items-center">
                 <FaMoneyBillWave className="mr-1" />
                 {formatCurrency(booking.totalPrice)}
-              </p>
+              </div>
+              {(() => {
+                // Calculate total refunded amount (booking-level + participant-level)
+                let refunded = 0;
+                if (booking.refundStatus === 'success') {
+                  refunded += booking.refundAmount || 0;
+                }
+                if (Array.isArray(booking.participantDetails)) {
+                  refunded += booking.participantDetails.reduce((rSum, p) => {
+                    if (p.refundStatus === 'success') {
+                      return rSum + (p.refundAmount || 0);
+                    }
+                    return rSum;
+                  }, 0);
+                }
+                
+                if (refunded > 0) {
+                  return (
+                    <div className="text-sm text-red-600 mt-1">
+                      Refunded: {formatCurrency(refunded)}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </div>

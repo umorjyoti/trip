@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, admin } = require('../middleware/authMiddleware');
 const { checkPermission, checkMultiplePermissions } = require('../middleware/checkPermissions');
 const bookingController = require('../controllers/bookingController');
+const adminBookingController = require('../controllers/adminBookingController');
 
 /**
  * @swagger
@@ -176,7 +177,8 @@ router.put('/:id/status',
 // Cancel booking
 router.put('/:id/cancel', 
   protect, 
-  bookingController.cancelBooking
+  admin, 
+  adminBookingController.cancelBooking
 );
 
 // Restore booking

@@ -16,6 +16,7 @@ import BookingActionMenu from '../components/BookingActionMenu';
 import EditBookingModal from '../components/EditBookingModal';
 import ShiftBookingModal from '../components/ShiftBookingModal';
 import ViewBookingModal from '../components/ViewBookingModal';
+import CancellationModal from '../components/CancellationModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const TrekPerformance = () => {
@@ -31,6 +32,7 @@ const TrekPerformance = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
@@ -174,19 +176,7 @@ const TrekPerformance = () => {
         break;
         
       case 'cancel':
-        if (window.confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
-          try {
-            await cancelBooking(booking.bookingId, 'Cancelled by admin');
-            toast.success('Booking cancelled successfully');
-            // Refresh the batch details
-            if (selectedBatch) {
-              await fetchBatchDetails(selectedBatch._id);
-            }
-          } catch (error) {
-            console.error('Error cancelling booking:', error);
-            toast.error(error.response?.data?.message || 'Failed to cancel booking');
-          }
-        }
+        setShowCancellationModal(true);
         break;
         
       case 'shift':
@@ -195,6 +185,21 @@ const TrekPerformance = () => {
         
       default:
         toast.error('Unknown action');
+    }
+  };
+
+  const handleCancellationConfirm = async (cancellationData) => {
+    try {
+      await cancelBooking(selectedBooking.bookingId, cancellationData);
+      toast.success('Booking cancelled successfully');
+      // Refresh the batch details
+      if (selectedBatch) {
+        await fetchBatchDetails(selectedBatch._id);
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast.error(error.response?.data?.message || 'Failed to cancel booking');
+      throw error; // Re-throw to let the modal handle the error state
     }
   };
 
@@ -415,6 +420,30 @@ const TrekPerformance = () => {
                         <div className="text-sm font-medium text-gray-900 mb-1">
                           {formatCurrency(booking.totalPrice)}
                         </div>
+                        {(() => {
+                          // Calculate total refunded amount (booking-level + participant-level)
+                          let refunded = 0;
+                          if (booking.refundStatus === 'success') {
+                            refunded += booking.refundAmount || 0;
+                          }
+                          if (Array.isArray(booking.participantDetails)) {
+                            refunded += booking.participantDetails.reduce((rSum, p) => {
+                              if (p.refundStatus === 'success') {
+                                return rSum + (p.refundAmount || 0);
+                              }
+                              return rSum;
+                            }, 0);
+                          }
+                          
+                          if (refunded > 0) {
+                            return (
+                              <div className="text-xs text-red-600 mb-1">
+                                Refunded: {formatCurrency(refunded)}
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                           booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -497,6 +526,15 @@ const TrekPerformance = () => {
         trekId={trekId}
         batchId={selectedBatch?._id}
         trekData={performanceData?.trek}
+      />
+
+      {/* Cancellation Modal */}
+      <CancellationModal
+        isOpen={showCancellationModal}
+        onClose={() => setShowCancellationModal(false)}
+        booking={selectedBooking}
+        trek={performanceData?.trek}
+        onConfirmCancellation={handleCancellationConfirm}
       />
     </div>
   );

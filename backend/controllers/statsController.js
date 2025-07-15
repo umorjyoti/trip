@@ -54,8 +54,25 @@ exports.getSalesStats = async (req, res) => {
       });
     }
     
-    // Calculate basic stats
-    const totalRevenue = bookings.reduce((sum, booking) => sum + booking.totalPrice, 0);
+    // Calculate basic stats - only subtract successful refunds
+    const totalRevenue = bookings.reduce((sum, booking) => {
+      const paid = booking.totalPrice || 0;
+      // Only subtract refunds if they were successfully processed
+      let refunded = 0;
+      if (booking.refundStatus === 'success') {
+        refunded += booking.refundAmount || 0;
+      }
+      // Participant-level refunds (for partial cancellations) - only successful ones
+      if (Array.isArray(booking.participantDetails)) {
+        refunded += booking.participantDetails.reduce((rSum, p) => {
+          if (p.refundStatus === 'success') {
+            return rSum + (p.refundAmount || 0);
+          }
+          return rSum;
+        }, 0);
+      }
+      return sum + (paid - refunded);
+    }, 0);
     const totalBookings = bookings.length;
     const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
     const totalParticipants = bookings.reduce((sum, booking) => sum + booking.participants, 0);
@@ -68,7 +85,21 @@ exports.getSalesStats = async (req, res) => {
     bookings.forEach(booking => {
       if (booking.trek && booking.trek.region) {
         const region = booking.trek.region;
-        const amount = booking.totalPrice;
+        const paid = booking.totalPrice || 0;
+        // Only subtract refunds if they were successfully processed
+        let refunded = 0;
+        if (booking.refundStatus === 'success') {
+          refunded += booking.refundAmount || 0;
+        }
+        if (Array.isArray(booking.participantDetails)) {
+          refunded += booking.participantDetails.reduce((rSum, p) => {
+            if (p.refundStatus === 'success') {
+              return rSum + (p.refundAmount || 0);
+            }
+            return rSum;
+          }, 0);
+        }
+        const amount = paid - refunded;
         
         if (regionMap.has(region)) {
           regionMap.set(region, regionMap.get(region) + amount);
@@ -104,7 +135,21 @@ exports.getSalesStats = async (req, res) => {
     
     bookings.forEach(booking => {
       const period = formatPeriod(new Date(booking.createdAt));
-      const amount = booking.totalPrice;
+      const paid = booking.totalPrice || 0;
+      // Only subtract refunds if they were successfully processed
+      let refunded = 0;
+      if (booking.refundStatus === 'success') {
+        refunded += booking.refundAmount || 0;
+      }
+      if (Array.isArray(booking.participantDetails)) {
+        refunded += booking.participantDetails.reduce((rSum, p) => {
+          if (p.refundStatus === 'success') {
+            return rSum + (p.refundAmount || 0);
+          }
+          return rSum;
+        }, 0);
+      }
+      const amount = paid - refunded;
       
       if (periodMap.has(period)) {
         periodMap.set(period, periodMap.get(period) + amount);
@@ -136,7 +181,21 @@ exports.getSalesStats = async (req, res) => {
         const trekId = booking.trek._id.toString();
         const trekName = booking.trek.name;
         const trekRegion = booking.trek.region;
-        const amount = booking.totalPrice;
+        const paid = booking.totalPrice || 0;
+        // Only subtract refunds if they were successfully processed
+        let refunded = 0;
+        if (booking.refundStatus === 'success') {
+          refunded += booking.refundAmount || 0;
+        }
+        if (Array.isArray(booking.participantDetails)) {
+          refunded += booking.participantDetails.reduce((rSum, p) => {
+            if (p.refundStatus === 'success') {
+              return rSum + (p.refundAmount || 0);
+            }
+            return rSum;
+          }, 0);
+        }
+        const amount = paid - refunded;
         
         if (trekMap.has(trekId)) {
           const trek = trekMap.get(trekId);
