@@ -1397,9 +1397,9 @@ exports.exportBatchParticipants = async (req, res) => {
               case 'emergencyContactRelation':
                 return participant.emergencyContact?.relationship || participant.emergencyContact?.relation || 'N/A';
               case 'medicalConditions':
-                return participant.medicalConditions || 'N/A';
+                return participant.allergies || 'N/A';
               case 'specialRequests':
-                return participant.specialRequests || 'N/A';
+                return participant.extraComment || 'N/A';
               case 'bookingUserName':
                 return booking.user?.name || 'N/A';
               case 'bookingUserEmail':
