@@ -263,9 +263,10 @@ exports.getAllBlogs = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const sort = req.query.sort || '-publishedAt';
+    const region = req.query.region || '';
 
     // Check cache
-    const cacheKey = `blogs_${page}_${limit}_${search}_${sort}`;
+    const cacheKey = `blogs_${page}_${limit}_${search}_${sort}_${region}`;
     const cachedData = cache.get(cacheKey);
     if (cachedData) {
       return res.json(cachedData);
@@ -279,12 +280,18 @@ exports.getAllBlogs = async (req, res) => {
         { keywords: { $in: [new RegExp(search, 'i')] } }
       ];
     }
+    
+    // Add region filter if provided
+    if (region) {
+      query.region = region;
+    }
 
     const blogs = await Blog.find(query)
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .populate('author', 'name');
+      .populate('author', 'name')
+      .populate('region', 'name slug image');
 
     const total = await Blog.countDocuments(query);
 
@@ -316,7 +323,8 @@ exports.getBlogBySlug = async (req, res) => {
     const blog = await Blog.findOne({ 
       slug: req.params.slug,
       status: 'published'
-    }).populate('author', 'name');
+    }).populate('author', 'name')
+      .populate('region', 'name slug image description');
 
     if (!blog) {
       return res.status(404).json({ message: 'Blog not found' });
@@ -466,6 +474,50 @@ exports.getAdminBlog = async (req, res) => {
     }
 
     res.json(blog);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get blogs by region
+exports.getBlogsByRegion = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort || '-publishedAt';
+
+    // Check cache
+    const cacheKey = `blogs_region_${req.params.slug}_${page}_${limit}_${sort}`;
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    const query = { 
+      status: 'published',
+      region: req.params.regionId
+    };
+
+    const blogs = await Blog.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate('author', 'name')
+      .populate('region', 'name slug image description');
+
+    const total = await Blog.countDocuments(query);
+
+    const response = {
+      blogs,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalBlogs: total
+    };
+
+    // Cache the response
+    cache.set(cacheKey, response);
+    res.json(response);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

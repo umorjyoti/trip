@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getActiveOffers, getRegionById, formatCurrency } from '../services/api';
+import { getActiveOffers, getRegionById, formatCurrency, createTrekSlug } from '../services/api';
 import { FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaClock, FaMountain, FaTag, FaArrowRight, FaWater, FaUmbrellaBeach, FaHiking, FaGlassCheers, FaTheaterMasks, FaMusic } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
@@ -124,7 +124,11 @@ function TrekCard({ trek }) {
       whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
       className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 ease-in-out flex flex-col"
     >
-      <Link to={`/treks/${trek._id}`} className="group flex flex-col h-full">
+      <Link 
+        to={`/treks/${createTrekSlug(trek.name)}`} 
+        state={{ trekId: trek._id, trekName: trek.name }}
+        className="group flex flex-col h-full"
+      >
         <div className="relative h-48 w-full overflow-hidden">
           {trek.images && trek.images.length > 0 ? (
             <img

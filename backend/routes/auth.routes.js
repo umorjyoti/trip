@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const { protect, admin } = require('../middleware/authMiddleware');
+const { getFrontendUrl } = require('../utils/config');
 const passport = require('../config/passport');
 
 /**
@@ -397,7 +398,7 @@ router.get('/google/callback',
     passport.authenticate('google', { session: false }, (err, user) => {
       if (err) {
         console.error('Google auth error:', err);
-        return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed`);
+        return res.redirect(`${getFrontendUrl()}/login?error=google_auth_failed`);
       }
       req.user = user;
       next();
@@ -731,5 +732,97 @@ router.get('/users', protect, admin, authController.getUsers);
  *               $ref: '#/components/schemas/Error'
  */
 router.patch('/users/:id/role', protect, admin, authController.updateUserRole);
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address of the user
+ *                 example: john@example.com
+ *     responses:
+ *       200:
+ *         description: Password reset email sent
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Password reset email sent
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/forgot-password', authController.forgotPassword);
+
+/**
+ * @swagger
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password with token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - password
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Reset password token from email
+ *                 example: abc123def456
+ *               password:
+ *                 type: string
+ *                 description: New password
+ *                 example: newpassword123
+ *     responses:
+ *       200:
+ *         description: Password reset successful, user logged in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
+router.post('/reset-password', authController.resetPassword);
 
 module.exports = router; 

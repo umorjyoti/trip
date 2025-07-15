@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { getBookingById, cancelParticipant } from '../services/api';
+import { getBookingById, cancelParticipant, cancelBooking, downloadInvoice } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CreateTicketModal from '../components/CreateTicketModal';
+import { FaDownload } from 'react-icons/fa';
 
 function BookingDetail() {
   const { id } = useParams();
@@ -16,6 +17,8 @@ function BookingDetail() {
   const [cancelModal, setCancelModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
 
   useEffect(() => {
     const fetchBooking = async () => {
@@ -109,17 +112,48 @@ function BookingDetail() {
     setShowTicketModal(true);
   };
 
-  const handleCancelParticipant = async (participantId) => {
+  const handleDownloadInvoice = async () => {
     try {
-      const response = await cancelParticipant(id, participantId);
-      if (response) {
-        // Fetch the latest booking data to get updated total price
-        const updatedBooking = await getBookingById(id);
-        setBooking(updatedBooking);
-        toast.success('Participant cancelled successfully');
-      }
+      setDownloadingInvoice(true);
+      await downloadInvoice(booking._id);
+      toast.success('Invoice downloaded successfully!');
     } catch (error) {
-      toast.error(error.message);
+      console.error('Error downloading invoice:', error);
+      toast.error('Failed to download invoice. Please try again.');
+    } finally {
+      setDownloadingInvoice(false);
+    }
+  };
+
+  // Cancel a single participant
+  const handleCancelParticipant = async (participant) => {
+    if (!window.confirm(`Are you sure you want to cancel ${participant.name}?`)) return;
+    setCancelling(true);
+    try {
+      await cancelParticipant(id, participant._id, { reason: 'User requested cancellation' });
+      toast.success('Participant cancelled successfully');
+      const updatedBooking = await getBookingById(id);
+      setBooking(updatedBooking);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to cancel participant');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Cancel the entire booking
+  const handleCancelEntireBooking = async () => {
+    if (!window.confirm('Are you sure you want to cancel the entire booking?')) return;
+    setCancelling(true);
+    try {
+      await cancelBooking(id, { reason: 'User requested full cancellation' });
+      toast.success('Booking cancelled successfully');
+      const updatedBooking = await getBookingById(id);
+      setBooking(updatedBooking);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to cancel booking');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -169,46 +203,28 @@ function BookingDetail() {
     );
   }
 
-  const ParticipantList = ({ participants, onCancelParticipant }) => {
+  const ParticipantList = ({ participants }) => {
     return (
       <div className="space-y-4">
         {participants.map((participant) => (
-          <div key={participant._id} className="bg-white p-4 rounded-lg shadow">
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="font-medium">{participant.name}</h4>
-                <p className="text-sm text-gray-600">Age: {participant.age}</p>
-                <p className="text-sm text-gray-600">Gender: {participant.gender}</p>
-              </div>
-              {participant.isCancelled ? (
-                <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                  Cancelled
-                </span>
-              ) : participants.length > 1 ? (
-                <></>
-              ) : null}
+          <div key={participant._id} className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">{participant.name}</h4>
+              <p className="text-sm text-gray-600">Age: {participant.age}</p>
+              <p className="text-sm text-gray-600">Gender: {participant.gender}</p>
+              <div className="text-xs text-gray-500">Status: {participant.status || (participant.isCancelled ? 'bookingCancelled' : 'confirmed')}</div>
             </div>
-            {participant.isCancelled && (
-              <>
-                <p className="text-xs text-gray-500 mt-2">
-                  Cancelled on: {participant.cancelledAt ? new Date(participant.cancelledAt).toLocaleDateString() : 'N/A'}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Refund Status: {participant.refundStatus && participant.refundStatus !== 'not_applicable' ? (
-                    <>
-                      <span className="capitalize">{participant.refundStatus}</span>
-                      {participant.refundAmount > 0 && (
-                        <span> &mdash; Amount: <span className="font-semibold">₹{participant.refundAmount}</span></span>
-                      )}
-                      {participant.refundDate && (
-                        <span> &mdash; Date: {formatDate(participant.refundDate)}</span>
-                      )}
-                    </>
-                  ) : (
-                    <span>No refund</span>
-                  )}
-                </p>
-              </>
+            {participant.status === 'confirmed' && (
+              <button
+                className="px-3 py-1 bg-red-600 text-white rounded disabled:opacity-50"
+                onClick={() => handleCancelParticipant(participant)}
+                disabled={cancelling}
+              >
+                Cancel
+              </button>
+            )}
+            {participant.status === 'bookingCancelled' && (
+              <span className="text-xs text-red-500">Cancelled</span>
             )}
           </div>
         ))}
@@ -371,29 +387,61 @@ function BookingDetail() {
           </div>
           <div className="border-t border-gray-200">
             <div className="divide-y divide-gray-200">
-              <ParticipantList 
-                participants={booking.participantDetails} 
-                onCancelParticipant={handleCancelParticipant}
-              />
+              <ParticipantList participants={booking.participantDetails} />
             </div>
           </div>
+          {/* Full booking cancel button */}
+          {booking.participantDetails.some(p => (p.status || (p.isCancelled ? 'bookingCancelled' : 'confirmed')) === 'confirmed') && (
+            <button
+              className="mt-4 px-4 py-2 bg-red-700 text-white rounded disabled:opacity-50"
+              onClick={handleCancelEntireBooking}
+              disabled={cancelling}
+            >
+              Cancel Entire Booking
+            </button>
+          )}
         </div>
       </div>
 
-      {booking.status !== 'cancelled' && (
-        <div className="mt-6 space-x-4">
+      {/* Action Buttons Section - Responsive for Mobile */}
+      <div className="mt-8">
+        <hr className="mb-4 border-gray-200" />
+        <div className="flex flex-col md:flex-row gap-3 md:gap-4">
+          {/* Download Invoice Button */}
           <button
             type="button"
-            onClick={handleCreateTicket}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            onClick={handleDownloadInvoice}
+            disabled={downloadingInvoice}
+            className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 transition-all"
+            aria-label="Download Invoice"
           >
-            <svg className="mr-2 -ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Need Help? Create Support Ticket
+            {downloadingInvoice ? (
+              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <FaDownload className="mr-2 h-5 w-5" />
+            )}
+            {downloadingInvoice ? 'Downloading...' : 'Download Invoice'}
           </button>
+
+          {/* Create Support Ticket Button */}
+          {booking.status !== 'cancelled' && (
+            <button
+              type="button"
+              onClick={handleCreateTicket}
+              className="w-full md:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all"
+              aria-label="Need Help? Create Support Ticket"
+            >
+              <svg className="mr-2 -ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Need Help? Create Support Ticket
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {cancelModal && selectedParticipant && (
         <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
@@ -444,7 +492,7 @@ function BookingDetail() {
           bookingId={booking._id}
           onClose={() => setShowTicketModal(false)}
           onSuccess={() => {
-            toast.success('Support ticket created successfully');
+            // Removed duplicate toast.success here
           }}
         />
       )}

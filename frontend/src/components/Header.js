@@ -5,13 +5,15 @@ import { toast } from 'react-toastify';
 import { FaHeart, FaUser, FaSignOutAlt, FaCog, FaClipboardList, FaTicketAlt, FaBars, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRegions } from '../services/api';
+import { FaHome, FaHiking, FaMapMarkedAlt, FaBlog, FaInfoCircle, FaPhone, FaGlobe } from 'react-icons/fa';
 
-const MobileNavLink = ({ to, children, onClick }) => (
+const MobileNavLink = ({ to, icon: Icon, children, onClick }) => (
   <Link
     to={to}
     onClick={onClick}
-    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+    className="flex items-center px-4 py-2 text-base text-gray-800 rounded-md hover:bg-gray-100 transition-colors"
   >
+    {Icon && <Icon className="mr-3 h-5 w-5 text-emerald-500" aria-hidden="true" />}
     {children}
   </Link>
 );
@@ -59,6 +61,16 @@ function Header() {
     };
   }, [isDropdownOpen, mobileMenuOpen]);
 
+  // Focus trap for mobile drawer
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
+
   const handleLogout = async () => {
     try {
       console.log('Logout initiated from Header');
@@ -68,7 +80,6 @@ function Header() {
       setIsDropdownOpen(false);
       
       navigate('/');
-      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error in Header:', error);
       toast.error('Failed to log out');
@@ -198,8 +209,9 @@ function Header() {
             </nav>
           </div>
           <div className="flex items-center">
+            {/* Desktop user menu (profile icon) - only show on desktop */}
             {currentUser ? (
-              <div className="relative ml-3" ref={dropdownRef}>
+              <div className="relative ml-3 sm:flex hidden" ref={dropdownRef}>
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={toggleDropdown}
@@ -238,7 +250,6 @@ function Header() {
                           </p>
                         </div>
                         <DropdownLink to="/profile" icon={FaUser}>Profile</DropdownLink>
-                        <DropdownLink to="/wishlist" icon={FaHeart}>Wishlist</DropdownLink>
                         <DropdownLink to="/dashboard" icon={FaCog}>Dashboard</DropdownLink>
                         <DropdownLink to="/my-bookings" icon={FaClipboardList}>My Bookings</DropdownLink>
                         <DropdownLink to="/tickets" icon={FaTicketAlt}>Support Tickets</DropdownLink>
@@ -274,22 +285,36 @@ function Header() {
               </div>
             )}
 
+            {/* Mobile menu trigger - profile avatar if logged in, hamburger if not (mobile only) */}
             <div className="ml-2 flex items-center sm:hidden">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleMobileMenu}
-                data-testid="mobile-menu-button"
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
-                aria-controls="mobile-menu"
-                aria-expanded={mobileMenuOpen}
-              >
-                <span className="sr-only">Open main menu</span>
-                {mobileMenuOpen ? (
-                  <FaTimes className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <FaBars className="block h-6 w-6" aria-hidden="true" />
-                )}
-              </motion.button>
+              {currentUser ? (
+                <button
+                  onClick={toggleMobileMenu}
+                  className="inline-flex items-center justify-center p-2 rounded-full bg-emerald-500 text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                  aria-label="Open user menu"
+                >
+                  <span className="sr-only">Open user menu</span>
+                  <div className="h-7 w-7 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                    {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <FaUser size={16} />}
+                  </div>
+                </button>
+              ) : (
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={toggleMobileMenu}
+                  data-testid="mobile-menu-button"
+                  className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                  aria-controls="mobile-menu"
+                  aria-expanded={mobileMenuOpen}
+                >
+                  <span className="sr-only">Open main menu</span>
+                  {mobileMenuOpen ? (
+                    <FaTimes className="block h-6 w-6" aria-hidden="true" />
+                  ) : (
+                    <FaBars className="block h-6 w-6" aria-hidden="true" />
+                  )}
+                </motion.button>
+              )}
             </div>
           </div>
         </div>
@@ -304,71 +329,101 @@ function Header() {
             exit="closed"
             variants={mobileMenuVariants}
             transition={mobileMenuTransition}
-            className="sm:hidden fixed  left-0 w-64 bg-white shadow-xl z-50 overflow-y-auto"
+            className="sm:hidden fixed inset-0 bg-white z-50 overflow-y-auto flex flex-col min-h-screen"
             id="mobile-menu"
+            tabIndex={-1}
+            onClick={e => {
+              if (e.target === e.currentTarget) setMobileMenuOpen(false);
+            }}
           >
-            <div className="pt-5 pb-6 px-2 space-y-1">
-               <div className="flex justify-end px-2 mb-2">
-                 <motion.button
-                   whileTap={{ scale: 0.9 }}
-                   onClick={toggleMobileMenu}
-                   className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
-                 >
-                   <span className="sr-only">Close menu</span>
-                   <FaTimes className="h-6 w-6" aria-hidden="true" />
-                 </motion.button>
-               </div>
-              <MobileNavLink to="/" onClick={() => setMobileMenuOpen(false)}>Home</MobileNavLink>
-              <MobileNavLink to="/treks" onClick={() => setMobileMenuOpen(false)}>Treks</MobileNavLink>
-              <MobileNavLink to="/weekend-getaways" onClick={() => setMobileMenuOpen(false)}>Weekend Getaways</MobileNavLink>
-              <MobileNavLink to="/about" onClick={() => setMobileMenuOpen(false)}>About</MobileNavLink>
-              <MobileNavLink to="/contact" onClick={() => setMobileMenuOpen(false)}>Contact</MobileNavLink>
-              <MobileNavLink to="/regions" onClick={() => setMobileMenuOpen(false)}>Regions</MobileNavLink>
+            {/* Close button */}
+            <div className="flex justify-between items-center px-4 pt-4 pb-2 border-b border-gray-100 flex-shrink-0">
+              <span className="text-xl font-bold text-emerald-600">Bengaluru Trekkers</span>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                aria-label="Close menu"
+              >
+                <FaTimes className="h-6 w-6" aria-hidden="true" />
+              </button>
             </div>
-            <div className="py-6 px-5 border-t border-gray-200">
-              {currentUser ? (
-                <div className="space-y-1">
-                   <div className="flex items-center mb-4">
-                     <div className="flex-shrink-0 h-10 w-10 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold ring-2 ring-white">
-                       {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <FaUser size={18} />}
-                     </div>
-                     <div className="ml-3 min-w-0">
-                       <p className="text-sm font-medium text-gray-900 truncate">{currentUser.name || 'User'}</p>
-                       <p className="text-xs text-gray-500 truncate">{currentUser.email}</p>
-                     </div>
-                   </div>
-                  <MobileNavLink to="/profile" onClick={() => setMobileMenuOpen(false)}>Your Profile</MobileNavLink>
-                  <MobileNavLink to="/wishlist" onClick={() => setMobileMenuOpen(false)}>Wishlist</MobileNavLink>
-                  <MobileNavLink to="/my-bookings" onClick={() => setMobileMenuOpen(false)}>My Bookings</MobileNavLink>
-                  <MobileNavLink to="/tickets" onClick={() => setMobileMenuOpen(false)}>Support Tickets</MobileNavLink>
-                  {currentUser.isAdmin && (
-                    <MobileNavLink to="/admin" onClick={() => setMobileMenuOpen(false)}>Admin Dashboard</MobileNavLink>
-                  )}
-                  <button
-                    onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
-                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
-                  >
-                    Sign out
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Link
-                    to="/register"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors text-center"
-                  >
-                    Sign up
-                  </Link>
-                  <p className="mt-2 text-center text-base font-medium text-gray-500">
-                    Existing customer?{' '}
-                    <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-emerald-600 hover:text-emerald-500 transition-colors">
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto">
+              {/* User info or login/register */}
+              <div className="px-6 py-4 border-b border-gray-100">
+                {currentUser ? (
+                  <div className="flex items-center space-x-4">
+                    <div className="h-12 w-12 rounded-full bg-emerald-500 flex items-center justify-center text-white font-semibold text-xl">
+                      {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : <FaUser size={20} />}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-gray-900 text-base">{currentUser.name || 'User'}</div>
+                      <div className="text-xs text-gray-500">{currentUser.email}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex space-x-3">
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    >
                       Log in
                     </Link>
-                  </p>
+                    <Link
+                      to="/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      Sign up
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation links */}
+              <nav className="flex flex-col space-y-0 px-6 py-4">
+                <MobileNavLink to="/" icon={FaHome} onClick={() => setMobileMenuOpen(false)}>Home</MobileNavLink>
+                <MobileNavLink to="/treks" icon={FaHiking} onClick={() => setMobileMenuOpen(false)}>Treks</MobileNavLink>
+                <MobileNavLink to="/weekend-getaways" icon={FaMapMarkedAlt} onClick={() => setMobileMenuOpen(false)}>Weekend Getaways</MobileNavLink>
+                <MobileNavLink to="/blogs" icon={FaBlog} onClick={() => setMobileMenuOpen(false)}>Blogs</MobileNavLink>
+                <MobileNavLink to="/about" icon={FaInfoCircle} onClick={() => setMobileMenuOpen(false)}>About</MobileNavLink>
+                <MobileNavLink to="/contact" icon={FaPhone} onClick={() => setMobileMenuOpen(false)}>Contact</MobileNavLink>
+                <MobileNavLink to="/regions" icon={FaGlobe} onClick={() => setMobileMenuOpen(false)}>Regions</MobileNavLink>
+              </nav>
+
+              {/* Divider */}
+              {currentUser && <hr className="my-2 border-gray-200" />}
+
+              {/* User actions */}
+              {currentUser && (
+                <div className="flex flex-col space-y-0 px-6 pb-4">
+                  <MobileNavLink to="/profile" icon={FaUser} onClick={() => setMobileMenuOpen(false)}>Profile</MobileNavLink>
+                  <MobileNavLink to="/dashboard" icon={FaCog} onClick={() => setMobileMenuOpen(false)}>Dashboard</MobileNavLink>
+                  <MobileNavLink to="/my-bookings" icon={FaClipboardList} onClick={() => setMobileMenuOpen(false)}>My Bookings</MobileNavLink>
+                  <MobileNavLink to="/tickets" icon={FaTicketAlt} onClick={() => setMobileMenuOpen(false)}>Support Tickets</MobileNavLink>
+                  {currentUser.isAdmin && (
+                    <MobileNavLink to="/admin" icon={FaCog} onClick={() => setMobileMenuOpen(false)}>Admin Dashboard</MobileNavLink>
+                  )}
                 </div>
               )}
+
+              {/* Divider and Sign out */}
+              {currentUser && (
+                <>
+                  <hr className="my-2 border-gray-200" />
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                    className="flex items-center w-full text-left px-6 py-3 text-base font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
+                  >
+                    <FaSignOutAlt className="mr-2" aria-hidden="true" /> Sign out
+                  </button>
+                </>
+              )}
             </div>
+
+            <div className="h-8" /> {/* Spacer for safe area */}
           </motion.div>
         )}
       </AnimatePresence>

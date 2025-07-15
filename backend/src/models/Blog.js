@@ -35,6 +35,11 @@ const blogSchema = new mongoose.Schema({
       message: 'Banner image must be a valid image URL'
     }
   },
+  region: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'BlogRegion',
+    required: [true, 'Region is required']
+  },
   metaTitle: {
     type: String,
     required: [true, 'Meta title is required'],
@@ -96,6 +101,7 @@ blogSchema.index({ title: 'text', content: 'text', keywords: 'text' });
 blogSchema.index({ status: 1, publishedAt: -1 });
 blogSchema.index({ author: 1, createdAt: -1 });
 blogSchema.index({ slug: 1 }, { unique: true });
+blogSchema.index({ region: 1, status: 1, publishedAt: -1 });
 
 // Create slug from title before saving
 blogSchema.pre('save', function(next) {

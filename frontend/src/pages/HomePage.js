@@ -6,7 +6,7 @@ import TestimonialsSection from '../components/TestimonialsSection';
 import NewsletterSignup from '../components/NewsletterSignup';
 import { Link } from 'react-router-dom';
 import { FaTag, FaArrowRight } from 'react-icons/fa';
-import { getActiveOffers, getAllTreks } from '../services/api';
+import { getActiveOffers, getAllTreks, createTrekSlug } from '../services/api';
 
 function HomePage() {
   console.log('HomePage rendering');
@@ -111,7 +111,8 @@ function HomePage() {
                       return (
                         <Link 
                           key={trek._id} 
-                          to={`/treks/${trek._id}`}
+                          to={`/treks/${createTrekSlug(trek.name)}`}
+                          state={{ trekId: trek._id, trekName: trek.name }}
                           className="group block bg-gray-50 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
                         >
                           <div className="aspect-w-16 aspect-h-9 overflow-hidden">

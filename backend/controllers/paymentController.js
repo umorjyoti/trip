@@ -1,7 +1,8 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
-const { sendEmail, sendPaymentReceivedEmail } = require('../utils/email');
+const { sendEmail, sendPaymentReceivedEmail, sendEmailWithAttachment } = require('../utils/email');
+const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -117,6 +118,20 @@ exports.verifyPayment = async (req, res) => {
           };
 
           await sendPaymentReceivedEmail(booking, trek, user, paymentDetails);
+
+          // Generate invoice PDF and send as attachment
+          try {
+            const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+            await sendEmailWithAttachment({
+              to: user.email,
+              subject: `Your Invoice for Booking ${booking._id}`,
+              text: `Dear ${user.name},\n\nThank you for your payment! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount Paid: ₹${payment.amount / 100}\n\nBest regards,\nTrek Adventures Team`,
+              attachmentBuffer: invoiceBuffer,
+              attachmentFilename: `Invoice-${booking._id}.pdf`
+            });
+          } catch (invoiceError) {
+            console.error('Error generating or sending invoice PDF:', invoiceError);
+          }
         } catch (emailError) {
           console.error('Error sending payment confirmation email:', emailError);
           // Don't fail the payment verification if email fails
