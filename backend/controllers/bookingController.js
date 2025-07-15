@@ -971,6 +971,11 @@ const updateParticipantDetails = async (req, res) => {
         throw new Error(`Participant ${index + 1} is missing required fields (name, email, phone)`);
       }
 
+      // Validate emergency contact fields
+      if (!participant.emergencyContact?.name || !participant.emergencyContact?.phone || !participant.emergencyContact?.relation) {
+        throw new Error(`Participant ${index + 1} is missing required emergency contact fields (name, phone, relation)`);
+      }
+
       // Format the participant data
       return {
         name: participant.name,
@@ -980,6 +985,11 @@ const updateParticipantDetails = async (req, res) => {
         gender: participant.gender,
         allergies: participant.allergies || '',
         extraComment: participant.extraComment || '',
+        emergencyContact: {
+          name: participant.emergencyContact.name,
+          phone: participant.emergencyContact.phone,
+          relation: participant.emergencyContact.relation
+        },
         customFields: participant.customFields || {},
         medicalConditions: participant.medicalConditions || '',
         specialRequests: participant.specialRequests || ''

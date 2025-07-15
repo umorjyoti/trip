@@ -1301,6 +1301,9 @@ exports.exportBatchParticipants = async (req, res) => {
     // Get all bookings for this batch
     const bookings = await Booking.find({ batch: batchId })
       .populate('user', 'name email phone');
+    
+    console.log('Found bookings:', bookings.length);
+    console.log('Sample booking:', bookings[0]);
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({ message: 'No participants found for this batch' });
@@ -1364,8 +1367,12 @@ exports.exportBatchParticipants = async (req, res) => {
 
     // Add data rows
     bookings.forEach(booking => {
+      console.log('Processing booking:', booking._id);
+      console.log('Participant details:', booking.participantDetails);
+      
       if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
         booking.participantDetails.forEach(participant => {
+          console.log('Processing participant:', participant);
           const row = fieldsToExport.map(field => {
             switch (field) {
               case 'participantName':
@@ -1375,13 +1382,20 @@ exports.exportBatchParticipants = async (req, res) => {
               case 'participantGender':
                 return participant.gender || 'N/A';
               case 'participantPhone':
-                return participant.contactNumber || 'N/A';
+                // Check multiple possible field names for phone
+                console.log('Looking for phone in participant:', {
+                  contactNumber: participant.contactNumber,
+                  phone: participant.phone,
+                  contactPhone: participant.contactPhone,
+                  allKeys: Object.keys(participant)
+                });
+                return participant.contactNumber || participant.phone || participant.contactPhone || 'N/A';
               case 'emergencyContactName':
                 return participant.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
                 return participant.emergencyContact?.phone || 'N/A';
               case 'emergencyContactRelation':
-                return participant.emergencyContact?.relationship || 'N/A';
+                return participant.emergencyContact?.relationship || participant.emergencyContact?.relation || 'N/A';
               case 'medicalConditions':
                 return participant.medicalConditions || 'N/A';
               case 'specialRequests':
@@ -1411,7 +1425,16 @@ exports.exportBatchParticipants = async (req, res) => {
                   const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
                   console.log('Processing custom field:', customFieldKey, 'Found field:', customField);
                   if (customField) {
-                    // Look for the response using fieldId which should match the fieldName
+                    // First try to get from customFields Map
+                    if (participant.customFields && participant.customFields instanceof Map) {
+                      const value = participant.customFields.get(customFieldKey);
+                      console.log('Found custom field value from Map:', value);
+                      if (value) {
+                        return value;
+                      }
+                    }
+                    
+                    // Fallback to customFieldResponses array
                     const customFieldResponse = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey);
                     console.log('Found custom field response:', customFieldResponse);
                     const value = customFieldResponse?.value;
