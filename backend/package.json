@@ -6,6 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "migrate:region-name": "node scripts/migrateRegionName.js",
+    "migrate:region-name-simple": "node scripts/migrateRegionNameSimple.js",
     "reminder": "node scripts/bookingReminder.js",
     "test-reminder": "node scripts/testReminder.js",
     "test-batch-id": "node scripts/testBatchId.js",

@@ -232,6 +232,11 @@ const TrekSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  regionName: {
+    type: String,
+    required: true,
+    trim: true
+  },
   difficulty: {
     type: String,
     enum: ['Easy', 'Moderate', 'Challenging', 'Difficult', 'Extreme'],
