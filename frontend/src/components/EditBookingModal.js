@@ -2,73 +2,70 @@ import React, { useState, useEffect } from 'react';
 import { updateBooking } from '../services/api';
 import { toast } from 'react-toastify';
 import Modal from './Modal';
+import { FaUser, FaPhone, FaEnvelope, FaEdit } from 'react-icons/fa';
 
-const EditBookingModal = ({ isOpen, onClose, booking, onUpdate }) => {
+const EditBookingModal = ({ isOpen, onClose, booking, trekData, onUpdate }) => {
   const [formData, setFormData] = useState({
-    numberOfParticipants: 1,
-    totalPrice: 0,
-    userDetails: {
-      name: '',
-      email: '',
-      phone: ''
-    }
+    participantDetails: []
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (booking) {
       setFormData({
-        numberOfParticipants: booking.participants || 1,
-        totalPrice: booking.totalPrice || 0,
-        userDetails: {
-          name: booking.user?.name || '',
-          email: booking.user?.email || '',
-          phone: booking.user?.phone || ''
-        }
+        participantDetails: booking.participantDetails || []
       });
     }
   }, [booking]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name.startsWith('user.')) {
-      const field = name.split('.')[1];
-      setFormData(prev => ({
-        ...prev,
-        userDetails: {
-          ...prev.userDetails,
-          [field]: value
-        }
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+  const handleParticipantChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      participantDetails: prev.participantDetails.map((participant, i) => 
+        i === index ? { ...participant, [field]: value } : participant
+      )
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!booking) return;
 
+    // Validate that we have details for all participants
+    if (formData.participantDetails.length !== booking.participants) {
+      toast.error(`Please provide details for all ${booking.participants} participants`);
+      return;
+    }
+
+    // Validate that all participant details are filled
+    const hasEmptyFields = formData.participantDetails.some(
+      participant => !participant.name || !participant.phone || !participant.email
+    );
+    if (hasEmptyFields) {
+      toast.error('Please fill in all participant details (name, phone, and email)');
+      return;
+    }
+
     setLoading(true);
     try {
       await updateBooking(booking.bookingId, formData);
-      toast.success('Booking updated successfully');
+      toast.success('Participant details updated successfully');
       onUpdate(formData);
       onClose();
     } catch (error) {
       console.error('Error updating booking:', error);
-      toast.error(error.response?.data?.message || 'Failed to update booking');
+      toast.error(error.response?.data?.message || 'Failed to update participant details');
     } finally {
       setLoading(false);
     }
   };
 
+  // Get custom fields from trek data
+  const customFields = trekData?.customFields || [];
+
   return (
     <Modal
-      title="Edit Booking Data"
+      title="Edit Participant Details"
       isOpen={isOpen}
       onClose={onClose}
       size="large"
@@ -76,91 +73,150 @@ const EditBookingModal = ({ isOpen, onClose, booking, onUpdate }) => {
       <div className="space-y-6">
         <div>
           <p className="text-gray-600 mb-4">
-            Update booking information. Changes will be reflected immediately.
+            Update participant information for this booking. Please provide details for all {booking?.participants || 0} participants.
           </p>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="numberOfParticipants" className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of Participants
-                </label>
-                <input
-                  type="number"
-                  id="numberOfParticipants"
-                  name="numberOfParticipants"
-                  value={formData.numberOfParticipants}
-                  onChange={handleChange}
-                  min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Participant Details */}
+            <div>
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-900 flex items-center">
+                  <FaUser className="mr-2 text-emerald-600" />
+                  Participant Details ({formData.participantDetails.length} of {booking?.participants || 0})
+                </h4>
               </div>
-              
-              <div>
-                <label htmlFor="totalPrice" className="block text-sm font-medium text-gray-700 mb-2">
-                  Total Price (₹)
-                </label>
-                <input
-                  type="number"
-                  id="totalPrice"
-                  name="totalPrice"
-                  value={formData.totalPrice}
-                  onChange={handleChange}
-                  min="0"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+
+              <div className="space-y-4">
+                {formData.participantDetails.map((participant, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="mb-3">
+                      <h5 className="text-sm font-medium text-gray-900">Participant {index + 1}</h5>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Name *
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <FaUser className="text-gray-400" />
+                          </div>
+                          <input
+                            type="text"
+                            value={participant.name}
+                            onChange={(e) => handleParticipantChange(index, 'name', e.target.value)}
+                            className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            placeholder="Full name"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Phone *
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <FaPhone className="text-gray-400" />
+                          </div>
+                          <input
+                            type="tel"
+                            value={participant.phone}
+                            onChange={(e) => handleParticipantChange(index, 'phone', e.target.value)}
+                            className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            placeholder="Phone number"
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email *
+                        </label>
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <FaEnvelope className="text-gray-400" />
+                          </div>
+                          <input
+                            type="email"
+                            value={participant.email}
+                            onChange={(e) => handleParticipantChange(index, 'email', e.target.value)}
+                            className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            placeholder="Email address"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Custom Fields */}
+                    {customFields.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h6 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                          <FaEdit className="mr-2 text-purple-600" />
+                          Additional Information
+                        </h6>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {customFields.map((field, fieldIndex) => (
+                            <div key={fieldIndex}>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {field.label} {field.required ? '*' : ''}
+                              </label>
+                              {field.type === 'textarea' ? (
+                                <textarea
+                                  value={participant[field.name] || ''}
+                                  onChange={(e) => handleParticipantChange(index, field.name, e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  placeholder={field.placeholder || field.label}
+                                  rows="3"
+                                  required={field.required}
+                                />
+                              ) : field.type === 'select' ? (
+                                <select
+                                  value={participant[field.name] || ''}
+                                  onChange={(e) => handleParticipantChange(index, field.name, e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  required={field.required}
+                                >
+                                  <option value="">Select {field.label}</option>
+                                  {field.options?.map((option, optionIndex) => (
+                                    <option key={optionIndex} value={option}>
+                                      {option}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type={field.type || 'text'}
+                                  value={participant[field.name] || ''}
+                                  onChange={(e) => handleParticipantChange(index, field.name, e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                  placeholder={field.placeholder || field.label}
+                                  required={field.required}
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+
+              {formData.participantDetails.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <FaUser className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                  <p>No participant details available for this booking.</p>
+                </div>
+              )}
             </div>
 
-            <div className="border-t pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">Contact Information</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="user.name" className="block text-sm font-medium text-gray-700 mb-2">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    id="user.name"
-                    name="user.name"
-                    value={formData.userDetails.name}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="user.email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="user.email"
-                    name="user.email"
-                    value={formData.userDetails.email}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="user.phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone
-                  </label>
-                  <input
-                    type="tel"
-                    id="user.phone"
-                    name="user.phone"
-                    value={formData.userDetails.phone}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
               <button
                 type="button"
                 onClick={onClose}
@@ -182,7 +238,7 @@ const EditBookingModal = ({ isOpen, onClose, booking, onUpdate }) => {
                     Updating...
                   </>
                 ) : (
-                  'Update Booking'
+                  'Update Participants'
                 )}
               </button>
             </div>

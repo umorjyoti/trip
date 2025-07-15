@@ -32,6 +32,7 @@ import TrekInclusionsExclusions from "../components/TrekInclusionsExclusions";
 import ThingsToPack from '../components/ThingsToPack';
 import TrekFAQs from '../components/TrekFAQs';
 import Modal from '../components/Modal';
+import CancellationPolicy from '../components/CancellationPolicy';
 import { format, parseISO, addMonths, isSameMonth } from 'date-fns';
 import CustomTrekBookingForm from '../components/CustomTrekBookingForm';
 
@@ -1393,43 +1394,55 @@ function TrekDetail() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Trek Scroll bar */}
           <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
-            <nav className="flex space-x-6 overflow-x-auto py-2 px-2 scrollbar-hide">
-              <a
-                href="#overview"
-                onClick={(e) => handleSmoothScroll(e, 'overview')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Overview
-              </a>
-              <a
-                href="#itinerary"
-                onClick={(e) => handleSmoothScroll(e, 'itinerary')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Trek Itinerary
-              </a>
-              <a
-                href="#inclusions"
-                onClick={(e) => handleSmoothScroll(e, 'inclusions')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Inclusions & Exclusions
-              </a>
-              <a
-                href="#thingsToPack"
-                onClick={(e) => handleSmoothScroll(e, 'thingsToPack')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Things To Pack
-              </a>
-              <a
-                href="#faqs"
-                onClick={(e) => handleSmoothScroll(e, 'faqs')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                FAQs
-              </a>
-            </nav>
+            <div className="relative">
+              <nav className="flex space-x-6 overflow-x-auto py-2 px-2" style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#10b981 #f3f4f6'
+              }}>
+                <a
+                  href="#overview"
+                  onClick={(e) => handleSmoothScroll(e, 'overview')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Overview
+                </a>
+                <a
+                  href="#itinerary"
+                  onClick={(e) => handleSmoothScroll(e, 'itinerary')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Trek Itinerary
+                </a>
+                <a
+                  href="#inclusions"
+                  onClick={(e) => handleSmoothScroll(e, 'inclusions')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Inclusions & Exclusions
+                </a>
+                <a
+                  href="#cancellationPolicy"
+                  onClick={(e) => handleSmoothScroll(e, 'cancellationPolicy')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Cancellation Policy
+                </a>
+                <a
+                  href="#thingsToPack"
+                  onClick={(e) => handleSmoothScroll(e, 'thingsToPack')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Things To Pack
+                </a>
+                <a
+                  href="#faqs"
+                  onClick={(e) => handleSmoothScroll(e, 'faqs')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  FAQs
+                </a>
+              </nav>
+            </div>
           </div>
 
           <div className="lg:grid  lg:grid-cols-[4fr_1fr] lg:gap-8">
@@ -1791,6 +1804,11 @@ function TrekDetail() {
               />
             </div>
           )}
+
+          {/* Cancellation Policy */}
+          <div id="cancellationPolicy">
+            <CancellationPolicy />
+          </div>
 
           {/* Things to Pack */}
           {trek.thingsToPack && trek.thingsToPack.length > 0 && (

@@ -15,6 +15,7 @@ import RemarksModal from '../components/RemarksModal';
 import BookingActionMenu from '../components/BookingActionMenu';
 import EditBookingModal from '../components/EditBookingModal';
 import ShiftBookingModal from '../components/ShiftBookingModal';
+import ViewBookingModal from '../components/ViewBookingModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const TrekPerformance = () => {
@@ -29,6 +30,7 @@ const TrekPerformance = () => {
   const [showRemarksModal, setShowRemarksModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
@@ -107,14 +109,7 @@ const TrekPerformance = () => {
           booking.bookingId === selectedBooking.bookingId
             ? { 
                 ...booking, 
-                participants: updatedData.numberOfParticipants,
-                totalPrice: updatedData.totalPrice,
-                user: {
-                  ...booking.user,
-                  name: updatedData.userDetails.name,
-                  email: updatedData.userDetails.email,
-                  phone: updatedData.userDetails.phone
-                }
+                participantDetails: updatedData.participantDetails
               }
             : booking
         )
@@ -140,6 +135,10 @@ const TrekPerformance = () => {
     setSelectedBooking(booking);
     
     switch (action) {
+      case 'view':
+        setShowViewModal(true);
+        break;
+        
       case 'reminder':
         try {
           await sendReminderEmail(booking.bookingId);
@@ -470,6 +469,7 @@ const TrekPerformance = () => {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         booking={selectedBooking}
+        trekData={performanceData?.trek}
         onUpdate={handleBookingUpdate}
       />
 
@@ -480,6 +480,14 @@ const TrekPerformance = () => {
         booking={selectedBooking}
         trekId={trekId}
         onUpdate={handleBookingShift}
+      />
+
+      {/* View Booking Modal */}
+      <ViewBookingModal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        booking={selectedBooking}
+        trekData={performanceData?.trek}
       />
 
       {/* Export Participants Modal */}

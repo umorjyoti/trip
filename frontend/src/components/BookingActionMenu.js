@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaEllipsisV, FaEnvelope, FaCheck, FaFileInvoice, FaEdit, FaTimes, FaExchangeAlt } from 'react-icons/fa';
+import { FaEllipsisV, FaEnvelope, FaCheck, FaFileInvoice, FaEdit, FaTimes, FaExchangeAlt, FaEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 
 const BookingActionMenu = ({ booking, onAction }) => {
@@ -26,6 +26,12 @@ const BookingActionMenu = ({ booking, onAction }) => {
   };
 
   const menuItems = [
+    {
+      id: 'view',
+      label: 'View Booking',
+      icon: <FaEye className="w-4 h-4" />,
+      color: 'text-gray-600 hover:bg-gray-50'
+    },
     {
       id: 'reminder',
       label: 'Send Reminder Email',
