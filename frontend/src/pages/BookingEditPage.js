@@ -61,6 +61,11 @@ function BookingEditPage() {
     age: "",
     gender: "",
     medicalConditions: "",
+    emergencyContact: {
+      name: "",
+      phone: "",
+      relation: ""
+    },
     customFields: {},
   });
   const [refundType, setRefundType] = useState('auto');
@@ -229,6 +234,15 @@ function BookingEditPage() {
           [fieldName]: value
         }
       }));
+    } else if (name.startsWith('emergencyContact.')) {
+      const fieldName = name.split('.')[1];
+      setParticipantForm(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [fieldName]: value
+        }
+      }));
     } else {
       setParticipantForm(prev => ({
         ...prev,
@@ -244,6 +258,11 @@ function BookingEditPage() {
       age: participant.age,
       gender: participant.gender,
       medicalConditions: participant.medicalConditions || "",
+      emergencyContact: participant.emergencyContact || {
+        name: "",
+        phone: "",
+        relation: ""
+      },
       customFields: participant.customFields || {},
     });
     setShowParticipantModal(true);
@@ -256,6 +275,11 @@ function BookingEditPage() {
       age: "",
       gender: "",
       medicalConditions: "",
+      emergencyContact: {
+        name: "",
+        phone: "",
+        relation: ""
+      },
       customFields: {},
     });
     setShowParticipantModal(true);
@@ -525,6 +549,7 @@ function BookingEditPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emergency Contact</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medical Conditions</th>
                       {booking?.trek?.customFields?.map(field => (
                         <th key={field.name} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -541,6 +566,17 @@ function BookingEditPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{participant.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.age}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.gender}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {participant.emergencyContact ? (
+                            <div>
+                              <div className="font-medium">{participant.emergencyContact.name}</div>
+                              <div className="text-xs text-gray-400">{participant.emergencyContact.phone}</div>
+                              <div className="text-xs text-gray-400">{participant.emergencyContact.relation}</div>
+                            </div>
+                          ) : (
+                            'Not provided'
+                          )}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.medicalConditions || "None"}</td>
                         {booking?.trek?.customFields?.map(field => (
                           <td key={field.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -644,6 +680,54 @@ function BookingEditPage() {
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
               />
             </div>
+            
+            {/* Emergency Contact Section */}
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Emergency Contact</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Emergency Contact Name *</label>
+                  <input
+                    type="text"
+                    name="emergencyContact.name"
+                    value={participantForm.emergencyContact.name}
+                    onChange={handleParticipantInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Emergency Contact Phone *</label>
+                  <input
+                    type="tel"
+                    name="emergencyContact.phone"
+                    value={participantForm.emergencyContact.phone}
+                    onChange={handleParticipantInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Relation to Participant *</label>
+                  <select
+                    name="emergencyContact.relation"
+                    value={participantForm.emergencyContact.relation}
+                    onChange={handleParticipantInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                    required
+                  >
+                    <option value="">Select Relation</option>
+                    <option value="Parent">Parent</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Friend">Friend</option>
+                    <option value="Relative">Relative</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
             {booking?.trek?.customFields?.map(field => (
               <div key={field.name}>
                 <label className="block text-sm font-medium text-gray-700">{field.label}</label>

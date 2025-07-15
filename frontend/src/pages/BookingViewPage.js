@@ -211,6 +211,7 @@ function BookingViewPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emergency Contact</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medical Conditions</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </tr>
@@ -221,6 +222,17 @@ function BookingViewPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{participant.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.age}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.gender}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {participant.emergencyContact ? (
+                            <div>
+                              <div className="font-medium">{participant.emergencyContact.name}</div>
+                              <div className="text-xs text-gray-400">{participant.emergencyContact.phone}</div>
+                              <div className="text-xs text-gray-400">{participant.emergencyContact.relation}</div>
+                            </div>
+                          ) : (
+                            'Not provided'
+                          )}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.medicalConditions || 'None'}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${

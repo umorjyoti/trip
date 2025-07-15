@@ -1282,6 +1282,9 @@ exports.exportBatchParticipants = async (req, res) => {
     // Get all bookings for this batch
     const bookings = await Booking.find({ batch: batchId })
       .populate('user', 'name email phone');
+    
+    console.log('Found bookings:', bookings.length);
+    console.log('Sample booking:', bookings[0]);
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({ message: 'No participants found for this batch' });
@@ -1323,10 +1326,12 @@ exports.exportBatchParticipants = async (req, res) => {
     const tableData = [headers];
 
     bookings.forEach(booking => {
-      if (booking.participantDetails && booking.participantDetails.length > 0) {
+      console.log('Processing booking:', booking._id);
+      console.log('Participant details:', booking.participantDetails);
+      
+      if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
         booking.participantDetails.forEach(participant => {
-          // Debug: log participant object
-          console.log('Exporting participant:', participant);
+          console.log('Processing participant:', participant);
           const row = selectedFields.map(field => {
             switch (field) {
               case 'participantName':
@@ -1335,18 +1340,25 @@ exports.exportBatchParticipants = async (req, res) => {
                 return participant.age || 'N/A';
               case 'participantGender':
                 return participant.gender || 'N/A';
-              case 'contactNumber':
-                return participant.phone || participant.contactNumber || 'N/A';
+              case 'participantPhone':
+                // Check multiple possible field names for phone
+                console.log('Looking for phone in participant:', {
+                  contactNumber: participant.contactNumber,
+                  phone: participant.phone,
+                  contactPhone: participant.contactPhone,
+                  allKeys: Object.keys(participant)
+                });
+                return participant.phone || 'N/A';
               case 'emergencyContactName':
                 return participant.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
                 return participant.emergencyContact?.phone || 'N/A';
               case 'emergencyContactRelation':
-                return participant.emergencyContact?.relationship || 'N/A';
+                return participant.emergencyContact?.relationship || participant.emergencyContact?.relation || 'N/A';
               case 'medicalConditions':
-                return participant.medicalConditions || 'N/A';
+                return participant.allergies || 'N/A';
               case 'specialRequests':
-                return participant.specialRequests || 'N/A';
+                return participant.extraComment || 'N/A';
               case 'bookingUserName':
                 return booking.user?.name || 'N/A';
               case 'bookingUserEmail':
@@ -1370,11 +1382,26 @@ exports.exportBatchParticipants = async (req, res) => {
                 if (field.startsWith('custom_')) {
                   const customFieldKey = field.replace('custom_', '');
                   const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
-                  const customFieldResponse = participant.customFields?.[customFieldKey] || participant.customFieldResponses?.find(f => f.fieldId === customFieldKey)?.value;
-                  if (Array.isArray(customFieldResponse)) {
-                    return customFieldResponse.join(', ') || 'N/A';
+                  console.log('Processing custom field:', customFieldKey, 'Found field:', customField);
+                  if (customField) {
+                    // First try to get from customFields Map
+                    if (participant.customFields && participant.customFields instanceof Map) {
+                      const value = participant.customFields.get(customFieldKey);
+                      console.log('Found custom field value from Map:', value);
+                      if (value) {
+                        return value;
+                      }
+                    }
+                    
+                    // Fallback to customFieldResponses array
+                    const customFieldResponse = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey);
+                    console.log('Found custom field response:', customFieldResponse);
+                    const value = customFieldResponse?.value;
+                    if (Array.isArray(value)) {
+                      return value.join(', ') || 'N/A';
+                    }
+                    return value || 'N/A';
                   }
-                  return customFieldResponse || 'N/A';
                 }
                 return 'N/A';
             }
