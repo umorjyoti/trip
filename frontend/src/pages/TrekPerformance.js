@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { getTrekPerformance, getBatchPerformance } from '../services/api';
-import { toast } from 'react-hot-toast';
+import { 
+  getTrekPerformance, 
+  getBatchPerformance,
+  sendReminderEmail,
+  sendConfirmationEmail,
+  sendInvoiceEmail,
+  cancelBooking
+} from '../services/api';
+import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ParticipantExportModal from '../components/ParticipantExportModal';
+import RemarksModal from '../components/RemarksModal';
+import BookingActionMenu from '../components/BookingActionMenu';
+import EditBookingModal from '../components/EditBookingModal';
+import ShiftBookingModal from '../components/ShiftBookingModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const TrekPerformance = () => {
@@ -15,6 +26,10 @@ const TrekPerformance = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showRemarksModal, setShowRemarksModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
     fetchPerformanceData();
@@ -63,6 +78,125 @@ const TrekPerformance = () => {
   const handleBatchClick = async (batch) => {
     setSelectedBatch(batch);
     await fetchBatchDetails(batch._id);
+  };
+
+  const handleRemarksClick = (booking) => {
+    setSelectedBooking(booking);
+    setShowRemarksModal(true);
+  };
+
+  const handleRemarksUpdate = (newRemarks) => {
+    if (batchDetails && selectedBooking) {
+      const updatedBatchDetails = {
+        ...batchDetails,
+        bookingDetails: batchDetails.bookingDetails.map(booking =>
+          booking.bookingId === selectedBooking.bookingId
+            ? { ...booking, adminRemarks: newRemarks }
+            : booking
+        )
+      };
+      setBatchDetails(updatedBatchDetails);
+    }
+  };
+
+  const handleBookingUpdate = (updatedData) => {
+    if (batchDetails && selectedBooking) {
+      const updatedBatchDetails = {
+        ...batchDetails,
+        bookingDetails: batchDetails.bookingDetails.map(booking =>
+          booking.bookingId === selectedBooking.bookingId
+            ? { 
+                ...booking, 
+                participants: updatedData.numberOfParticipants,
+                totalPrice: updatedData.totalPrice,
+                user: {
+                  ...booking.user,
+                  name: updatedData.userDetails.name,
+                  email: updatedData.userDetails.email,
+                  phone: updatedData.userDetails.phone
+                }
+              }
+            : booking
+        )
+      };
+      setBatchDetails(updatedBatchDetails);
+    }
+  };
+
+  const handleBookingShift = (newBatchId) => {
+    // Remove the booking from current batch details
+    if (batchDetails && selectedBooking) {
+      const updatedBatchDetails = {
+        ...batchDetails,
+        bookingDetails: batchDetails.bookingDetails.filter(booking =>
+          booking.bookingId !== selectedBooking.bookingId
+        )
+      };
+      setBatchDetails(updatedBatchDetails);
+    }
+  };
+
+  const handleBookingAction = async (action, booking) => {
+    setSelectedBooking(booking);
+    
+    switch (action) {
+      case 'reminder':
+        try {
+          await sendReminderEmail(booking.bookingId);
+          toast.success('Reminder email sent successfully');
+        } catch (error) {
+          console.error('Error sending reminder email:', error);
+          toast.error(error.response?.data?.message || 'Failed to send reminder email');
+        }
+        break;
+        
+      case 'confirmation':
+        try {
+          await sendConfirmationEmail(booking.bookingId);
+          toast.success('Confirmation email sent successfully');
+        } catch (error) {
+          console.error('Error sending confirmation email:', error);
+          toast.error(error.response?.data?.message || 'Failed to send confirmation email');
+        }
+        break;
+        
+      case 'invoice':
+        try {
+          await sendInvoiceEmail(booking.bookingId);
+          toast.success('Invoice email sent successfully');
+        } catch (error) {
+          console.error('Error sending invoice email:', error);
+          toast.error(error.response?.data?.message || 'Failed to send invoice email');
+        }
+        break;
+        
+      case 'edit':
+        setShowEditModal(true);
+        break;
+        
+      case 'cancel':
+        if (window.confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) {
+          try {
+            await cancelBooking(booking.bookingId, 'Cancelled by admin');
+            toast.success('Booking cancelled successfully');
+            // Refresh the batch details
+            if (selectedBatch) {
+              await fetchBatchDetails(selectedBatch._id);
+            }
+          } catch (error) {
+            console.error('Error cancelling booking:', error);
+            toast.error(error.response?.data?.message || 'Failed to cancel booking');
+          }
+        }
+        break;
+        
+      case 'shift':
+        setShowShiftModal(true);
+        break;
+        
+      default:
+        toast.error('Unknown action');
+    }
   };
 
   if (loading) {
@@ -241,34 +375,47 @@ const TrekPerformance = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact & Booking Info</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount & Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {batchDetails.bookingDetails.map((booking) => (
                     <tr key={booking.bookingId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {booking.user.name}
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{booking.user.name}</div>
+                        <div className="text-sm text-gray-500">{booking.user.email}</div>
+                        <div className="text-sm text-gray-500">{booking.user.phone}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Booked: {formatDate(booking.bookingDate)}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {booking.user.email}
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {booking.participantDetails && booking.participantDetails.length > 0 ? (
+                          <ul className="list-disc list-inside space-y-1">
+                            {booking.participantDetails.map((participant, index) => (
+                              <li key={index} className="text-xs">
+                                <span className="font-medium">{participant.name}</span>
+                                {participant.phone && (
+                                  <span className="text-gray-400"> - {participant.phone}</span>
+                                )}
+                                {participant.email && (
+                                  <span className="text-gray-400"> - {participant.email}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <span className="text-gray-400">No participant details available</span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {booking.user.phone}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {booking.participants}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(booking.totalPrice)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900 mb-1">
+                          {formatCurrency(booking.totalPrice)}
+                        </div>
                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                           booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -277,8 +424,29 @@ const TrekPerformance = () => {
                           {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(booking.bookingDate)}
+                      <td className="px-6 py-4 text-sm text-gray-500 w-48 max-w-48">
+                        <button
+                          onClick={() => handleRemarksClick(booking)}
+                          className="text-left w-full hover:bg-gray-50 p-2 rounded transition-colors"
+                        >
+                          {booking.adminRemarks ? (
+                            <div className="max-w-40">
+                              <p className="text-gray-900 truncate text-xs">{booking.adminRemarks}</p>
+                              <p className="text-xs text-gray-400 mt-1">Click to edit</p>
+                            </div>
+                          ) : (
+                            <div className="text-gray-400 italic">
+                              <p className="text-xs">No remarks</p>
+                              <p className="text-xs mt-1">Click to add</p>
+                            </div>
+                          )}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <BookingActionMenu 
+                          booking={booking} 
+                          onAction={handleBookingAction}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -288,6 +456,31 @@ const TrekPerformance = () => {
           </div>
         </div>
       )}
+
+      {/* Remarks Modal */}
+      <RemarksModal
+        isOpen={showRemarksModal}
+        onClose={() => setShowRemarksModal(false)}
+        booking={selectedBooking}
+        onUpdate={handleRemarksUpdate}
+      />
+
+      {/* Edit Booking Modal */}
+      <EditBookingModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        booking={selectedBooking}
+        onUpdate={handleBookingUpdate}
+      />
+
+      {/* Shift Booking Modal */}
+      <ShiftBookingModal
+        isOpen={showShiftModal}
+        onClose={() => setShowShiftModal(false)}
+        booking={selectedBooking}
+        trekId={trekId}
+        onUpdate={handleBookingShift}
+      />
 
       {/* Export Participants Modal */}
       <ParticipantExportModal

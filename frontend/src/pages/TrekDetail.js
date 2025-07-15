@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
@@ -257,6 +258,21 @@ function TrekDetail() {
     }
   };
 
+  // Scroll to batch selection area
+  const scrollToBatchSelection = () => {
+    const batchSection = document.querySelector('[data-batch-section]');
+    if (batchSection) {
+      const offset = 120; // Account for header + sticky nav + some padding
+      const elementPosition = batchSection.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   // Touch support for carousel
   const touchStartX = useRef(null);
   const handleTouchStart = (e) => {
@@ -392,6 +408,16 @@ function TrekDetail() {
       return Number(trek.batches[0].price);
     }
     return 0;
+  };
+
+  // Helper function to get minimum price from batches
+  const getMinimumPrice = (trekData) => {
+    const trek = trekData || {};
+    if (trek.batches && trek.batches.length > 0) {
+      const prices = trek.batches.map(batch => Number(batch.price)).filter(price => !isNaN(price));
+      return prices.length > 0 ? Math.min(...prices) : 0;
+    }
+    return getPrice(trekData);
   };
 
   const formatCurrency = (amount) => {
@@ -1179,6 +1205,72 @@ function TrekDetail() {
     return ReactDOM.createPortal(modalContent, document.body);
   };
 
+  // MobileTrekFooter component using React Portal
+  const MobileTrekFooter = ({ price, discountedPrice, onBookNow, isTrekDisabled }) => {
+    return ReactDOM.createPortal(
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-[9999] pointer-events-auto">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500">Starting from</span>
+            <span className="text-lg font-bold text-emerald-600">
+              {discountedPrice ? (
+                <>
+                  {discountedPrice}
+                  <span className="text-sm text-gray-500 line-through ml-2">{price}</span>
+                </>
+              ) : price}
+            </span>
+          </div>
+          <button
+            onClick={onBookNow}
+            disabled={isTrekDisabled}
+            className={`px-6 py-3 rounded-lg font-medium shadow-md transition-colors ${
+              isTrekDisabled
+                ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800'
+            }`}
+          >
+            {isTrekDisabled ? 'Not Available' : 'Book Now'}
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  // Footer Book Now button handler
+  const handleFooterBookNowClick = () => {
+    if (!trek || !trek.batches || trek.batches.length === 0) return;
+    // Find the batch with the lowest price that is not full
+    const availableBatches = trek.batches.filter(
+      (batch) => batch.currentParticipants < batch.maxParticipants
+    );
+    if (availableBatches.length === 0) {
+      toast.error('All batches are full.');
+      return;
+    }
+    const lowestPriceBatch = availableBatches.reduce((minBatch, batch) =>
+      Number(batch.price) < Number(minBatch.price) ? batch : minBatch
+    );
+    if (!currentUser) {
+      toast.info('Please log in to book this trek');
+      navigate('/login', { state: { from: `/treks/${name}/book` } });
+      return;
+    }
+    // Proceed to booking page with the lowest price batch selected
+    navigate(`/treks/${name}/book`, {
+      state: {
+        selectedBatchId: lowestPriceBatch._id,
+        trekName: trek.name,
+        trekId: trek._id,
+        batchDates: {
+          startDate: lowestPriceBatch.startDate,
+          endDate: lowestPriceBatch.endDate,
+        },
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -1263,7 +1355,7 @@ function TrekDetail() {
         />
       </Modal>
 
-      <div className="bg-white">
+      <div className={`bg-white ${!loading && !error && trek && trek.batches && trek.batches.length > 0 ? 'md:pb-0 pb-20' : ''}`}>
         {/* Trek disabled warning */}
         {isTrekDisabled && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 bg-yellow-50">
@@ -1661,7 +1753,7 @@ function TrekDetail() {
             </div>
             {/* Trek batches/dates */}
             {trek.batches && trek.batches.length > 0 && (
-              <div className="mt-12">
+              <div className="mt-12" data-batch-section>
                 <h2 className="text-2xl font-bold text-gray-900">
                   Available Dates
                 </h2>
@@ -1739,6 +1831,16 @@ function TrekDetail() {
 
         {/* Add the related treks section */}
         {!loading && !error && trek && renderRelatedTreks()}
+
+        {/* Mobile Fixed Footer - now using React Portal */}
+        {!loading && !error && trek && trek.batches && trek.batches.length > 0 && (
+          <MobileTrekFooter
+            price={formatCurrency(getMinimumPrice(trek))}
+            discountedPrice={discountedPrice ? formatCurrency(discountedPrice) : null}
+            onBookNow={handleFooterBookNowClick}
+            isTrekDisabled={isTrekDisabled}
+          />
+        )}
       </div>
     </>
   );

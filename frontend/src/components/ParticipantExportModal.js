@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import { exportBatchParticipants } from '../services/api';
 import { FaTimes } from 'react-icons/fa';
 

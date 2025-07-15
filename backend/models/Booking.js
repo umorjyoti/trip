@@ -203,6 +203,12 @@ const BookingSchema = new mongoose.Schema({
   cancellationReason: {
     type: String,
     default: ''
+  },
+  // Admin remarks field
+  adminRemarks: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, { 
   timestamps: true,

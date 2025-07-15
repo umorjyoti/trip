@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail } = require('../utils/email');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
 const { refundPayment } = require('../utils/razorpayUtils');
@@ -1277,6 +1277,39 @@ const markTrekCompleted = async (req, res) => {
   }
 };
 
+// Update admin remarks for a booking
+const updateAdminRemarks = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminRemarks } = req.body;
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can update remarks" });
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Update admin remarks
+    booking.adminRemarks = adminRemarks || '';
+    await booking.save();
+
+    res.json({ 
+      message: "Admin remarks updated successfully",
+      booking: {
+        _id: booking._id,
+        adminRemarks: booking.adminRemarks
+      }
+    });
+  } catch (error) {
+    console.error("Error updating admin remarks:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Download invoice for a booking
 const downloadInvoice = async (req, res) => {
   try {
@@ -1316,6 +1349,202 @@ const downloadInvoice = async (req, res) => {
   }
 };
 
+// Send reminder email
+const sendReminderEmail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send reminder emails" });
+    }
+
+    // Send reminder email using the proper template
+    await sendBookingReminderEmail(booking, booking.trek, booking.user, booking.batch);
+
+    res.json({ message: 'Reminder email sent successfully' });
+  } catch (error) {
+    console.error('Error sending reminder email:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Send confirmation email
+const sendConfirmationEmail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send confirmation emails" });
+    }
+
+    // Create participant details for the email template
+    const participants = booking.participantDetails || [{
+      name: booking.userDetails.name,
+      age: 'N/A',
+      gender: 'N/A'
+    }];
+
+    // Send confirmation email using the proper template
+    await sendBookingConfirmationEmail(
+      booking, 
+      booking.trek, 
+      booking.user, 
+      participants, 
+      booking.batch, 
+      booking.pickupLocation, 
+      booking.dropLocation, 
+      booking.additionalRequests
+    );
+
+    res.json({ message: 'Confirmation email sent successfully' });
+  } catch (error) {
+    console.error('Error sending confirmation email:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Send invoice email
+const sendInvoiceEmail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send invoice emails" });
+    }
+
+    // Generate invoice and send email
+    const paymentDetails = booking.paymentDetails || {
+      id: booking._id.toString(),
+      amount: booking.totalPrice * 100,
+      method: booking.paymentDetails?.method || 'Manual/Offline'
+    };
+    
+    const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+    
+    // Send professional invoice email
+    await sendProfessionalInvoiceEmail(booking, booking.trek, booking.user, invoiceBuffer);
+
+    res.json({ message: 'Invoice email sent successfully' });
+  } catch (error) {
+    console.error('Error sending invoice email:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Shift booking to another batch
+const shiftBookingToBatch = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { newBatchId } = req.body;
+
+    if (!newBatchId) {
+      return res.status(400).json({ message: 'New batch ID is required' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can shift bookings" });
+    }
+
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Find the trek and new batch
+    const trek = await Trek.findById(booking.trek._id);
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+
+    const newBatch = trek.batches.id(newBatchId);
+    if (!newBatch) {
+      return res.status(404).json({ message: 'New batch not found' });
+    }
+
+    // Check if new batch has enough capacity
+    if (newBatch.currentParticipants + booking.numberOfParticipants > newBatch.maxParticipants) {
+      return res.status(400).json({ message: 'New batch does not have enough capacity' });
+    }
+
+    // Check if new batch is in the future
+    const currentDate = new Date();
+    const newBatchStartDate = new Date(newBatch.startDate);
+    if (newBatchStartDate <= currentDate) {
+      return res.status(400).json({ message: 'Cannot shift to a batch that has already started' });
+    }
+
+    // Update old batch participants count
+    const oldBatch = trek.batches.id(booking.batch._id);
+    if (oldBatch) {
+      oldBatch.currentParticipants = Math.max(0, oldBatch.currentParticipants - booking.numberOfParticipants);
+    }
+
+    // Update new batch participants count
+    newBatch.currentParticipants += booking.numberOfParticipants;
+
+    // Update booking batch
+    booking.batch = newBatchId;
+
+    // Save changes
+    await trek.save();
+    await booking.save();
+
+    // Send email notification to user
+    try {
+      await sendBatchShiftNotificationEmail(booking, trek, booking.user, oldBatch, newBatch);
+    } catch (emailError) {
+      console.error('Error sending batch shift notification email:', emailError);
+      // Don't fail the operation if email fails
+    }
+
+    res.json({ 
+      message: 'Booking shifted to new batch successfully',
+      booking: {
+        _id: booking._id,
+        batch: booking.batch
+      }
+    });
+  } catch (error) {
+    console.error('Error shifting booking:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -1332,5 +1561,10 @@ module.exports = {
   updateParticipantDetails,
   markTrekCompleted,
   createCustomTrekBooking,
-  downloadInvoice
+  downloadInvoice,
+  updateAdminRemarks,
+  sendReminderEmail,
+  sendConfirmationEmail,
+  sendInvoiceEmail,
+  shiftBookingToBatch
 };

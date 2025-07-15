@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 import { AnimatePresence, motion } from "framer-motion";
 
 // Components
@@ -595,7 +596,18 @@ function App() {
         </AnimatePresence>
       </main>
       {!isAdminRoute && <Footer />}
-      <ToastContainer position="bottom-right" autoClose={3000} />
+      <ToastContainer 
+        position="top-right" 
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 }

@@ -333,8 +333,8 @@ export const getUserBookings = async () => {
   }
 };
 
-export const cancelBooking = async (id) => {
-  const response = await api.put(`/bookings/${id}/cancel`);
+export const cancelBooking = async (id, reason = '') => {
+  const response = await api.put(`/bookings/${id}/cancel`, { reason });
   return response.data;
 };
 
@@ -361,6 +361,40 @@ export const updateParticipantDetails = async (bookingId, data) => {
   const response = await api.put(`/bookings/${bookingId}/participants`, data);
   return response.data;
 };
+
+// Update admin remarks
+export const updateAdminRemarks = async (bookingId, remarks) => {
+  const response = await api.put(`/bookings/${bookingId}/remarks`, { adminRemarks: remarks });
+  return response.data;
+};
+
+// Send reminder email
+export const sendReminderEmail = async (bookingId) => {
+  const response = await api.post(`/bookings/${bookingId}/send-reminder`);
+  return response.data;
+};
+
+// Send confirmation email
+export const sendConfirmationEmail = async (bookingId) => {
+  const response = await api.post(`/bookings/${bookingId}/send-confirmation`);
+  return response.data;
+};
+
+// Send invoice email
+export const sendInvoiceEmail = async (bookingId) => {
+  const response = await api.post(`/bookings/${bookingId}/send-invoice`);
+  return response.data;
+};
+
+
+
+// Shift booking to another batch
+export const shiftBookingToBatch = async (bookingId, newBatchId) => {
+  const response = await api.put(`/bookings/${bookingId}/shift-batch`, { newBatchId });
+  return response.data;
+};
+
+
 
 // Batch APIs
 export const addBatch = async (trekId, batchData) => {

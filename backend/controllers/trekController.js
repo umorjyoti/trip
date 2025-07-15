@@ -1078,9 +1078,11 @@ exports.getBatchPerformance = async (req, res) => {
             phone: booking.user?.phone || 'N/A'
           },
           participants: booking.numberOfParticipants || 0,
+          participantDetails: booking.participantDetails || [],
           totalPrice: booking.totalPrice || 0,
           status: booking.status || 'unknown',
-          bookingDate: booking.createdAt || null
+          bookingDate: booking.createdAt || null,
+          adminRemarks: booking.adminRemarks || ''
         };
       }).filter(detail => detail !== null),
       feedback: batch.feedback || []
