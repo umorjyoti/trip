@@ -142,7 +142,7 @@ function WeekendGetawayManager() {
         <img 
           src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'} 
           alt={trek.name}
-          className="w-full h-48 object-cover rounded-t-lg"
+          className="w-full h-32 sm:h-40 md:h-48 object-cover rounded-t-lg"
           onError={(e) => {
             e.target.src = 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80';
           }}
@@ -160,17 +160,17 @@ function WeekendGetawayManager() {
         )}
       </div>
       
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">{trek.name}</h3>
+      <div className="p-3 sm:p-4">
+        <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-900 mb-2 truncate">{trek.name}</h3>
         
-        <div className="flex items-center text-sm text-gray-600 mb-2">
-          <FaMapMarkerAlt className="mr-1 text-emerald-500" />
-          <span>{trek.region || 'No region'}</span>
+        <div className="flex items-center text-xs sm:text-sm text-gray-600 mb-2">
+          <FaMapMarkerAlt className="mr-1 text-emerald-500 flex-shrink-0" />
+          <span className="truncate">{trek.regionName || 'No region'}</span>
         </div>
 
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center text-sm text-gray-600">
-            <FaClock className="mr-1 text-blue-500" />
+          <div className="flex items-center text-xs sm:text-sm text-gray-600">
+            <FaClock className="mr-1 text-blue-500 flex-shrink-0" />
             <span>{trek.duration} days</span>
           </div>
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(trek.difficulty)}`}>
@@ -180,11 +180,11 @@ function WeekendGetawayManager() {
         
         <div className="flex justify-between items-center">
           {isWeekendGetaway ? (
-            <div className="flex space-x-2">
+            <div className="flex space-x-1 sm:space-x-2">
               <Link
                 to={getViewLink(trek)}
                 state={{ trekId: trek._id, trekName: trek.name }}
-                className="flex items-center px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                 title="View trek"
               >
                 <FaEye className="mr-1" />
@@ -195,7 +195,7 @@ function WeekendGetawayManager() {
                   setTrekToDelete(trek);
                   setShowDeleteModal(true);
                 }}
-                className="flex items-center px-3 py-1.5 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
                 title="Remove from weekend getaways"
               >
                 <FaTrash className="mr-1" />
@@ -203,10 +203,10 @@ function WeekendGetawayManager() {
               </button>
             </div>
           ) : (
-            <div className="flex space-x-2">
+            <div className="flex space-x-1 sm:space-x-2">
               <button
                 onClick={() => handleAddToWeekendGetaways(trek)}
-                className="flex items-center px-3 py-1.5 text-sm bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors"
+                className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors"
                 title="Add to weekend getaways"
               >
                 <FaPlus className="mr-1" />
@@ -215,7 +215,7 @@ function WeekendGetawayManager() {
               <Link
                 to={getViewLink(trek)}
                 state={{ trekId: trek._id, trekName: trek.name }}
-                className="flex items-center px-3 py-1.5 text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+                className="flex items-center px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                 title="View trek"
               >
                 <FaEye className="mr-1" />
@@ -327,7 +327,7 @@ function WeekendGetawayManager() {
         ) : (
           <div className="p-6">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {weekendGetaways.map(trek => renderTrekCard(trek, true))}
               </div>
             ) : (
@@ -361,7 +361,7 @@ function WeekendGetawayManager() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {trek.region || 'No region'}
+                          {trek.regionName || 'No region'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {trek.duration} days
@@ -418,7 +418,7 @@ function WeekendGetawayManager() {
         ) : (
           <div className="p-6">
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 {sortedRegularTreks.map(trek => renderTrekCard(trek, false))}
               </div>
             ) : (
@@ -453,7 +453,7 @@ function WeekendGetawayManager() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {trek.region || 'No region'}
+                          {trek.regionName || 'No region'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {trek.duration} days

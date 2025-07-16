@@ -185,7 +185,7 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
             <motion.div
               key={trek._id}
               variants={cardVariants}
-              className="flex-shrink-0 w-72"
+              className="flex-shrink-0 w-64 sm:w-72 md:w-80"
             >
               <motion.div
                  whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
@@ -196,7 +196,7 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
                   state={{ trekId: trek._id, trekName: trek.name }}
                   className="group flex flex-col h-full"
                 >
-                  <div className="relative h-40 w-full overflow-hidden">
+                  <div className="relative h-32 sm:h-40 w-full overflow-hidden">
                     {trek.images && trek.images.length > 0 ? (
                       <img src={trek.images[0]} alt={trek.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"/>
                     ) : (
@@ -204,7 +204,7 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
                     )}
                   </div>
                   <div className="p-3 flex flex-col flex-grow">
-                    <h4 className="text-base font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors mb-1 truncate">{trek.name}</h4>
+                    <h4 className="text-sm sm:text-base font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors mb-1 truncate">{trek.name}</h4>
                     <div className="flex items-center text-xs text-gray-500 mb-2 truncate">
                       <FaMapMarkerAlt className="mr-1 flex-shrink-0 text-emerald-500" />
                       <span className="truncate">{trek.regionName}</span>

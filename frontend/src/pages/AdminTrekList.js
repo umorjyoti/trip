@@ -371,8 +371,8 @@ function AdminTrekList() {
               getFilteredAndSortedTreks().map((trek) => (
                 <li key={trek._id} className={`${!trek.isEnabled ? 'bg-gray-50' : ''}`}>
                   <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
+                    <div className="flex items-center justify-between min-w-0">
+                      <div className="flex items-center min-w-0 flex-1">
                         <div className="flex-shrink-0 h-12 w-12">
                           <img 
                             className={`h-12 w-12 rounded-md object-cover ${!trek.isEnabled ? 'opacity-50' : ''}`}
@@ -380,8 +380,8 @@ function AdminTrekList() {
                             alt={trek.name} 
                           />
                         </div>
-                        <div className="ml-4">
-                          <div className={`text-sm font-medium ${!trek.isEnabled ? 'text-gray-500' : 'text-gray-900'}`}> 
+                        <div className="ml-4 min-w-0 flex-1">
+                          <div className={`text-sm font-medium ${!trek.isEnabled ? 'text-gray-500' : 'text-gray-900'} truncate`}> 
                             {trek.name}
                             {trek.isCustom && (
                               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
@@ -389,7 +389,7 @@ function AdminTrekList() {
                               </span>
                             )}
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-500 truncate">
                             {getRegionName(trek.region, trek)} • {trek.difficulty} • {trek.duration} days
                             {trek.bookings && trek.bookings.length > 0 && (
                               <span className="ml-2 text-emerald-600">
@@ -404,56 +404,56 @@ function AdminTrekList() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0 ml-4">
                         <button
                           onClick={() => toggleTrekExpansion(trek._id)}
-                          className="p-2 rounded-full hover:bg-gray-100"
+                          className="p-1.5 sm:p-2 rounded-full hover:bg-gray-100"
                           title="Show Batches"
                         >
                           <ChevronDownIcon 
-                            className={`w-5 h-5 transform transition-transform ${expandedTreks.has(trek._id) ? 'rotate-180' : ''}`}
+                            className={`w-4 h-4 sm:w-5 sm:h-5 transform transition-transform ${expandedTreks.has(trek._id) ? 'rotate-180' : ''}`}
                           />
                         </button>
                         <Link
                           to={`/admin/treks/${trek._id}/performance`}
-                          className="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                          className="p-1.5 sm:p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
                           title="View Performance"
                         >
-                          <FaChartLine className="w-4 h-4" />
+                          <FaChartLine className="w-3 h-3 sm:w-4 sm:h-4" />
                         </Link>
                         <button
                           onClick={() => handleToggleStatus(trek._id, trek.isEnabled)}
-                          className={`p-2 rounded-full ${
+                          className={`p-1.5 sm:p-2 rounded-full ${
                             trek.isEnabled
                               ? 'bg-green-100 text-green-600 hover:bg-green-200'
                               : 'bg-red-100 text-red-600 hover:bg-red-200'
                           }`}
                           title={trek.isEnabled ? 'Disable Trek' : 'Enable Trek'}
                         >
-                          {trek.isEnabled ? <FaEye className="w-4 h-4" /> : <FaEyeSlash className="w-4 h-4" />}
+                          {trek.isEnabled ? <FaEye className="w-3 h-3 sm:w-4 sm:h-4" /> : <FaEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />}
                         </button>
                         {editingTrekId === trek._id ? (
                           <Link
                             to={`/admin/treks/edit/${trek._id}`}
-                            className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                            className="p-1.5 sm:p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
                             title="Edit Trek"
                           >
-                            <FaEdit className="w-4 h-4" />
+                            <FaEdit className="w-3 h-3 sm:w-4 sm:h-4" />
                           </Link>
                         ) : (
                           <button
                             onClick={() => startEditingTrek(trek)}
-                            className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                            className="p-1.5 sm:p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
                             title="Edit Trek"
                           >
-                            <FaEdit className="w-4 h-4" />
+                            <FaEdit className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
                         )}
                         <button
                           onClick={() => openDeleteModal(trek)}
-                          className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                          className="p-1.5 sm:p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
                         >
-                          <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                           </svg>
                         </button>
@@ -582,25 +582,25 @@ function AdminTrekList() {
         </div>
       ) : (
         // Grid View
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {getFilteredAndSortedTreks().length > 0 ? (
             getFilteredAndSortedTreks().map((trek) => (
-              <div key={trek._id} className={`bg-white shadow rounded-lg p-4 flex flex-col ${!trek.isEnabled ? 'opacity-60' : ''}`}> 
+              <div key={trek._id} className={`bg-white shadow rounded-lg p-3 sm:p-4 flex flex-col min-w-0 ${!trek.isEnabled ? 'opacity-60' : ''}`}> 
                 <img
-                  className="h-40 w-full object-cover rounded-md mb-3"
+                  className="h-32 sm:h-40 w-full object-cover rounded-md mb-3"
                   src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'}
                   alt={trek.name}
                 />
-                <div className="flex-1">
-                  <div className="text-lg font-semibold text-gray-900 mb-1 flex items-center">
-                    {trek.name}
+                <div className="flex-1 min-w-0">
+                  <div className="text-base sm:text-lg font-semibold text-gray-900 mb-1 flex items-center">
+                    <span className="truncate">{trek.name}</span>
                     {trek.isCustom && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 flex-shrink-0">
                         Custom
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-500 mb-2">
+                  <div className="text-xs sm:text-sm text-gray-500 mb-2 truncate">
                     {getRegionName(trek.region, trek)} • {trek.difficulty} • {trek.duration} days
                   </div>
                   {trek.bookings && trek.bookings.length > 0 && (
@@ -614,38 +614,38 @@ function AdminTrekList() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-end gap-2 mt-3">
+                <div className="flex items-center justify-end gap-1 sm:gap-2 mt-3">
                   <Link
                     to={`/admin/treks/${trek._id}/performance`}
-                    className="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                    className="p-1.5 sm:p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
                     title="View Performance"
                   >
-                    <FaChartLine className="w-4 h-4" />
+                    <FaChartLine className="w-3 h-3 sm:w-4 sm:h-4" />
                   </Link>
                   <button
                     onClick={() => handleToggleStatus(trek._id, trek.isEnabled)}
-                    className={`p-2 rounded-full ${
+                    className={`p-1.5 sm:p-2 rounded-full ${
                       trek.isEnabled
                         ? 'bg-green-100 text-green-600 hover:bg-green-200'
                         : 'bg-red-100 text-red-600 hover:bg-red-200'
                     }`}
                     title={trek.isEnabled ? 'Disable Trek' : 'Enable Trek'}
                   >
-                    {trek.isEnabled ? <FaEye className="w-4 h-4" /> : <FaEyeSlash className="w-4 h-4" />}
+                    {trek.isEnabled ? <FaEye className="w-3 h-3 sm:w-4 sm:h-4" /> : <FaEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />}
                   </button>
                   <Link
                     to={`/admin/treks/edit/${trek._id}`}
-                    className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                    className="p-1.5 sm:p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
                     title="Edit Trek"
                   >
-                    <FaEdit className="w-4 h-4" />
+                    <FaEdit className="w-3 h-3 sm:w-4 sm:h-4" />
                   </Link>
                   <button
                     onClick={() => openDeleteModal(trek)}
-                    className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                    className="p-1.5 sm:p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
                     title="Delete Trek"
                   >
-                    <FaTrash className="w-4 h-4" />
+                    <FaTrash className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               </div>
