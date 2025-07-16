@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getTreks, deleteTrek, toggleTrekStatus, getAllTreksWithCustomToggle, sendCustomTrekLink, updateTrek, removeBatch, addBatch, updateBatch, getAllRegions } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -29,6 +29,7 @@ function AdminTrekList() {
   const [regions, setRegions] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTreks();
@@ -477,11 +478,20 @@ function AdminTrekList() {
                           )}
                           {/* Batch Cards */}
                           {trek.batches && trek.batches.length > 0 && trek.batches.map((batch) => (
-                            <div key={batch._id} className="bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative">
+                            <div
+                              key={batch._id}
+                              className="bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative cursor-pointer hover:border-emerald-500 border-2 border-transparent"
+                              onClick={() => {
+                                if (editingBatchId !== batch._id) {
+                                  navigate(`/admin/treks/${trek._id}/performance?batchId=${batch._id}`);
+                                }
+                              }}
+                              style={{ pointerEvents: editingBatchId === batch._id ? 'none' : 'auto' }}
+                            >
                               {/* Icon container with reserved space */}
                               <div className="absolute top-2 right-2 z-10 flex space-x-1">
-                                <button onClick={() => startEditingBatch(batch)} className="p-1 rounded-full hover:bg-gray-200"><FaEdit className="w-4 h-4 text-blue-600" /></button>
-                                <button onClick={() => deleteBatch(trek._id, batch._id)} className="p-1 rounded-full hover:bg-gray-200"><FaTrash className="w-4 h-4 text-red-600" /></button>
+                                <button onClick={e => { e.stopPropagation(); startEditingBatch(batch); }} className="p-1 rounded-full hover:bg-gray-200"><FaEdit className="w-4 h-4 text-blue-600" /></button>
+                                <button onClick={e => { e.stopPropagation(); deleteBatch(trek._id, batch._id); }} className="p-1 rounded-full hover:bg-gray-200"><FaTrash className="w-4 h-4 text-red-600" /></button>
                               </div>
                               <div className="pt-8"> {/* Add top padding to avoid overlap */}
                                 {editingBatchId === batch._id ? (

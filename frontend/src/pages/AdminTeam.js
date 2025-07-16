@@ -12,13 +12,29 @@ import {
 function AdminTeam() {
   const navigate = useNavigate();
   const [admins, setAdmins] = useState([]);
+  const [filteredAdmins, setFilteredAdmins] = useState([]);
   const [userGroups, setUserGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    // Filter admins based on search term
+    if (searchTerm.trim() === "") {
+      setFilteredAdmins(admins);
+    } else {
+      const filtered = admins.filter(
+        (admin) =>
+          admin.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          admin.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredAdmins(filtered);
+    }
+  }, [searchTerm, admins]);
 
   const fetchData = async () => {
     try {
@@ -28,6 +44,7 @@ function AdminTeam() {
         getAllUserGroups(),
       ]);
       setAdmins(adminsData);
+      setFilteredAdmins(adminsData);
       setUserGroups(groupsData);
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -89,6 +106,46 @@ function AdminTeam() {
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="mb-6">
+          <div className="max-w-md">
+            <label htmlFor="search" className="sr-only">
+              Search admin users
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <input
+                id="search"
+                name="search"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                placeholder="Search admin users by name or email..."
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          {searchTerm && (
+            <p className="mt-2 text-sm text-gray-600">
+              Showing {filteredAdmins.length} of {admins.length} admin users
+            </p>
+          )}
+        </div>
+
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
             <div className="flex">
@@ -116,7 +173,7 @@ function AdminTeam() {
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
-              Admin Users ({admins.length})
+              Admin Users ({filteredAdmins.length})
             </h3>
             <p className="mt-1 text-sm text-gray-500">
               Manage admin users and their permissions
@@ -142,14 +199,14 @@ function AdminTeam() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {admins.length === 0 ? (
+              {filteredAdmins.length === 0 ? (
                 <tr>
                   <td colSpan="4" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No admin users found
+                    {searchTerm ? "No admin users found matching your search" : "No admin users found"}
                   </td>
                 </tr>
               ) : (
-                admins.map((admin) => (
+                filteredAdmins.map((admin) => (
                   <tr key={admin._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {admin.name}

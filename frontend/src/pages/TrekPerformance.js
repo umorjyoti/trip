@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { 
   getTrekPerformance, 
   getBatchPerformance,
@@ -21,7 +21,8 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 
 const TrekPerformance = () => {
   const { trekId } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [performanceData, setPerformanceData] = useState(null);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [batchDetails, setBatchDetails] = useState(null);
@@ -81,6 +82,8 @@ const TrekPerformance = () => {
 
   const handleBatchClick = async (batch) => {
     setSelectedBatch(batch);
+    // Update URL with batch ID
+    setSearchParams({ batchId: batch._id });
     await fetchBatchDetails(batch._id);
   };
 
@@ -192,10 +195,15 @@ const TrekPerformance = () => {
     try {
       await cancelBooking(cancellationData.bookingId || selectedBooking.bookingId, cancellationData);
       toast.success('Booking cancelled successfully');
-      // Refresh the batch details
+      
+      // Refresh both batch details and overall performance data
       if (selectedBatch) {
         await fetchBatchDetails(selectedBatch._id);
+        // Ensure URL maintains the batch ID
+        setSearchParams({ batchId: selectedBatch._id });
       }
+      // Also refresh the overall performance data to update batch participant counts
+      await fetchPerformanceData();
     } catch (error) {
       console.error('Error cancelling booking:', error);
       toast.error(error.response?.data?.message || 'Failed to cancel booking');
@@ -332,6 +340,7 @@ const TrekPerformance = () => {
               onClick={() => {
                 setSelectedBatch(null);
                 setBatchDetails(null);
+                setSearchParams({}); // Clear batchId from URL
               }}
               className="text-gray-400 hover:text-gray-500"
             >
@@ -401,13 +410,18 @@ const TrekPerformance = () => {
                         {booking.participantDetails && booking.participantDetails.length > 0 ? (
                           <ul className="list-disc list-inside space-y-1">
                             {booking.participantDetails.map((participant, index) => (
-                              <li key={index} className="text-xs">
-                                <span className="font-medium">{participant.name}</span>
+                              <li key={index} className={`text-xs ${participant.isCancelled ? 'line-through text-gray-400' : ''}`}>
+                                <span className={`font-medium ${participant.isCancelled ? 'text-gray-400' : 'text-gray-900'}`}>
+                                  {participant.name}
+                                  {participant.isCancelled && (
+                                    <span className="ml-1 text-red-500 text-xs">(Cancelled)</span>
+                                  )}
+                                </span>
                                 {participant.phone && (
-                                  <span className="text-gray-400"> - {participant.phone}</span>
+                                  <span className={`${participant.isCancelled ? 'text-gray-300' : 'text-gray-400'}`}> - {participant.phone}</span>
                                 )}
                                 {participant.email && (
-                                  <span className="text-gray-400"> - {participant.email}</span>
+                                  <span className={`${participant.isCancelled ? 'text-gray-300' : 'text-gray-400'}`}> - {participant.email}</span>
                                 )}
                               </li>
                             ))}

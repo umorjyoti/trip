@@ -1,9 +1,25 @@
 # Active Context
 
 ## Current Focus
-**Added Admin Team Management Feature** - Created a new quick action in the admin dashboard to manage admin users specifically, with the `manageTeam` permission.
+**Enhanced Batch Performance Cancellation Display** - Improved the batch performance page to properly display cancelled participants with strikethrough styling and updated participant counts.
 
 ## Recent Changes (Latest Session)
+- **URL State Management**: Added URL query parameter support to maintain batch selection after page refresh
+- **Cancelled Participant Display**: Added strikethrough styling and "(Cancelled)" label for cancelled participants in batch performance view
+- **Visual Feedback**: Cancelled participants are shown with grayed-out text and clear cancellation indicators
+- **Participant Count Updates**: Ensured participant counts only include active (non-cancelled) participants
+- **Data Refresh**: Added automatic refresh of both batch details and overall performance data after cancellations
+- **Batch Card Navigation**: Made batch cards clickable to navigate to performance page with pre-selected batch
+
+## Previous Changes (Latest Session)
+- **User Management Search**: Added search bar to AdminUsers.js page with real-time filtering by name or email
+- **Team Management Search**: Added search bar to AdminTeam.js page with real-time filtering by name or email
+- **Enhanced User Experience**: Both dashboards now show filtered results count and proper empty states
+- **Consistent UI Design**: Search bars use consistent styling with search icons and proper focus states
+- **Real-time Filtering**: Search works instantly as users type, filtering both name and email fields
+- **Improved Navigation**: Better user experience when managing large numbers of users
+
+## Previous Changes (Latest Session)
 - **New Admin Team Management**: Added a new quick action "Manage Team" in the admin dashboard
 - **Permission System**: Added `manageTeam` permission to UserGroup model for controlling access
 - **Backend API**: Created `/users/admins` endpoint to fetch only admin users
@@ -23,29 +39,84 @@
 - **Consistent URL Generation**: All password reset and authentication redirects now use the same logic
 
 ## Key Implementation Details
-- **Permission System**: Added `manageTeam` permission to UserGroup model for granular access control
-- **Backend Implementation**:
-  - Updated UserGroup model to include `manageTeam` permission
-  - Enhanced userController.js with `getAdmins()` function to fetch only admin users
-  - Added `/users/admins` route with `manageTeam` permission check
-- **Frontend Implementation**:
-  - Created AdminTeam.js page with same UI as AdminUsers but filtered for admins
-  - Added "Manage Team" quick action to AdminDashboard with `manageTeam` permission
-  - Added navigation item in AdminLayout sidebar
-  - Added protected route `/admin/team` in App.js
-  - Updated API service to use correct `/users/admins` endpoint
+- **URL State Management**:
+  - Added URL query parameter support using `useSearchParams` hook
+  - URL updates automatically when batch is selected: `/performance?batchId=123`
+  - URL maintains batch selection after page refresh or cancellation
+  - Clear URL when batch details are closed
+- **Cancellation Display Enhancement**:
+  - Added conditional styling for cancelled participants with strikethrough and grayed-out text
+  - Clear visual indicators showing "(Cancelled)" label for cancelled participants
+  - Maintained readability while clearly distinguishing cancelled from active participants
+  - Proper color coding (red for cancelled status, gray for cancelled details)
+- **Data Management**:
+  - Backend already correctly calculates participant counts excluding cancelled participants
+  - Added automatic refresh of both batch details and overall performance data after cancellations
+  - Ensured real-time updates of participant counts and revenue calculations
+- **Navigation Enhancement**:
+  - Made batch cards clickable in admin trek management page
+  - Added navigation to performance page with batch pre-selection via query parameters
+  - Prevented navigation when editing batches to avoid conflicts
+- **Previous Implementation Details**:
+  - **Search Functionality**:
+    - Added real-time search filtering to both AdminUsers and AdminTeam pages
+    - Search works on both name and email fields with case-insensitive matching
+    - Filtered results count display shows current filtered vs total users
+    - Proper empty states for when no results match search criteria
+  - **UI/UX Enhancements**:
+    - Consistent search bar design with search icon and proper styling
+    - Real-time filtering as users type (no need to press enter)
+    - Responsive design that works on all screen sizes
+    - Clear visual feedback with result counts and empty states
+  - **Technical Implementation**:
+    - Added `filteredUsers` and `filteredAdmins` state variables for filtered results
+    - Used `useEffect` hooks to handle real-time filtering based on search term
+    - Maintained all existing functionality while adding search capability
+    - Search is performed client-side for instant results
+- **Previous Implementation Details**:
+  - **Permission System**: Added `manageTeam` permission to UserGroup model for granular access control
+  - **Backend Implementation**:
+    - Updated UserGroup model to include `manageTeam` permission
+    - Enhanced userController.js with `getAdmins()` function to fetch only admin users
+    - Added `/users/admins` route with `manageTeam` permission check
+  - **Frontend Implementation**:
+    - Created AdminTeam.js page with same UI as AdminUsers but filtered for admins
+    - Added "Manage Team" quick action to AdminDashboard with `manageTeam` permission
+    - Added navigation item in AdminLayout sidebar
+    - Added protected route `/admin/team` in App.js
+    - Updated API service to use correct `/users/admins` endpoint
 - **Files Modified**:
-  - `backend/models/UserGroup.js` - Added manageTeam permission
-  - `backend/controllers/userController.js` - Enhanced getAdmins function
-  - `backend/routes/userRoutes.js` - Updated route permission
-  - `frontend/src/services/api.js` - Fixed getAdmins endpoint
-  - `frontend/src/pages/AdminTeam.js` - New page (created)
-  - `frontend/src/pages/AdminDashboard.js` - Added quick action
-  - `frontend/src/App.js` - Added route and import
-  - `frontend/src/layouts/AdminLayout.js` - Added navigation item
+  - `frontend/src/pages/AdminUsers.js` - Added search functionality
+  - `frontend/src/pages/AdminTeam.js` - Added search functionality
+  - **Previous Files Modified**:
+    - `backend/models/UserGroup.js` - Added manageTeam permission
+    - `backend/controllers/userController.js` - Enhanced getAdmins function
+    - `backend/routes/userRoutes.js` - Updated route permission
+    - `frontend/src/services/api.js` - Fixed getAdmins endpoint
+    - `frontend/src/pages/AdminTeam.js` - New page (created)
+    - `frontend/src/pages/AdminDashboard.js` - Added quick action
+    - `frontend/src/App.js` - Added route and import
+    - `frontend/src/layouts/AdminLayout.js` - Added navigation item
 
 ## Current Status
-✅ **COMPLETED**: Admin Team Management feature is fully implemented
+✅ **COMPLETED**: Batch performance URL state management and cancellation display have been enhanced
+- URL now maintains batch selection with query parameters (e.g., `/performance?batchId=123`)
+- Cancelled participants display with strikethrough styling and clear visual indicators
+- Participant counts correctly show only active (non-cancelled) participants
+- Automatic data refresh after cancellations ensures real-time updates
+- Batch cards are now clickable for easy navigation to performance page
+- URL state persists after page refresh and cancellation operations
+- All existing functionality preserved while improving user experience
+
+✅ **PREVIOUSLY COMPLETED**: Search functionality has been successfully added to both user management dashboards
+- Real-time search bars added to AdminUsers and AdminTeam pages
+- Search filters by both name and email with case-insensitive matching
+- Filtered results count display shows current filtered vs total users
+- Proper empty states for when no results match search criteria
+- Consistent UI design with search icons and proper styling
+- All existing functionality preserved while adding search capability
+
+✅ **PREVIOUSLY COMPLETED**: Admin Team Management feature is fully implemented
 - New "Manage Team" quick action added to admin dashboard
 - `manageTeam` permission added to UserGroup model
 - Backend API endpoint `/users/admins` created and working
@@ -55,6 +126,15 @@
 - All admin users can be viewed and managed in dedicated interface
 
 ## User Experience Flow
+1. **Admin Access**: Admin navigates to user management or team management dashboard
+2. **Search Functionality**: Admin can use the search bar to filter users by name or email
+3. **Real-time Results**: Search results update instantly as admin types
+4. **Filtered Count**: Admin sees how many users match the current search criteria
+5. **User Management**: Admin can view, edit roles, and assign user groups to filtered users
+6. **Clear Search**: Admin can clear search to see all users again
+7. **Navigation**: Admin can navigate between user management and team management pages
+
+## Previous User Experience Flow
 1. **Admin Access**: Admin navigates to admin dashboard
 2. **Quick Action**: Admin sees "Manage Team" quick action (if they have `manageTeam` permission)
 3. **Team Management**: Admin clicks "Manage Team" to view admin users only
@@ -63,15 +143,30 @@
 6. **Permission Control**: Only users with `manageTeam` permission can access this feature
 
 ## Technical Notes
-- The `manageTeam` permission provides granular access control for team management
-- Backend API filters users by `role: 'admin'` to show only admin users
-- Frontend uses same UI components as AdminUsers for consistency
-- Permission system ensures only authorized users can access team management
-- Navigation integrates seamlessly with existing admin layout
-- API endpoint `/users/admins` is protected by `manageTeam` permission
-- All existing user management functionality preserved in AdminTeam page
+- **Search Implementation**: Client-side filtering for instant results without API calls
+- **Performance**: Search is efficient and works with large user lists
+- **Accessibility**: Search inputs have proper labels and ARIA attributes
+- **Responsive Design**: Search bars work well on all screen sizes
+- **State Management**: Separate state for original and filtered user lists
+- **Error Handling**: Proper handling of null/undefined user data in search
+- **Previous Technical Notes**:
+  - The `manageTeam` permission provides granular access control for team management
+  - Backend API filters users by `role: 'admin'` to show only admin users
+  - Frontend uses same UI components as AdminUsers for consistency
+  - Permission system ensures only authorized users can access team management
+  - Navigation integrates seamlessly with existing admin layout
+  - API endpoint `/users/admins` is protected by `manageTeam` permission
+  - All existing user management functionality preserved in AdminTeam page
 
 ## Next Steps
+- Test the search functionality with various search terms and edge cases
+- Verify that search works correctly with large user lists
+- Test search functionality on different devices and screen sizes
+- Consider adding additional search filters (by role, user group, etc.)
+- Monitor for any performance issues with large datasets
+- Test the complete user management flow with search functionality
+
+## Previous Next Steps
 - Test the complete team management flow end-to-end
 - Verify that only users with `manageTeam` permission can access the feature
 - Test role changes and user group assignments in AdminTeam page
