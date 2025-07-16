@@ -1,6 +1,7 @@
 const Trek = require('../models/Trek'); // Make sure this path is correct
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking'); // Implied import for Booking model
+const Region = require('../models/Region'); // Add Region model import
 const crypto = require('crypto');
 
 // Get trek statistics
@@ -12,7 +13,7 @@ exports.getTrekStats = async (req, res) => {
     
     // Get region stats
     const regions = await Trek.aggregate([
-      { $group: { _id: "$region", count: { $sum: 1 } } },
+      { $group: { _id: "$regionName", count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
     
@@ -183,6 +184,19 @@ exports.createTrek = async (req, res) => {
   try {
     console.log('Creating trek with data:', req.body);
     
+    // Get region name if region ID is provided
+    let regionName = req.body.regionName || 'Unknown Region';
+    if (req.body.region && !req.body.regionName) {
+      try {
+        const region = await Region.findById(req.body.region);
+        if (region) {
+          regionName = region.name;
+        }
+      } catch (error) {
+        console.error('Error fetching region name:', error);
+      }
+    }
+    
     // Ensure required fields are included in the request body
     const trekData = {
       ...req.body,
@@ -193,7 +207,8 @@ exports.createTrek = async (req, res) => {
       gstPercent: Number(req.body.gstPercent) || 0,
       gstType: req.body.gstType || 'excluded',
       gatewayPercent: Number(req.body.gatewayPercent) || 0,
-      gatewayType: req.body.gatewayType || 'customer'
+      gatewayType: req.body.gatewayType || 'customer',
+      regionName: regionName // Use the fetched region name
     };
     
     // Handle custom trek creation
@@ -262,13 +277,27 @@ exports.updateTrek = async (req, res) => {
 
     // Extract fields from req.body
     const {
-      name, description, region, difficulty, duration, distance, maxAltitude,
+      name, description, region, regionName, difficulty, duration, distance, maxAltitude,
       displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns, highlights, batches, faqs, thingsToPack,
       gstPercent, gstType, gatewayPercent, gatewayType,
       tags, itineraryPdfUrl , customFields, isCustom
     } = req.body;
+
+    // Get region name if region ID is provided and regionName is not
+    let finalRegionName = regionName;
+    if (region && !regionName) {
+      try {
+        const regionDoc = await Region.findById(region);
+        if (regionDoc) {
+          finalRegionName = regionDoc.name;
+        }
+      } catch (error) {
+        console.error('Error fetching region name:', error);
+        finalRegionName = trek.regionName || 'Unknown Region';
+      }
+    }
 
     // Filter out empty highlights
     const filteredHighlights = highlights?.filter(h => h.trim()) || trek.highlights;
@@ -280,7 +309,8 @@ exports.updateTrek = async (req, res) => {
 
     // Prepare the update data object
     const updateData = {
-      name, description, region, difficulty, duration, distance, maxAltitude,
+      name, description, region, regionName: finalRegionName,
+      difficulty, duration, distance, maxAltitude,
       displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns,
@@ -603,7 +633,7 @@ exports.getTreks = async (req, res) => {
       ];
     }
 
-    if (region) filter.region = region;
+    if (region) filter.regionName = region;
     if (season) filter.season = season;
     if (duration) {
       // Parse duration range
@@ -675,9 +705,9 @@ exports.getTreksByRegion = async (req, res) => {
     }
     
     const treks = await Trek.find({ 
-      region, 
+      regionName: region, 
       isEnabled: true 
-    }).populate('region', 'name location coverImage');
+    }).select('name regionName location coverImage');
     
     console.log(`Found ${treks.length} treks for region ${region}`);
     res.json(treks);
@@ -697,11 +727,11 @@ exports.getTreksByExactRegion = async (req, res) => {
       return res.status(400).json({ message: 'Region ID is required' });
     }
     
-    // Use strict equality with the region ID
+    // Use strict equality with the region name
     const treks = await Trek.find({ 
-      region: regionId,
+      regionName: regionId,
       isEnabled: true 
-    }).populate('region', 'name location coverImage');
+    }).select('name regionName location coverImage');
     
     console.log(`Found ${treks.length} treks for exact region ${regionId}`);
     res.json(treks);

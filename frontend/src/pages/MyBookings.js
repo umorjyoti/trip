@@ -385,7 +385,7 @@ function MyBookings() {
                       <FaUsers className="mr-2 h-4 w-4 text-gray-400" />
                       <div>
                         <p className="font-medium text-gray-900">Participants</p>
-                        <p>{booking.participants || 0}</p>
+                        <p>{booking.numberOfParticipants || 0}</p>
                       </div>
                     </div>
                     
