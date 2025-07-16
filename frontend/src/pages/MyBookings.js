@@ -361,7 +361,7 @@ function MyBookings() {
                             {booking.batch && booking.batch.startDate ? formatDate(booking.batch.startDate) : 'N/A'}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {booking.participants || 0}
+                            {booking.numberOfParticipants || 0}
                           </td>
                           <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
                             ₹{booking.totalPrice ? booking.totalPrice.toFixed(2) : '0.00'}
