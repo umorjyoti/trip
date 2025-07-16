@@ -18,6 +18,7 @@ function BlogManagement() {
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('-createdAt');
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+  const [deleteBlogConfirmation, setDeleteBlogConfirmation] = useState(null);
   const [statusChangeConfirmation, setStatusChangeConfirmation] = useState(null);
 
   useEffect(() => {
@@ -55,18 +56,23 @@ function BlogManagement() {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this blog? This action cannot be undone.')) {
-      try {
-        setActionLoading(prev => ({ ...prev, [id]: true }));
-        await axios.delete(`/blogs/${id}`);
-        toast.success('Blog deleted successfully');
-        fetchBlogs();
-      } catch (error) {
-        toast.error('Failed to delete blog');
-        console.error('Error deleting blog:', error);
-      } finally {
-        setActionLoading(prev => ({ ...prev, [id]: false }));
-      }
+    setDeleteBlogConfirmation(id);
+  };
+
+  const confirmDeleteBlog = async () => {
+    if (!deleteBlogConfirmation) return;
+    
+    try {
+      setActionLoading(prev => ({ ...prev, [deleteBlogConfirmation]: true }));
+      await axios.delete(`/blogs/${deleteBlogConfirmation}`);
+      toast.success('Blog deleted successfully');
+      fetchBlogs();
+    } catch (error) {
+      toast.error('Failed to delete blog');
+      console.error('Error deleting blog:', error);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [deleteBlogConfirmation]: false }));
+      setDeleteBlogConfirmation(null);
     }
   };
 
@@ -432,7 +438,7 @@ function BlogManagement() {
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
+        {/* Delete Blog Region Confirmation Modal */}
         <Modal
           isOpen={!!deleteConfirmation}
           onClose={() => setDeleteConfirmation(null)}
@@ -467,6 +473,46 @@ function BlogManagement() {
                 className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
               >
                 Delete Region
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Delete Blog Confirmation Modal */}
+        <Modal
+          isOpen={!!deleteBlogConfirmation}
+          onClose={() => setDeleteBlogConfirmation(null)}
+          title="Delete Blog"
+        >
+          <div className="p-6">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <FaTrash className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Delete Blog</h3>
+                <p className="text-sm text-gray-500">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this blog? This will permanently remove the blog and all its content from the system.
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => setDeleteBlogConfirmation(null)}
+                className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteBlog}
+                className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
+              >
+                Delete Blog
               </button>
             </div>
           </div>

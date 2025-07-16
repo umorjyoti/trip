@@ -368,6 +368,27 @@ exports.getDashboardStats = async (req, res) => {
     // Get total bookings
     const totalBookings = await Booking.countDocuments();
     
+    // Calculate total sales from confirmed bookings
+    const confirmedBookings = await Booking.find({ status: 'confirmed' });
+    const totalSales = confirmedBookings.reduce((sum, booking) => {
+      const paid = booking.totalPrice || 0;
+      // Only subtract refunds if they were successfully processed
+      let refunded = 0;
+      if (booking.refundStatus === 'success') {
+        refunded += booking.refundAmount || 0;
+      }
+      // Participant-level refunds (for partial cancellations) - only successful ones
+      if (Array.isArray(booking.participantDetails)) {
+        refunded += booking.participantDetails.reduce((rSum, p) => {
+          if (p.refundStatus === 'success') {
+            return rSum + (p.refundAmount || 0);
+          }
+          return rSum;
+        }, 0);
+      }
+      return sum + (paid - refunded);
+    }, 0);
+    
     // Get recent bookings
     const recentBookings = await Booking.find()
       .sort('-createdAt')
@@ -388,6 +409,7 @@ exports.getDashboardStats = async (req, res) => {
       totalTreks,
       totalUsers,
       totalBookings,
+      totalSales,
       recentBookings,
       upcomingTreks
     });

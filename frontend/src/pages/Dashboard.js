@@ -210,6 +210,7 @@ function Dashboard() {
   const [treks, setTreks] = useState([]);
   const [regions, setRegions] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [allBookings, setAllBookings] = useState([]);
   const [users, setUsers] = useState([]);
   const [salesStats, setSalesStats] = useState({
     totalSales: 0,
@@ -270,29 +271,22 @@ function Dashboard() {
       const regionsData = await getRegions();
       setRegions(regionsData);
 
-      // Fetch all bookings for sales stats
+      // Use the backend dashboard stats for total sales and bookings
+      // The backend already calculates these correctly
+      setSalesStats({
+        totalSales: data.totalSales || 0,
+        confirmedBookings: 0, // We'll calculate this separately if needed
+        cancelledBookings: 0, // We'll calculate this separately if needed
+      });
+
+      // For total bookings count, we'll use the backend data
+      // But we still need to fetch all bookings for the array
       const allBookingsData = await getAllBookings();
       const bookingsArray = Array.isArray(allBookingsData)
         ? allBookingsData
         : [];
-
-      // Calculate sales stats
-      const totalSales = bookingsArray
-        .filter((booking) => booking.status === "confirmed")
-        .reduce((sum, booking) => sum + (booking.totalPrice || 0), 0);
-
-      const confirmedBookings = bookingsArray.filter(
-        (booking) => booking.status === "confirmed"
-      ).length;
-      const cancelledBookings = bookingsArray.filter(
-        (booking) => booking.status === "cancelled"
-      ).length;
-
-      setSalesStats({
-        totalSales,
-        confirmedBookings,
-        cancelledBookings,
-      });
+      
+      setAllBookings(bookingsArray);
 
       // Fetch recent bookings for the current user's view
       const userBookingsData = await getUserBookings();
@@ -440,7 +434,7 @@ function Dashboard() {
     },
     {
       title: "Total Bookings",
-      value: salesStats.confirmedBookings + salesStats.cancelledBookings,
+      value: stats?.totalBookings || 0,
       icon: FaCalendarAlt,
       color: "yellow",
       link: "/admin/bookings",
@@ -718,7 +712,7 @@ function Dashboard() {
                                 clipRule="evenodd"
                               />
                             </svg>
-                            {trek.region}
+                            {trek.regionName}
                           </p>
                           <p className="flex items-center text-xs sm:text-sm text-gray-500">
                             <svg
