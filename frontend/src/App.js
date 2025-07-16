@@ -76,6 +76,7 @@ import CustomTrekDetail from './pages/CustomTrekDetail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsConditions from './pages/TermsConditions';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -152,6 +153,7 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsConditions />} />
               <Route path="/treks" element={<SearchResults />} />
               <Route path="/treks/:name" element={<TrekDetail />} />
               <Route path="/treks/:name/book" element={<BookingPage />} />
