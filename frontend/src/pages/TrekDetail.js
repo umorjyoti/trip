@@ -1826,26 +1826,27 @@ function TrekDetail() {
         </div>
 
         {/* Booking form modal */}
-        {showBookingForm && selectedBatch && (
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-            <div className="max-w-2xl w-full mx-4">
-              {trek.isCustom ? (
-                <CustomTrekBookingForm
-                  trek={trek}
-                  onClose={handleCloseBookingForm}
-                  onSuccess={handleBookingSuccess}
-                />
-              ) : (
-                <BookingForm
-                  trek={trek}
-                  batch={selectedBatch}
-                  onClose={handleCloseBookingForm}
-                  onSuccess={handleBookingSuccess}
-                />
-              )}
-            </div>
-          </div>
-        )}
+        <Modal
+          isOpen={showBookingForm}
+          onClose={handleCloseBookingForm}
+          title="Book This Trek"
+          size="large"
+        >
+          {trek.isCustom ? (
+            <CustomTrekBookingForm
+              trek={trek}
+              onClose={handleCloseBookingForm}
+              onSuccess={handleBookingSuccess}
+            />
+          ) : (
+            <BookingForm
+              trek={trek}
+              batch={selectedBatch}
+              onClose={handleCloseBookingForm}
+              onSuccess={handleBookingSuccess}
+            />
+          )}
+        </Modal>
 
         {/* Add the related treks section */}
         {!loading && !error && trek && renderRelatedTreks()}

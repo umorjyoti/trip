@@ -6,6 +6,7 @@ import RichTextEditor from '../../components/RichTextEditor';
 import { debounce } from 'lodash';
 import api from '../../services/api';
 import { getBlogRegions } from '../../services/api';
+import Modal from '../../components/Modal';
 
 function BlogEditor() {
   const navigate = useNavigate();
@@ -775,110 +776,103 @@ function BlogEditor() {
       </div>
 
       {/* Confirmation Modal */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{backgroundColor: 'rgba(0, 0, 0, 0.75)'}}>
-          <div className="mt-[550px] bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {id ? 'Update Blog Post' : 'Create Blog Post'}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {formData.status === 'published' ? 'This will be published immediately' : 'This will be saved as a draft'}
-                  </p>
-                </div>
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title={id ? 'Update Blog Post' : 'Create Blog Post'}
+        size="small"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
               </div>
             </div>
-
-            {/* Modal Body */}
-            <div className="px-6 py-4">
-              <div className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2"></div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Title</p>
-                    <p className="text-sm text-gray-600 truncate">{formData.title}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Status</p>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      formData.status === 'published' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {formData.status === 'published' ? 'Published' : 'Draft'}
-                    </span>
-                  </div>
-                </div>
-
-                {formData.status === 'published' && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-green-700">
-                          This blog post will be published and visible to all visitors immediately.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmSave}
-                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    {id ? 'Updating...' : 'Creating...'}
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    {id ? 'Update Blog' : 'Create Blog'}
-                  </div>
-                )}
-              </button>
+            <div className="ml-4">
+              <p className="text-sm text-gray-500">
+                {formData.status === 'published' ? 'This will be published immediately' : 'This will be saved as a draft'}
+              </p>
             </div>
           </div>
+
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2"></div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Title</p>
+                <p className="text-sm text-gray-600 truncate">{formData.title}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Status</p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  formData.status === 'published' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {formData.status === 'published' ? 'Published' : 'Draft'}
+                </span>
+              </div>
+            </div>
+
+            {formData.status === 'published' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-green-700">
+                      This blog post will be published and visible to all visitors immediately.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {id ? 'Updating...' : 'Creating...'}
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  {id ? 'Update Blog' : 'Create Blog'}
+                </div>
+              )}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

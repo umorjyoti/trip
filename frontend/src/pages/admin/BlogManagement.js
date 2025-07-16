@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
-import { FaPlus, FaEdit, FaTrash, FaEye, FaEyeSlash, FaGlobe, FaBlog, FaCalendarAlt, FaUser, FaChartBar } from 'react-icons/fa';
-import SEOAnalytics from '../../components/SEOAnalytics';
+import { FaPlus, FaEdit, FaTrash, FaEye, FaEyeSlash, FaGlobe, FaBlog, FaCalendarAlt, FaUser } from 'react-icons/fa';
 import api from '../../services/api';
 import { getAllBlogRegions, deleteBlogRegion } from '../../services/api';
 import Modal from '../../components/Modal';
@@ -18,9 +17,8 @@ function BlogManagement() {
   const [actionLoading, setActionLoading] = useState({});
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('-createdAt');
-  const [selectedBlog, setSelectedBlog] = useState(null);
-  const [showAnalytics, setShowAnalytics] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
+  const [statusChangeConfirmation, setStatusChangeConfirmation] = useState(null);
 
   useEffect(() => {
     if (activeTab === 'blogs') {
@@ -90,14 +88,14 @@ function BlogManagement() {
   };
 
   const handleStatusChange = async (id, newStatus) => {
-    const action = newStatus === 'published' ? 'publish' : 'unpublish';
-    const confirmMessage = newStatus === 'published'
-      ? 'Are you sure you want to publish this blog?'
-      : 'Are you sure you want to unpublish this blog? It will no longer be visible to users.';
+    setStatusChangeConfirmation({ id, newStatus });
+  };
 
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
+  const confirmStatusChange = async () => {
+    if (!statusChangeConfirmation) return;
+    
+    const { id, newStatus } = statusChangeConfirmation;
+    const action = newStatus === 'published' ? 'publish' : 'unpublish';
     
     try {
       setActionLoading(prev => ({ ...prev, [id]: true }));
@@ -109,13 +107,11 @@ function BlogManagement() {
       console.error(`Error ${action}ing blog:`, error);
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
+      setStatusChangeConfirmation(null);
     }
   };
 
-  const handleViewAnalytics = (blog) => {
-    setSelectedBlog(blog);
-    setShowAnalytics(true);
-  };
+
 
   const filteredBlogs = blogs.filter(blog => {
     if (filter === 'all') return true;
@@ -220,31 +216,7 @@ function BlogManagement() {
               </div>
             </div>
 
-            {/* Analytics Modal */}
-            {showAnalytics && selectedBlog && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-                  <div className="p-6 border-b border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-semibold text-gray-900">
-                        SEO Analytics - {selectedBlog.title}
-                      </h2>
-                      <button
-                        onClick={() => setShowAnalytics(false)}
-                        className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                      >
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <SEOAnalytics blogId={selectedBlog._id} />
-                  </div>
-                </div>
-              </div>
-            )}
+
 
             {/* Blogs Grid */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -342,14 +314,6 @@ function BlogManagement() {
                           >
                             <FaEdit className="mr-1 h-4 w-4" />
                             Edit
-                          </button>
-                          <button
-                            onClick={() => handleViewAnalytics(blog)}
-                            className="flex items-center text-blue-600 hover:text-blue-900 text-sm font-medium transition-colors duration-200"
-                            disabled={actionLoading[blog._id]}
-                          >
-                            <FaChartBar className="mr-1 h-4 w-4" />
-                            Analytics
                           </button>
                           <button
                             onClick={() => handleStatusChange(blog._id, blog.status === 'published' ? 'draft' : 'published')}
@@ -503,6 +467,58 @@ function BlogManagement() {
                 className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200"
               >
                 Delete Region
+              </button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Status Change Confirmation Modal */}
+        <Modal
+          isOpen={!!statusChangeConfirmation}
+          onClose={() => setStatusChangeConfirmation(null)}
+          title={statusChangeConfirmation?.newStatus === 'published' ? 'Publish Blog' : 'Unpublish Blog'}
+          size="small"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  statusChangeConfirmation?.newStatus === 'published' 
+                    ? 'bg-green-100' 
+                    : 'bg-yellow-100'
+                }`}>
+                  {statusChangeConfirmation?.newStatus === 'published' ? (
+                    <FaEye className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <FaEyeSlash className="w-5 h-5 text-yellow-600" />
+                  )}
+                </div>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">
+                  {statusChangeConfirmation?.newStatus === 'published' 
+                    ? 'This blog will be published and visible to all visitors immediately.'
+                    : 'This blog will be unpublished and no longer visible to visitors.'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={() => setStatusChangeConfirmation(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmStatusChange}
+                className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors ${
+                  statusChangeConfirmation?.newStatus === 'published'
+                    ? 'bg-green-600 hover:bg-green-700'
+                    : 'bg-yellow-600 hover:bg-yellow-700'
+                }`}
+              >
+                {statusChangeConfirmation?.newStatus === 'published' ? 'Publish' : 'Unpublish'}
               </button>
             </div>
           </div>

@@ -364,11 +364,6 @@ exports.createBlog = async (req, res) => {
 // Update blog
 exports.updateBlog = async (req, res) => {
   try {
-    const errors = validateBlogData(req.body);
-    if (errors.length > 0) {
-      return res.status(400).json({ message: errors.join(', ') });
-    }
-
     const blog = await Blog.findById(req.params.id);
     
     if (!blog) {
@@ -378,6 +373,40 @@ exports.updateBlog = async (req, res) => {
     // Admin can update any blog
     if (req.user.role !== 'admin' && blog.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // If this is a full update (not just status change), validate all required fields
+    const isFullUpdate = Object.keys(req.body).length > 1 || !req.body.hasOwnProperty('status');
+    if (isFullUpdate) {
+      const errors = validateBlogData(req.body);
+      if (errors.length > 0) {
+        return res.status(400).json({ message: errors.join(', ') });
+      }
+    } else {
+      // For status-only updates, validate only the status-specific requirements
+      if (req.body.status === 'published') {
+        if (!blog.bannerImage) {
+          return res.status(400).json({ message: 'Banner image is required for published blogs' });
+        }
+        if (!blog.title?.trim()) {
+          return res.status(400).json({ message: 'Title is required for published blogs' });
+        }
+        if (!blog.content?.trim()) {
+          return res.status(400).json({ message: 'Content is required for published blogs' });
+        }
+        if (!blog.excerpt?.trim()) {
+          return res.status(400).json({ message: 'Excerpt is required for published blogs' });
+        }
+        if (!blog.metaTitle?.trim()) {
+          return res.status(400).json({ message: 'Meta title is required for published blogs' });
+        }
+        if (!blog.metaDescription?.trim()) {
+          return res.status(400).json({ message: 'Meta description is required for published blogs' });
+        }
+        if (!blog.keywords?.length) {
+          return res.status(400).json({ message: 'At least one keyword is required for published blogs' });
+        }
+      }
     }
 
     // If banner image is being updated, delete the old one

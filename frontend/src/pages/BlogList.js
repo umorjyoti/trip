@@ -39,7 +39,7 @@ function BlogList() {
       for (const region of response) {
         try {
           const blogsResponse = await getBlogsByRegion(region._id, { limit: 1 });
-          counts[region._id] = blogsResponse.total || 0;
+          counts[region._id] = blogsResponse.totalBlogs || 0;
         } catch (error) {
           counts[region._id] = 0;
         }
@@ -224,7 +224,7 @@ function BlogList() {
 
         {/* Regions View */}
         {viewMode === 'regions' && (
-          <div className="max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+          <div className="max-w-7xl px-4 sm:px-6 lg:px-8 py-4 pb-16">
             {blogRegions.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">
@@ -276,7 +276,7 @@ function BlogList() {
 
         {/* Blogs View */}
         {viewMode === 'blogs' && (
-          <div className="max-w-7xl px-4 sm:px-6 lg:px-8 ">
+          <div className="max-w-7xl px-4 sm:px-6 lg:px-8 pb-16">
             {/* Search and Sort Section */}
             <div className="flex flex-col md:flex-row md:items-center md:space-x-4 gap-3 mb-4">
               <div className="w-full md:w-80">
