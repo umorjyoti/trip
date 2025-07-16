@@ -1,7 +1,12 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail } = require('../utils/email');
+const { updateBatchParticipantCount } = require('../utils/batchUtils');
+const { generateInvoicePDF } = require('../utils/invoiceGenerator');
+const { getRefundAmount } = require('../utils/refundUtils');
+const { refundPayment } = require('../utils/razorpayUtils');
+const mongoose = require('mongoose');
 
 // Create a custom trek booking (simplified flow)
 const createCustomTrekBooking = async (req, res) => {
@@ -92,8 +97,23 @@ const createCustomTrekBooking = async (req, res) => {
     // Send confirmation email
     try {
       await sendBookingConfirmationEmail(booking, trek, customBatch);
+      // Generate and send invoice for direct confirmation
+      await booking.populate('trek').populate('user');
+      const paymentDetails = booking.paymentDetails || {
+        id: booking._id.toString(),
+        amount: booking.totalPrice * 100,
+        method: 'Manual/Offline',
+      };
+      const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+      await sendEmailWithAttachment({
+        to: booking.userDetails.email,
+        subject: `Your Invoice for Booking ${booking._id}`,
+        text: `Dear ${booking.userDetails.name},\n\nYour booking is confirmed! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+        attachmentBuffer: invoiceBuffer,
+        attachmentFilename: `Invoice-${booking._id}.pdf`
+      });
     } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
+      console.error('Error sending confirmation email or invoice:', emailError);
       // Don't fail the booking if email fails
     }
 
@@ -183,6 +203,26 @@ const createBooking = async (req, res) => {
     // Update batch participants count
     batch.currentParticipants += participantsCount;
     await trek.save();
+
+    // Generate and send invoice for pending payment
+    try {
+      await booking.populate('trek').populate('user');
+      const paymentDetails = booking.paymentDetails || {
+        id: booking._id.toString(),
+        amount: booking.totalPrice * 100,
+        method: 'Pending',
+      };
+      const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+      await sendEmailWithAttachment({
+        to: booking.userDetails.email,
+        subject: `Your Invoice for Booking ${booking._id}`,
+        text: `Dear ${booking.userDetails.name},\n\nThank you for your booking! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+        attachmentBuffer: invoiceBuffer,
+        attachmentFilename: `Invoice-${booking._id}.pdf`
+      });
+    } catch (invoiceError) {
+      console.error('Error generating or sending invoice after booking creation:', invoiceError);
+    }
 
     res.status(201).json(booking);
   } catch (error) {
@@ -312,6 +352,9 @@ const getBookingById = async (req, res) => {
       return res.status(404).json({ message: "Batch not found in trek.batches" });
     }
 
+    const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled);
+    const activeParticipantCount = activeParticipants.length;
+
     // Format the response data
     const responseData = {
       _id: booking._id,
@@ -334,6 +377,8 @@ const getBookingById = async (req, res) => {
       cancelledAt: booking.cancelledAt,
       userDetails: booking.userDetails,
       addOns: booking.addOns,
+      activeParticipants,
+      activeParticipantCount
     };
 
     res.json(responseData);
@@ -346,13 +391,11 @@ const getBookingById = async (req, res) => {
 // Cancel a booking
 const cancelBooking = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
-
+    const { reason, refundType } = req.body;
+    const booking = await Booking.findById(req.params.id).populate('trek');
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-
-    // Check if user is authorized (either admin or the booking owner)
     if (
       booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
@@ -360,10 +403,81 @@ const cancelBooking = async (req, res) => {
     ) {
       return res.status(401).json({ message: "Not authorized" });
     }
-
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ message: 'Booking already cancelled' });
+    }
+    const trek = booking.trek;
+    const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+    const now = new Date();
+    if (batch && batch.startDate && new Date(batch.startDate) <= now) {
+      return res.status(400).json({ message: 'Cannot cancel booking after trek has started' });
+    }
+    // Refund logic for all participants
+    let totalRefund = 0;
+    let paymentId = booking.paymentDetails?.paymentId;
+    let refundStatus = 'not_applicable';
+    let refundDate = null;
+    booking.cancellationReason = reason || '';
+    booking.cancelledAt = new Date();
+    booking.participantDetails.forEach(p => {
+      if (!p.isCancelled) {
+        p.isCancelled = true;
+        p.cancelledAt = new Date();
+        p.cancellationReason = reason || '';
+        // Per-participant refund
+        const perPrice = booking.totalPrice / booking.participantDetails.length;
+        let refundAmount = batch ? getRefundAmount(perPrice, batch.startDate, now, refundType || 'auto') : perPrice;
+        p.refundAmount = refundAmount;
+        p.refundStatus = 'not_applicable';
+        p.refundDate = null;
+        totalRefund += refundAmount;
+      }
+    });
+    if ((booking.status === 'payment_completed' || booking.status === 'confirmed') && totalRefund > 0 && paymentId) {
+      refundStatus = 'processing';
+      const razorpayRes = await refundPayment(paymentId, totalRefund * 100);
+      if (razorpayRes.success) {
+        refundStatus = 'success';
+        refundDate = new Date();
+        booking.participantDetails.forEach(p => {
+          p.refundStatus = 'success';
+          p.refundDate = refundDate;
+        });
+      } else {
+        refundStatus = 'failed';
+        booking.participantDetails.forEach(p => {
+          p.refundStatus = 'failed';
+        });
+      }
+    }
     booking.status = "cancelled";
+    booking.refundStatus = refundStatus;
+    booking.refundAmount = totalRefund;
+    booking.refundDate = refundDate;
+    if (batch) {
+      try {
+        await updateBatchParticipantCount(booking.trek, booking.batch);
+      } catch (error) {
+        console.error('Error updating batch participant count:', error);
+        // Continue with the cancellation even if count update fails
+      }
+    }
     await booking.save();
-
+    try {
+      // Use the professional cancellation email template
+      await sendCancellationEmail(
+        booking,
+        trek,
+        booking.user || { name: booking.userDetails?.name, email: booking.userDetails?.email },
+        'entire', // This is for entire booking cancellation
+        booking.participantDetails.map(p => p._id), // All participants cancelled
+        totalRefund,
+        reason,
+        'auto' // Default to auto-calculated refund
+      );
+    } catch (emailError) {
+      console.error('Error sending cancellation/refund email:', emailError);
+    }
     res.json({ message: "Booking cancelled successfully", booking });
   } catch (error) {
     console.error("Error cancelling booking:", error);
@@ -389,14 +503,72 @@ const getBookings = async (req, res) => {
     const limit = 10;
     const skip = (page - 1) * limit;
 
+    // Build filter query
+    const filterQuery = {};
+
+    // Status filter
+    if (req.query.status && req.query.status !== 'all') {
+      filterQuery.status = req.query.status;
+    }
+
+    // Trek filter
+    if (req.query.trekId) {
+      filterQuery.trek = req.query.trekId;
+    }
+
+    // Batch filter
+    if (req.query.batchId) {
+      filterQuery.batch = req.query.batchId;
+    }
+
+    // Date range filters
+    if (req.query.startDate || req.query.endDate) {
+      filterQuery.createdAt = {};
+      if (req.query.startDate) {
+        filterQuery.createdAt.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        filterQuery.createdAt.$lte = new Date(req.query.endDate);
+      }
+    }
+
+    // Enhanced search logic for trek name
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      const searchTerm = req.query.search;
+      let trekIds = [];
+      // Find trek IDs matching the search
+      const treks = await require('../models/Trek').find({ name: searchRegex }, '_id');
+      if (treks && treks.length > 0) {
+        trekIds = treks.map(t => t._id);
+      }
+      const orFilters = [
+        { 'userDetails.name': searchRegex },
+        { 'userDetails.email': searchRegex },
+        // Partial match for status
+        { status: { $regex: searchRegex } },
+        // Partial match for booking ID (ObjectId as string)
+        { $expr: { $regexMatch: { input: { $toString: '$_id' }, regex: req.query.search, options: 'i' } } },
+        // Partial match for trek ID (ObjectId as string)
+        { $expr: { $regexMatch: { input: { $toString: '$trek' }, regex: req.query.search, options: 'i' } } }
+      ];
+      // Add trek ID matches from trek name search
+      if (trekIds.length > 0) {
+        orFilters.push({ trek: { $in: trekIds } });
+      }
+      filterQuery.$or = orFilters;
+    }
+
+    console.log("Filter query:", filterQuery);
+
     const [bookings, total] = await Promise.all([
-      Booking.find({})
+      Booking.find(filterQuery)
         .populate("user", "name email")
         .populate("trek", "name")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Booking.countDocuments({})
+      Booking.countDocuments(filterQuery)
     ]);
 
     res.json({
@@ -438,6 +610,29 @@ const updateBookingStatus = async (req, res) => {
     // Update status
     booking.status = status;
     await booking.save();
+
+    // If status is confirmed, generate and send invoice
+    if (status === 'confirmed') {
+      try {
+        // Populate trek and user for invoice
+        await booking.populate('trek').populate('user');
+        // Use booking.totalPrice as payment amount, and mark as 'Manual/Offline' if no paymentDetails
+        const paymentDetails = booking.paymentDetails || {
+          id: booking._id.toString(),
+          amount: booking.totalPrice * 100, // in paise for consistency
+        };
+        const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+        await sendEmailWithAttachment({
+          to: booking.user.email,
+          subject: `Your Invoice for Booking ${booking._id}`,
+          text: `Dear ${booking.user.name},\n\nYour booking is confirmed! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${booking.trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+          attachmentBuffer: invoiceBuffer,
+          attachmentFilename: `Invoice-${booking._id}.pdf`
+        });
+      } catch (invoiceError) {
+        console.error('Error generating or sending invoice after confirmation:', invoiceError);
+      }
+    }
 
     res.json(booking);
   } catch (error) {
@@ -493,13 +688,11 @@ const restoreBooking = async (req, res) => {
 const cancelParticipant = async (req, res) => {
   try {
     const { id, participantId } = req.params;
-
-    const booking = await Booking.findById(id);
+    const { reason, refundType, refundAmount: customRefundAmount } = req.body;
+    const booking = await Booking.findById(id).populate('trek');
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
-
-    // Check if user is authorized (either admin or the booking owner)
     if (
       booking.user._id.toString() !== req.user._id.toString() &&
       booking.user.toString() !== req.user._id.toString() &&
@@ -507,37 +700,83 @@ const cancelParticipant = async (req, res) => {
     ) {
       return res.status(401).json({ message: "Not authorized" });
     }
-
-    // Find the participant
     const participant = booking.participantDetails.find(
-      (p) => p._id === participantId
+      (p) => p._id && p._id.toString() === participantId.toString()
     );
-
     if (!participant) {
       return res.status(404).json({ message: "Participant not found" });
     }
-
     if (participant.isCancelled) {
-      return res
-        .status(400)
-        .json({ message: "Participant is already cancelled" });
+      return res.status(400).json({ message: "Participant is already cancelled" });
     }
-
-    // Mark participant as cancelled
+    const trek = booking.trek;
+    const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+    const now = new Date();
+    if (batch && batch.startDate && new Date(batch.startDate) <= now) {
+      return res.status(400).json({ message: 'Cannot cancel participant after trek has started' });
+    }
+    // Refund logic
+    let refundAmount = 0;
+    let paymentId = booking.paymentDetails?.paymentId;
+    let refundStatus = 'not_applicable';
+    let refundDate = null;
+    const perPrice = booking.totalPrice / booking.participantDetails.length;
+    let effectiveRefundType = refundType || 'auto';
+    if (!req.user.isAdmin) effectiveRefundType = 'auto';
+    if (effectiveRefundType === 'custom' && req.user.isAdmin && typeof customRefundAmount === 'number') {
+      refundAmount = customRefundAmount;
+    } else {
+      refundAmount = batch ? getRefundAmount(perPrice, batch.startDate, now, effectiveRefundType) : perPrice;
+    }
+    if ((booking.status === 'payment_completed' || booking.status === 'confirmed') && refundAmount > 0 && paymentId) {
+      refundStatus = 'processing';
+      const razorpayRes = await refundPayment(paymentId, refundAmount * 100);
+      if (razorpayRes.success) {
+        refundStatus = 'success';
+        refundDate = new Date();
+      } else {
+        refundStatus = 'failed';
+      }
+    }
     participant.isCancelled = true;
     participant.cancelledAt = new Date();
-
-    // Update the total price by subtracting the price for this participant
-    const batch = await Trek.findById(booking.trek).then((trek) =>
-      trek.batches.id(booking.batch)
-    );
-
+    participant.cancellationReason = reason || '';
+    participant.refundStatus = refundStatus;
+    participant.refundAmount = refundAmount;
+    participant.refundDate = refundDate;
+    participant.status = 'bookingCancelled';
     if (batch) {
-      booking.totalPrice -= batch.price;
+      booking.totalPrice = Math.max(0, booking.totalPrice - perPrice);
+      try {
+        await updateBatchParticipantCount(booking.trek, booking.batch);
+      } catch (error) {
+        console.error('Error updating batch participant count:', error);
+        // Continue with the cancellation even if count update fails
+      }
     }
-
     await booking.save();
-
+    // If all participants are cancelled, set booking.status = 'cancelled'
+    if (booking.participantDetails.every(p => p.isCancelled)) {
+      booking.status = 'cancelled';
+      booking.cancelledAt = new Date();
+      booking.cancellationReason = reason || '';
+      await booking.save();
+    }
+    try {
+      // Use the professional cancellation email template for participant cancellation
+      await sendCancellationEmail(
+        booking,
+        trek,
+        booking.user || { name: booking.userDetails?.name, email: booking.userDetails?.email },
+        'individual', // This is for individual participant cancellation
+        [participantId], // Only the cancelled participant
+        refundAmount,
+        reason,
+        'auto' // Default to auto-calculated refund
+      );
+    } catch (emailError) {
+      console.error('Error sending participant cancellation/refund email:', emailError);
+    }
     res.json({ message: "Participant cancelled successfully", booking });
   } catch (error) {
     console.error("Error cancelling participant:", error);
@@ -566,7 +805,7 @@ const restoreParticipant = async (req, res) => {
 
     // Find the participant
     const participant = booking.participantDetails.find(
-      (p) => p._id === participantId
+      (p) => p._id && p._id.toString() === participantId.toString()
     );
 
     if (!participant) {
@@ -580,6 +819,7 @@ const restoreParticipant = async (req, res) => {
     // Mark participant as restored
     participant.isCancelled = false;
     participant.cancelledAt = null;
+    participant.status = 'confirmed';
 
     // Update the total price by adding the price for this participant
     const batch = await Trek.findById(booking.trek).then((trek) =>
@@ -971,6 +1211,11 @@ const updateParticipantDetails = async (req, res) => {
         throw new Error(`Participant ${index + 1} is missing required fields (name, email, phone)`);
       }
 
+      // Validate emergency contact fields
+      if (!participant.emergencyContact?.name || !participant.emergencyContact?.phone || !participant.emergencyContact?.relation) {
+        throw new Error(`Participant ${index + 1} is missing required emergency contact fields (name, phone, relation)`);
+      }
+
       // Format the participant data
       return {
         name: participant.name,
@@ -980,6 +1225,11 @@ const updateParticipantDetails = async (req, res) => {
         gender: participant.gender,
         allergies: participant.allergies || '',
         extraComment: participant.extraComment || '',
+        emergencyContact: {
+          name: participant.emergencyContact.name,
+          phone: participant.emergencyContact.phone,
+          relation: participant.emergencyContact.relation
+        },
         customFields: participant.customFields || {},
         medicalConditions: participant.medicalConditions || '',
         specialRequests: participant.specialRequests || ''
@@ -1058,14 +1308,272 @@ const markTrekCompleted = async (req, res) => {
   }
 };
 
-// Booking reminder email (to be called by a scheduler)
-const sendBookingReminderEmail = async (booking, trek, batch) => {
-  if (!booking || !trek || !batch) return;
-  await sendEmail({
-    to: booking.userDetails.email,
-    subject: 'Booking Reminder',
-    text: `Hi ${booking.userDetails.name},\n\nThis is a reminder for your upcoming trek: ${trek.name}.\nBatch: ${batch.startDate ? new Date(batch.startDate).toLocaleDateString() : ''} to ${batch.endDate ? new Date(batch.endDate).toLocaleDateString() : ''}\nParticipants: ${booking.numberOfParticipants}\n\nWe look forward to seeing you!\n\nSafe travels!`
-  });
+// Update admin remarks for a booking
+const updateAdminRemarks = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminRemarks } = req.body;
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can update remarks" });
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Update admin remarks
+    booking.adminRemarks = adminRemarks || '';
+    await booking.save();
+
+    res.json({ 
+      message: "Admin remarks updated successfully",
+      booking: {
+        _id: booking._id,
+        adminRemarks: booking.adminRemarks
+      }
+    });
+  } catch (error) {
+    console.error("Error updating admin remarks:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Download invoice for a booking
+const downloadInvoice = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('trek')
+      .populate('user');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user has permission to download this invoice
+    if (!req.user.isAdmin && booking.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to download this invoice' });
+    }
+
+    // Create payment details object for invoice generation
+    const paymentDetails = booking.paymentDetails || {
+      id: booking._id.toString(),
+      amount: booking.totalPrice * 100, // Convert to paise for consistency
+      method: booking.paymentDetails?.method || 'Manual/Offline'
+    };
+
+    // Generate invoice PDF
+    const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+
+    // Set response headers for file download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Invoice-${booking._id}.pdf`);
+    res.setHeader('Content-Length', invoiceBuffer.length);
+
+    // Send the PDF buffer
+    res.send(invoiceBuffer);
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    res.status(500).json({ message: 'Failed to generate invoice', error: error.message });
+  }
+};
+
+// Send reminder email
+const sendReminderEmail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send reminder emails" });
+    }
+
+    // Send reminder email using the proper template
+    await sendBookingReminderEmail(booking, booking.trek, booking.user, booking.batch);
+
+    res.json({ message: 'Reminder email sent successfully' });
+  } catch (error) {
+    console.error('Error sending reminder email:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Send confirmation email
+const sendConfirmationEmail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send confirmation emails" });
+    }
+
+    // Create participant details for the email template
+    const participants = booking.participantDetails || [{
+      name: booking.userDetails.name,
+      age: 'N/A',
+      gender: 'N/A'
+    }];
+
+    // Send confirmation email using the proper template
+    await sendBookingConfirmationEmail(
+      booking, 
+      booking.trek, 
+      booking.user, 
+      participants, 
+      booking.batch, 
+      booking.pickupLocation, 
+      booking.dropLocation, 
+      booking.additionalRequests
+    );
+
+    res.json({ message: 'Confirmation email sent successfully' });
+  } catch (error) {
+    console.error('Error sending confirmation email:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Send invoice email
+const sendInvoiceEmail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send invoice emails" });
+    }
+
+    // Generate invoice and send email
+    const paymentDetails = booking.paymentDetails || {
+      id: booking._id.toString(),
+      amount: booking.totalPrice * 100,
+      method: booking.paymentDetails?.method || 'Manual/Offline'
+    };
+    
+    const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
+    
+    // Send professional invoice email
+    await sendProfessionalInvoiceEmail(booking, booking.trek, booking.user, invoiceBuffer);
+
+    res.json({ message: 'Invoice email sent successfully' });
+  } catch (error) {
+    console.error('Error sending invoice email:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Shift booking to another batch
+const shiftBookingToBatch = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { newBatchId } = req.body;
+
+    if (!newBatchId) {
+      return res.status(400).json({ message: 'New batch ID is required' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can shift bookings" });
+    }
+
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Find the trek and new batch
+    const trek = await Trek.findById(booking.trek._id);
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+
+    const newBatch = trek.batches.id(newBatchId);
+    if (!newBatch) {
+      return res.status(404).json({ message: 'New batch not found' });
+    }
+
+    // Check if new batch has enough capacity
+    if (newBatch.currentParticipants + booking.numberOfParticipants > newBatch.maxParticipants) {
+      return res.status(400).json({ message: 'New batch does not have enough capacity' });
+    }
+
+    // Check if new batch is in the future
+    const currentDate = new Date();
+    const newBatchStartDate = new Date(newBatch.startDate);
+    if (newBatchStartDate <= currentDate) {
+      return res.status(400).json({ message: 'Cannot shift to a batch that has already started' });
+    }
+
+    // Update old batch participants count
+    const oldBatch = trek.batches.id(booking.batch._id);
+    if (oldBatch) {
+      oldBatch.currentParticipants = Math.max(0, oldBatch.currentParticipants - booking.numberOfParticipants);
+    }
+
+    // Update new batch participants count
+    newBatch.currentParticipants += booking.numberOfParticipants;
+
+    // Update booking batch
+    booking.batch = newBatchId;
+
+    // Save changes
+    await trek.save();
+    await booking.save();
+
+    // Send email notification to user
+    try {
+      await sendBatchShiftNotificationEmail(booking, trek, booking.user, oldBatch, newBatch);
+    } catch (emailError) {
+      console.error('Error sending batch shift notification email:', emailError);
+      // Don't fail the operation if email fails
+    }
+
+    res.json({ 
+      message: 'Booking shifted to new batch successfully',
+      booking: {
+        _id: booking._id,
+        batch: booking.batch
+      }
+    });
+  } catch (error) {
+    console.error('Error shifting booking:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 module.exports = {
@@ -1082,7 +1590,12 @@ module.exports = {
   updateBooking,
   exportBookings,
   updateParticipantDetails,
-  sendBookingReminderEmail,
   markTrekCompleted,
-  createCustomTrekBooking
+  createCustomTrekBooking,
+  downloadInvoice,
+  updateAdminRemarks,
+  sendReminderEmail,
+  sendConfirmationEmail,
+  sendInvoiceEmail,
+  shiftBookingToBatch
 };

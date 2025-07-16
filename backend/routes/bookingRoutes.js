@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect, admin } = require('../middleware/authMiddleware');
 const { checkPermission, checkMultiplePermissions } = require('../middleware/checkPermissions');
 const bookingController = require('../controllers/bookingController');
+const adminBookingController = require('../controllers/adminBookingController');
 
 /**
  * @swagger
@@ -176,7 +177,8 @@ router.put('/:id/status',
 // Cancel booking
 router.put('/:id/cancel', 
   protect, 
-  bookingController.cancelBooking
+  admin, 
+  adminBookingController.cancelBooking
 );
 
 // Restore booking
@@ -219,5 +221,23 @@ router.put('/:id/complete-trek',
 
 // Export bookings
 router.get('/admin/export', protect, admin, bookingController.exportBookings);
+
+// Download invoice for a booking
+router.get('/:id/invoice', protect, bookingController.downloadInvoice);
+
+// Update admin remarks (admin only)
+router.put('/:id/remarks', protect, admin, bookingController.updateAdminRemarks);
+
+// Send reminder email (admin only)
+router.post('/:bookingId/send-reminder', protect, admin, bookingController.sendReminderEmail);
+
+// Send confirmation email (admin only)
+router.post('/:bookingId/send-confirmation', protect, admin, bookingController.sendConfirmationEmail);
+
+// Send invoice email (admin only)
+router.post('/:bookingId/send-invoice', protect, admin, bookingController.sendInvoiceEmail);
+
+// Shift booking to another batch (admin only)
+router.put('/:bookingId/shift-batch', protect, admin, bookingController.shiftBookingToBatch);
 
 module.exports = router; 

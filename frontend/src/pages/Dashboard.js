@@ -522,6 +522,14 @@ function Dashboard() {
       permissionKey: "manageUsers",
     },
     {
+      title: "Manage Team",
+      description: "Manage admin team members",
+      icon: FaUsers,
+      link: "/admin/team",
+      color: "indigo",
+      permissionKey: "manageTeam",
+    },
+    {
       title: "Manage Blogs",
       description: "Create and manage blog posts",
       icon: FaNewspaper,

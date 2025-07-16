@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 import { AnimatePresence, motion } from "framer-motion";
 
 // Components
@@ -13,6 +14,7 @@ import LoadingSpinner from "./components/LoadingSpinner";
 import AdminLayout from "./components/AdminLayout";
 import ProtectedRoutes from "./routes/ProtectedRoutes";
 import OTPVerification from "./components/OTPVerification";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Pages
 import Home from "./pages/Home";
@@ -34,6 +36,7 @@ import TrekForm from "./pages/TrekForm";
 import RegionManager from "./pages/RegionManager";
 import AdminBookings from "./pages/AdminBookings";
 import AdminUsers from "./pages/AdminUsers";
+import AdminTeam from "./pages/AdminTeam";
 import NotFound from "./pages/NotFound";
 import AdminSupport from "./pages/AdminSupport";
 import TicketDetail from "./pages/TicketDetail";
@@ -41,7 +44,6 @@ import UserTickets from "./pages/UserTickets";
 import UserTicketDetail from "./pages/UserTicketDetail";
 import SalesDashboard from "./pages/SalesDashboard";
 import AdminLeads from "./pages/AdminLeads";
-import Wishlist from "./pages/Wishlist";
 import TrekSectionsPage from "./pages/TrekSectionsPage";
 import RegionDetail from "./pages/RegionDetail";
 import RegionList from "./pages/RegionList";
@@ -60,14 +62,21 @@ import UserDashboard from './pages/UserDashboard';
 import PaymentPage from './pages/PaymentPage';
 import BlogList from './pages/BlogList';
 import BlogDetail from './pages/BlogDetail';
+import BlogRegionPage from './pages/BlogRegionPage';
 import BlogManagement from './pages/admin/BlogManagement';
 import LoginSuccess from './pages/LoginSuccess';
 import ParticipantDetailsPage from "./pages/ParticipantDetailsPage";
 import BlogEditor from './pages/admin/BlogEditor';
+import BlogRegionListPage from './pages/admin/BlogRegionListPage';
+import BlogRegionFormPage from './pages/admin/BlogRegionFormPage';
 import BookingPreviewPage from './pages/BookingPreviewPage';
 import Career from './pages/Career';
 import AdminCareers from './pages/AdminCareers';
 import CustomTrekDetail from './pages/CustomTrekDetail';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsConditions from './pages/TermsConditions';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -110,6 +119,7 @@ function App() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
+      <ScrollToTop />
       <Header />
       <main className="flex-grow">
         <AnimatePresence mode="wait">
@@ -132,11 +142,21 @@ function App() {
                 path="/register"
                 element={currentUser ? <Navigate to="/" /> : <Register />}
               />
+              <Route
+                path="/forgot-password"
+                element={currentUser ? <Navigate to="/" /> : <ForgotPassword />}
+              />
+              <Route
+                path="/reset-password/:token"
+                element={currentUser ? <Navigate to="/" /> : <ResetPassword />}
+              />
               <Route path="/about" element={<About />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsConditions />} />
               <Route path="/treks" element={<SearchResults />} />
-              <Route path="/treks/:id" element={<TrekDetail />} />
-              <Route path="/treks/:id/book" element={<BookingPage />} />
+              <Route path="/treks/:name" element={<TrekDetail />} />
+              <Route path="/treks/:name/book" element={<BookingPage />} />
 
               {/* Protected Routes */}
               <Route path="/profile" element={<Profile />} />
@@ -192,14 +212,6 @@ function App() {
               <Route
                 path="/booking/:bookingId/preview"
                 element={<BookingPreviewPage />}
-              />
-              <Route
-                path="/wishlist"
-                element={
-                  <PrivateRoute>
-                    <Wishlist />
-                  </PrivateRoute>
-                }
               />
 
               {/* Admin Routes */}
@@ -352,6 +364,18 @@ function App() {
                         />
 
                         <Route
+                          path="team"
+                          element={
+                            <ProtectedRoutes
+                              permissionKey="manageTeam"
+                              permissions={permissions}
+                            >
+                              <AdminTeam />
+                            </ProtectedRoutes>
+                          }
+                        />
+
+                        <Route
                           path="support"
                           element={
                             <ProtectedRoutes
@@ -492,6 +516,32 @@ function App() {
                             </ProtectedRoutes>
                           }
                         />
+
+                        {/* Blog Region Management Routes */}
+                        <Route
+                          path="blog-regions"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                              <BlogRegionListPage />
+                            </ProtectedRoutes>
+                          }
+                        />
+                        <Route
+                          path="blog-regions/new"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                            <BlogRegionFormPage />
+                          </ProtectedRoutes>
+                          }
+                        />
+                        <Route
+                          path="blog-regions/edit/:id"
+                          element={
+                            <ProtectedRoutes permissionKey="manageBlogs" permissions={permissions}>
+                              <BlogRegionFormPage />
+                            </ProtectedRoutes>
+                          }
+                        />
                       </Routes>
                     </AdminLayout>
                   </AdminRoute>
@@ -531,6 +581,7 @@ function App() {
 
               {/* Blog Routes */}
               <Route path="/blogs" element={<BlogList />} />
+              <Route path="/blogs/region/:slug" element={<BlogRegionPage />} />
               <Route path="/blogs/:slug" element={<BlogDetail />} />
 
               {/* Login Success Route */}
@@ -562,7 +613,18 @@ function App() {
         </AnimatePresence>
       </main>
       {!isAdminRoute && <Footer />}
-      <ToastContainer position="bottom-right" autoClose={3000} />
+      <ToastContainer 
+        position="top-right" 
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </div>
   );
 }

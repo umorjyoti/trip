@@ -123,9 +123,7 @@ function AdminUsers() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   User Group
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -165,14 +163,7 @@ function AdminUsers() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => navigate(`/admin/users/${user._id}/edit`)}
-                      className="text-emerald-600 hover:text-emerald-900 mr-4"
-                    >
-                      Edit
-                    </button>
-                  </td>
+
                 </tr>
               ))}
             </tbody>

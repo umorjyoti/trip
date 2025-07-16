@@ -1,12 +1,11 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   getTrekById,
+  getTrekBySlug,
   getActiveOffers,
-  addToWishlist,
-  removeFromWishlist,
-  getUserWishlist,
   getTreksByRegion,
   getRegionById,
 } from "../services/api";
@@ -24,6 +23,7 @@ import {
   FaInfoCircle,
   FaShare,
   FaDownload,
+  FaLink,
 } from "react-icons/fa";
 import LeadCaptureForm from "../components/LeadCaptureForm";
 import TrekCard from "../components/TrekCard";
@@ -32,6 +32,7 @@ import TrekInclusionsExclusions from "../components/TrekInclusionsExclusions";
 import ThingsToPack from '../components/ThingsToPack';
 import TrekFAQs from '../components/TrekFAQs';
 import Modal from '../components/Modal';
+import CancellationPolicy from '../components/CancellationPolicy';
 import { format, parseISO, addMonths, isSameMonth } from 'date-fns';
 import CustomTrekBookingForm from '../components/CustomTrekBookingForm';
 
@@ -220,8 +221,9 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
 };
 
 function TrekDetail() {
-  const { id } = useParams();
+  const { name } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [trek, setTrek] = useState(null);
   const [relatedTreks, setRelatedTreks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -238,6 +240,8 @@ function TrekDetail() {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const galleryModalRef = useRef(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const shareMenuRef = useRef(null);
 
   // Handle smooth scrolling
   const handleSmoothScroll = (e, targetId) => {
@@ -246,6 +250,21 @@ function TrekDetail() {
     if (element) {
       const offset = 120; // Account for header + sticky nav + some padding
       const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  // Scroll to batch selection area
+  const scrollToBatchSelection = () => {
+    const batchSection = document.querySelector('[data-batch-section]');
+    if (batchSection) {
+      const offset = 120; // Account for header + sticky nav + some padding
+      const elementPosition = batchSection.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - offset;
 
       window.scrollTo({
@@ -286,12 +305,26 @@ function TrekDetail() {
     );
 
   useEffect(() => {
+
+    console.log("location",location)
+
     const fetchData = async () => {
       try {
         setLoading(true);
 
-        // Fetch trek details
-        const trekData = await getTrekById(id);
+        // Get trek ID from location state or fetch by slug
+        let trekId = location?.state?.trekId;
+        let trekData;
+
+        if (trekId) {
+          // Use ID from location state
+          trekData = await getTrekById(trekId);
+        } else {
+          // Fetch by slug/name
+          trekData = await getTrekBySlug(name);
+          trekId = trekData._id;
+        }
+
         setTrek(trekData);
 
         // Fetch active offers
@@ -300,7 +333,7 @@ function TrekDetail() {
 
         // Find applicable offer for this trek
         const offer = offers.find((o) =>
-          o.applicableTreks.some((t) => t._id === id)
+          o.applicableTreks.some((t) => t._id === trekId)
         );
 
         if (offer) {
@@ -316,11 +349,6 @@ function TrekDetail() {
             discounted = Math.max(0, basePrice - offer.discountValue);
           }
           setDiscountedPrice(discounted);
-        }
-
-        // Check if trek is in user's wishlist
-        if (currentUser) {
-          checkWishlistStatus();
         }
 
         // Fetch related treks from the same region
@@ -344,7 +372,7 @@ function TrekDetail() {
     };
 
     fetchData();
-  }, [id, currentUser]);
+  }, [name, currentUser, location?.state?.trekId]);
 
   useEffect(() => {
     const fetchRegionName = async () => {
@@ -366,16 +394,6 @@ function TrekDetail() {
     }
   }, [trek]);
 
-  const checkWishlistStatus = async () => {
-    try {
-      const wishlist = await getUserWishlist();
-      const isInList = wishlist.some((item) => item._id === id);
-      // setIsInWishlist(isInList);
-    } catch (err) {
-      console.error("Error checking wishlist status:", err);
-    }
-  };
-
   // Helper function to get price from different possible locations
   const getPrice = (trekData) => {
     const trek = trekData || {};
@@ -391,6 +409,16 @@ function TrekDetail() {
       return Number(trek.batches[0].price);
     }
     return 0;
+  };
+
+  // Helper function to get minimum price from batches
+  const getMinimumPrice = (trekData) => {
+    const trek = trekData || {};
+    if (trek.batches && trek.batches.length > 0) {
+      const prices = trek.batches.map(batch => Number(batch.price)).filter(price => !isNaN(price));
+      return prices.length > 0 ? Math.min(...prices) : 0;
+    }
+    return getPrice(trekData);
   };
 
   const formatCurrency = (amount) => {
@@ -465,10 +493,11 @@ function TrekDetail() {
     console.log("Selected batch:", batch);
 
     // If all checks pass, proceed with booking
-    navigate(`/treks/${id}/book`, { 
+    navigate(`/treks/${name}/book`, { 
       state: { 
         selectedBatchId: batch._id,
         trekName: trek.name,
+        trekId: trek._id,
         batchDates: {
           startDate: batch.startDate,
           endDate: batch.endDate
@@ -480,24 +509,30 @@ function TrekDetail() {
   const handleBookNowClick = () => {
     if (!currentUser) {
       toast.info("Please log in to book this trek");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
-    navigate(`/treks/${id}/book`);
+    navigate(`/treks/${name}/book`, { 
+      state: { 
+        trekId: trek._id,
+        trekName: trek.name 
+      } 
+    });
   };
 
   const handleBatchBookNowClick = (batch) => {
     if (!currentUser) {
       toast.info("Please log in to book this trek");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
-    navigate(`/treks/${id}/book`, { 
+    navigate(`/treks/${name}/book`, { 
       state: { 
         selectedBatchId: batch._id,
         trekName: trek.name,
+        trekId: trek._id,
         batchDates: {
           startDate: batch.startDate,
           endDate: batch.endDate
@@ -524,8 +559,39 @@ function TrekDetail() {
     setShowLeadForm(false);
   };
 
+  // Close share menu on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (showShareMenu && shareMenuRef.current && !shareMenuRef.current.contains(event.target)) {
+        setShowShareMenu(false);
+      }
+    }
+    if (showShareMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showShareMenu]);
+
   const handleShareClick = () => {
-    // Check if the Web Share API is available
+    setShowShareMenu((prev) => !prev);
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard
+      .writeText(window.location.href)
+      .then(() => {
+        toast.success("Link copied to clipboard!");
+        setShowShareMenu(false);
+      })
+      .catch((err) => {
+        console.error("Could not copy text: ", err);
+        toast.error("Failed to copy link");
+      });
+  };
+
+  const handleNativeShare = () => {
     if (navigator.share) {
       navigator
         .share({
@@ -533,19 +599,12 @@ function TrekDetail() {
           text: `Check out this amazing trek: ${trek.name}`,
           url: window.location.href,
         })
-        .then(() => console.log("Successful share"))
-        .catch((error) => console.log("Error sharing:", error));
-    } else {
-      // Fallback for browsers that don't support the Web Share API
-      // Copy the URL to clipboard
-      navigator.clipboard
-        .writeText(window.location.href)
-        .then(() => {
-          toast.success("Link copied to clipboard!");
-        })
-        .catch((err) => {
-          console.error("Could not copy text: ", err);
-          toast.error("Failed to copy link");
+        .then(() => setShowShareMenu(false))
+        .catch((error) => {
+          setShowShareMenu(false);
+          if (error.name !== 'AbortError') {
+            toast.error("Error sharing: " + error.message);
+          }
         });
     }
   };
@@ -830,15 +889,35 @@ function TrekDetail() {
     return (
       <div className="mt-6 flex flex-col space-y-3">
         <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 relative">
           {/* Share Action */}
-          <button
-            onClick={handleShareClick}
-            className="flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
-          >
-            <FaShare className="mr-2" />
-            Share
-          </button>
+          <div className="relative">
+            <button
+              onClick={handleShareClick}
+              className="flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <FaShare className="mr-2" />
+              Share
+            </button>
+            {showShareMenu && (
+              <div ref={shareMenuRef} className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <button
+                  onClick={handleCopyLink}
+                  className="w-full flex items-center px-4 py-2 text-gray-700 hover:bg-emerald-50 rounded-t-lg"
+                >
+                  <FaLink className="mr-2" /> Copy Link
+                </button>
+                {navigator.share && (
+                  <button
+                    onClick={handleNativeShare}
+                    className="w-full flex items-center px-4 py-2 text-gray-700 hover:bg-emerald-50 rounded-b-lg"
+                  >
+                    <FaShare className="mr-2" /> Share via Device
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Download Itinerary Action */}
           <button
@@ -1127,6 +1206,72 @@ function TrekDetail() {
     return ReactDOM.createPortal(modalContent, document.body);
   };
 
+  // MobileTrekFooter component using React Portal
+  const MobileTrekFooter = ({ price, discountedPrice, onBookNow, isTrekDisabled }) => {
+    return ReactDOM.createPortal(
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-[9999] pointer-events-auto">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500">Starting from</span>
+            <span className="text-lg font-bold text-emerald-600">
+              {discountedPrice ? (
+                <>
+                  {discountedPrice}
+                  <span className="text-sm text-gray-500 line-through ml-2">{price}</span>
+                </>
+              ) : price}
+            </span>
+          </div>
+          <button
+            onClick={onBookNow}
+            disabled={isTrekDisabled}
+            className={`px-6 py-3 rounded-lg font-medium shadow-md transition-colors ${
+              isTrekDisabled
+                ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800'
+            }`}
+          >
+            {isTrekDisabled ? 'Not Available' : 'Book Now'}
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  // Footer Book Now button handler
+  const handleFooterBookNowClick = () => {
+    if (!trek || !trek.batches || trek.batches.length === 0) return;
+    // Find the batch with the lowest price that is not full
+    const availableBatches = trek.batches.filter(
+      (batch) => batch.currentParticipants < batch.maxParticipants
+    );
+    if (availableBatches.length === 0) {
+      toast.error('All batches are full.');
+      return;
+    }
+    const lowestPriceBatch = availableBatches.reduce((minBatch, batch) =>
+      Number(batch.price) < Number(minBatch.price) ? batch : minBatch
+    );
+    if (!currentUser) {
+      toast.info('Please log in to book this trek');
+      navigate('/login', { state: { from: `/treks/${name}/book` } });
+      return;
+    }
+    // Proceed to booking page with the lowest price batch selected
+    navigate(`/treks/${name}/book`, {
+      state: {
+        selectedBatchId: lowestPriceBatch._id,
+        trekName: trek.name,
+        trekId: trek._id,
+        batchDates: {
+          startDate: lowestPriceBatch.startDate,
+          endDate: lowestPriceBatch.endDate,
+        },
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -1211,7 +1356,7 @@ function TrekDetail() {
         />
       </Modal>
 
-      <div className="bg-white">
+      <div className={`bg-white ${!loading && !error && trek && trek.batches && trek.batches.length > 0 ? 'md:pb-0 pb-20' : ''}`}>
         {/* Trek disabled warning */}
         {isTrekDisabled && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 bg-yellow-50">
@@ -1249,43 +1394,55 @@ function TrekDetail() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Trek Scroll bar */}
           <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
-            <nav className="flex space-x-6 overflow-x-auto py-2 px-2 scrollbar-hide">
-              <a
-                href="#overview"
-                onClick={(e) => handleSmoothScroll(e, 'overview')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Overview
-              </a>
-              <a
-                href="#itinerary"
-                onClick={(e) => handleSmoothScroll(e, 'itinerary')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Trek Itinerary
-              </a>
-              <a
-                href="#inclusions"
-                onClick={(e) => handleSmoothScroll(e, 'inclusions')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Inclusions & Exclusions
-              </a>
-              <a
-                href="#thingsToPack"
-                onClick={(e) => handleSmoothScroll(e, 'thingsToPack')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                Things To Pack
-              </a>
-              <a
-                href="#faqs"
-                onClick={(e) => handleSmoothScroll(e, 'faqs')}
-                className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
-              >
-                FAQs
-              </a>
-            </nav>
+            <div className="relative">
+              <nav className="flex space-x-6 overflow-x-auto py-2 px-2" style={{
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#10b981 #f3f4f6'
+              }}>
+                <a
+                  href="#overview"
+                  onClick={(e) => handleSmoothScroll(e, 'overview')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Overview
+                </a>
+                <a
+                  href="#itinerary"
+                  onClick={(e) => handleSmoothScroll(e, 'itinerary')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Trek Itinerary
+                </a>
+                <a
+                  href="#inclusions"
+                  onClick={(e) => handleSmoothScroll(e, 'inclusions')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Inclusions & Exclusions
+                </a>
+                <a
+                  href="#cancellationPolicy"
+                  onClick={(e) => handleSmoothScroll(e, 'cancellationPolicy')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Cancellation Policy
+                </a>
+                <a
+                  href="#thingsToPack"
+                  onClick={(e) => handleSmoothScroll(e, 'thingsToPack')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  Things To Pack
+                </a>
+                <a
+                  href="#faqs"
+                  onClick={(e) => handleSmoothScroll(e, 'faqs')}
+                  className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
+                >
+                  FAQs
+                </a>
+              </nav>
+            </div>
           </div>
 
           <div className="lg:grid  lg:grid-cols-[4fr_1fr] lg:gap-8">
@@ -1609,7 +1766,7 @@ function TrekDetail() {
             </div>
             {/* Trek batches/dates */}
             {trek.batches && trek.batches.length > 0 && (
-              <div className="mt-12">
+              <div className="mt-12" data-batch-section>
                 <h2 className="text-2xl font-bold text-gray-900">
                   Available Dates
                 </h2>
@@ -1619,7 +1776,7 @@ function TrekDetail() {
                   isTrekDisabled={isTrekDisabled}
                   currentUser={currentUser}
                   navigate={navigate}
-                  trekId={id}
+                  trekId={trek._id}
                 />
               </div>
             )}
@@ -1647,6 +1804,11 @@ function TrekDetail() {
               />
             </div>
           )}
+
+          {/* Cancellation Policy */}
+          <div id="cancellationPolicy">
+            <CancellationPolicy />
+          </div>
 
           {/* Things to Pack */}
           {trek.thingsToPack && trek.thingsToPack.length > 0 && (
@@ -1687,6 +1849,16 @@ function TrekDetail() {
 
         {/* Add the related treks section */}
         {!loading && !error && trek && renderRelatedTreks()}
+
+        {/* Mobile Fixed Footer - now using React Portal */}
+        {!loading && !error && trek && trek.batches && trek.batches.length > 0 && (
+          <MobileTrekFooter
+            price={formatCurrency(getMinimumPrice(trek))}
+            discountedPrice={discountedPrice ? formatCurrency(discountedPrice) : null}
+            onBookNow={handleFooterBookNowClick}
+            isTrekDisabled={isTrekDisabled}
+          />
+        )}
       </div>
     </>
   );

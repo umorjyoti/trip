@@ -63,6 +63,15 @@ const ParticipantDetailSchema = new mongoose.Schema({
   },
   refundDate: {
     type: Date
+  },
+  cancellationReason: {
+    type: String,
+    default: ''
+  },
+  status: {
+    type: String,
+    enum: ['confirmed', 'bookingCancelled'],
+    default: 'confirmed'
   }
 }, { _id: false });
 
@@ -159,6 +168,11 @@ const BookingSchema = new mongoose.Schema({
     },
     allergies: String,
     extraComment: String,
+    emergencyContact: {
+      name: String,
+      phone: String,
+      relation: String
+    },
     customFields: {
       type: Map,
       of: String
@@ -171,7 +185,12 @@ const BookingSchema = new mongoose.Schema({
       fieldType: String,
       value: mongoose.Schema.Types.Mixed,
       options: [String]
-    }]
+    }],
+    status: {
+      type: String,
+      enum: ['confirmed', 'bookingCancelled'],
+      default: 'confirmed'
+    }
   }],
   // Add pickup and drop location fields
   pickupLocation: {
@@ -185,6 +204,16 @@ const BookingSchema = new mongoose.Schema({
   additionalRequests: {
     type: String,
     trim: true
+  },
+  cancellationReason: {
+    type: String,
+    default: ''
+  },
+  // Admin remarks field
+  adminRemarks: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, { 
   timestamps: true,
@@ -205,6 +234,11 @@ BookingSchema.virtual('formattedDates').get(function() {
   }
   
   return { startDate: 'N/A', endDate: 'N/A' };
+});
+
+// Add virtual for booking ID
+BookingSchema.virtual('bookingId').get(function() {
+  return `BK${this._id.toString().slice(-8).toUpperCase()}`;
 });
 
 // Add virtual for batch details

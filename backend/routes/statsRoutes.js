@@ -11,6 +11,8 @@ router.get('/test', (req, res) => {
 
 // Admin only routes
 router.get('/sales', protect, admin, statsController.getSalesStats);
+router.get('/sales/treks', protect, admin, statsController.getSalesTreks);
+router.get('/sales/batches', protect, admin, statsController.getSalesBatches);
 
 // Public test route for debugging
 router.get('/sales-test', statsController.getSalesStats);

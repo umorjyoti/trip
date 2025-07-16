@@ -66,6 +66,8 @@ function Login() {
       // Open Google OAuth URL in a popup window
       const baseUrl = process.env.REACT_APP_API_URL;
       const googleAuthUrl = `${baseUrl}/auth/google`;
+
+      
       
       console.log('Opening Google auth URL:', googleAuthUrl);
       
@@ -240,9 +242,9 @@ function Login() {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-emerald-600 hover:text-emerald-500">
+              <Link to="/forgot-password" className="font-medium text-emerald-600 hover:text-emerald-500">
                 Forgot your password?
-              </a>
+              </Link>
             </div>
           </div>
 

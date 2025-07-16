@@ -86,6 +86,34 @@ export const logout = async () => {
   }
 };
 
+// Forgot password
+export const forgotPassword = async (email) => {
+  try {
+    const response = await api.post('/auth/forgot-password', { email });
+    return response.data;
+  } catch (error) {
+    console.error('Forgot password API error:', error);
+    throw error;
+  }
+};
+
+// Reset password
+export const resetPassword = async (token, password) => {
+  try {
+    const response = await api.post('/auth/reset-password', { token, password });
+    
+    // Set the Authorization header with the token from the response
+    if (response.data.token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error('Reset password API error:', error);
+    throw error;
+  }
+};
+
 export const getCurrentUser = async () => {
   try {
     const response = await api.get('/auth/me');
@@ -271,6 +299,30 @@ export const getBookingById = async (id) => {
   return response.data;
 };
 
+export const downloadInvoice = async (bookingId) => {
+  try {
+    const response = await api.get(`/bookings/${bookingId}/invoice`, {
+      responseType: 'blob'
+    });
+    
+    // Create a blob URL and trigger download
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Invoice-${bookingId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    return true;
+  } catch (error) {
+    console.error('Error downloading invoice:', error);
+    throw error;
+  }
+};
+
 export const getUserBookings = async () => {
   try {
     const response = await api.get('/bookings/user/mybookings');
@@ -281,8 +333,8 @@ export const getUserBookings = async () => {
   }
 };
 
-export const cancelBooking = async (id) => {
-  const response = await api.put(`/bookings/${id}/cancel`);
+export const cancelBooking = async (id, cancellationData = {}) => {
+  const response = await api.put(`/bookings/${id}/cancel`, cancellationData);
   return response.data;
 };
 
@@ -310,6 +362,40 @@ export const updateParticipantDetails = async (bookingId, data) => {
   return response.data;
 };
 
+// Update admin remarks
+export const updateAdminRemarks = async (bookingId, remarks) => {
+  const response = await api.put(`/bookings/${bookingId}/remarks`, { adminRemarks: remarks });
+  return response.data;
+};
+
+// Send reminder email
+export const sendReminderEmail = async (bookingId) => {
+  const response = await api.post(`/bookings/${bookingId}/send-reminder`);
+  return response.data;
+};
+
+// Send confirmation email
+export const sendConfirmationEmail = async (bookingId) => {
+  const response = await api.post(`/bookings/${bookingId}/send-confirmation`);
+  return response.data;
+};
+
+// Send invoice email
+export const sendInvoiceEmail = async (bookingId) => {
+  const response = await api.post(`/bookings/${bookingId}/send-invoice`);
+  return response.data;
+};
+
+
+
+// Shift booking to another batch
+export const shiftBookingToBatch = async (bookingId, newBatchId) => {
+  const response = await api.put(`/bookings/${bookingId}/shift-batch`, { newBatchId });
+  return response.data;
+};
+
+
+
 // Batch APIs
 export const addBatch = async (trekId, batchData) => {
   const response = await api.post(`/treks/${trekId}/batches`, batchData);
@@ -319,6 +405,16 @@ export const addBatch = async (trekId, batchData) => {
 export const removeBatch = async (trekId, batchId) => {
   const response = await api.delete(`/treks/${trekId}/batches/${batchId}`);
   return response.data;
+};
+
+export const updateBatch = async (trekId, batchId, batchData) => {
+  try {
+    const response = await api.patch(`/treks/${trekId}/batches/${batchId}`, batchData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating batch:', error);
+    throw error;
+  }
 };
 
 // Admin APIs
@@ -350,7 +446,9 @@ export const getAllBookings = async (page = 1, filters = {}) => {
       ...(filters.trekId && { trekId: filters.trekId }),
       ...(filters.batchId && { batchId: filters.batchId }),
       ...(filters.startDate && { startDate: filters.startDate }),
-      ...(filters.endDate && { endDate: filters.endDate })
+      ...(filters.endDate && { endDate: filters.endDate }),
+      ...(filters.status && filters.status !== 'all' && { status: filters.status }),
+      ...(filters.search && { search: filters.search })
     });
 
     const response = await api.get(`/bookings?${queryParams.toString()}`);
@@ -459,12 +557,35 @@ export const getAllTickets = async () => {
 };
 
 // Sales Dashboard APIs
-export const getSalesStats = async (timeRange = 'month') => {
+export const getSalesStats = async (params = {}) => {
   try {
-    const response = await api.get(`/stats/sales?timeRange=${timeRange}`);
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/stats/sales${queryString ? `?${queryString}` : ''}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching sales stats:', error);
+    throw error;
+  }
+};
+
+export const getSalesTreks = async () => {
+  try {
+    const response = await api.get('/stats/sales/treks');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching sales treks:', error);
+    throw error;
+  }
+};
+
+export const getSalesBatches = async (trekId = null) => {
+  try {
+    const params = trekId ? { trekId } : {};
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/stats/sales/batches${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching sales batches:', error);
     throw error;
   }
 };
@@ -644,39 +765,6 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// Get user's wishlist
-export const getUserWishlist = async () => {
-  try {
-    const response = await api.get('/wishlist');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching wishlist:', error);
-    throw error;
-  }
-};
-
-// Add trek to wishlist
-export const addToWishlist = async (trekId) => {
-  try {
-    const response = await api.post(`/wishlist/${trekId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error adding to wishlist:', error);
-    throw error;
-  }
-};
-
-// Remove trek from wishlist
-export const removeFromWishlist = async (trekId) => {
-  try {
-    const response = await api.delete(`/wishlist/${trekId}`);
-    return response.data;
-  } catch (error) {
-    console.error('Error removing from wishlist:', error);
-    throw error;
-  }
-};
 
 // Add this function to set the auth token for all requests
 export const setAuthToken = (token) => {
@@ -1070,7 +1158,7 @@ export const getUsersInGroup = async (groupId) => {
 
 export const getAdmins = async () => {
   try {
-    const response = await api.get('/users');
+    const response = await api.get('/users/admins');
     return response.data;
   } catch (error) {
     console.error('Error fetching admins:', error);
@@ -1180,14 +1268,14 @@ export const verifyPayment = async (paymentData) => {
   }
 };
 
-export async function adminCancelBooking({ bookingId, refund, refundType, participantId }) {
-  const res = await fetch(`/api/admin/bookings/${bookingId}/cancel`, {
+export async function adminCancelBooking({ bookingId, refund, refundType, participantId, reason }) {
+  const res = await fetch(`/admin/bookings/${bookingId}/cancel`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
       ...getAuthHeader(),
     },
-    body: JSON.stringify({ refund, refundType, participantId }),
+    body: JSON.stringify({ refund, refundType, participantId, reason }),
   });
   if (!res.ok) throw new Error((await res.json()).message || 'Failed to cancel booking');
   return res.json();
@@ -1199,6 +1287,138 @@ export const sendCustomTrekLink = async (trekId, email) => {
     return response.data;
   } catch (error) {
     console.error('Error sending custom trek link:', error);
+    throw error;
+  }
+};
+
+// Blog APIs
+export const getBlogs = async (params = {}) => {
+  try {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/blogs${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching blogs:', error);
+    throw error;
+  }
+};
+
+export const getBlogBySlug = async (slug) => {
+  const response = await api.get(`/blogs/${slug}`);
+  return response.data;
+};
+
+export const createBlog = async (blogData) => {
+  const response = await api.post('/blogs', blogData);
+  return response.data;
+};
+
+export const updateBlog = async (id, blogData) => {
+  const response = await api.put(`/blogs/${id}`, blogData);
+  return response.data;
+};
+
+export const deleteBlog = async (id) => {
+  const response = await api.delete(`/blogs/${id}`);
+  return response.data;
+};
+
+export const getAdminBlogs = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const response = await api.get(`/blogs/admin${queryString ? `?${queryString}` : ''}`);
+  return response.data;
+};
+
+export const getAdminBlog = async (id) => {
+  const response = await api.get(`/blogs/admin/${id}`);
+  return response.data;
+};
+
+export const uploadBlogImage = async (file) => {
+  const formData = new FormData();
+  formData.append('image', file);
+  const response = await api.post('/blogs/upload-image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
+};
+
+// Blog Region APIs
+export const getBlogRegions = async () => {
+  const response = await api.get('/blog-regions/enabled');
+  return response.data;
+};
+
+export const getAllBlogRegions = async () => {
+  const response = await api.get('/blog-regions');
+  return response.data;
+};
+
+export const getBlogRegionBySlug = async (slug) => {
+  const response = await api.get(`/blog-regions/slug/${slug}`);
+  return response.data;
+};
+
+export const getBlogRegionById = async (id) => {
+  const response = await api.get(`/blog-regions/${id}`);
+  return response.data;
+};
+
+export const createBlogRegion = async (regionData) => {
+  const response = await api.post('/blog-regions', regionData);
+  return response.data;
+};
+
+export const updateBlogRegion = async (id, regionData) => {
+  const response = await api.put(`/blog-regions/${id}`, regionData);
+  return response.data;
+};
+
+export const deleteBlogRegion = async (id) => {
+  const response = await api.delete(`/blog-regions/${id}`);
+  return response.data;
+};
+
+export const getBlogsByRegion = async (regionId, params = {}) => {
+  try {
+    const queryString = new URLSearchParams(params).toString();
+    const response = await api.get(`/blogs/region/${regionId}${queryString ? `?${queryString}` : ''}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching blogs by region:', error);
+    throw error;
+  }
+};
+
+// Helper function to convert trek name to URL-friendly slug
+export const createTrekSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .trim('-'); // Remove leading/trailing hyphens
+};
+
+// Helper function to get trek ID from slug
+export const getTrekIdFromSlug = async (slug) => {
+  try {
+    const response = await api.get(`/treks/slug/${slug}`);
+    return response.data._id;
+  } catch (error) {
+    console.error('Error fetching trek ID from slug:', error);
+    throw error;
+  }
+};
+
+export const getTrekBySlug = async (slug) => {
+  try {
+    const response = await api.get(`/treks/slug/${slug}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trek by slug:', error);
     throw error;
   }
 };

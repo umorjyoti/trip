@@ -49,6 +49,7 @@ router.post('/upload-image', protect, admin, upload.single('image'), handleMulte
 
 // Public routes (must come after admin routes to prevent conflicts)
 router.get('/', blogController.getAllBlogs);
+router.get('/region/:regionId', blogController.getBlogsByRegion);
 router.get('/:slug', blogController.getBlogBySlug);
 
 module.exports = router; 
