@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FaChevronLeft, FaChevronRight, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaArrowRight, FaMountain } from 'react-icons/fa';
-import { formatCurrency, getRegionById, createTrekSlug } from '../services/api';
+import { formatCurrency, createTrekSlug } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FaMapMarkerAlt, 
+  FaClock, 
+  FaMountain, 
+  FaArrowRight, 
+  FaCalendarAlt,
+  FaChevronLeft,
+  FaChevronRight
+} from 'react-icons/fa';
 
 // --- Add Helper Functions Here ---
 // Helper function for safe formatting
@@ -47,17 +55,12 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
       setLoading(true);
       const updatedTreks = await Promise.all(
         treks.map(async (trek) => {
+          // Get region name from trek data
           let regionName = 'N/A';
-          if (trek.region && typeof trek.region === 'object' && trek.region.name) {
+          if (trek.regionName) {
+            regionName = trek.regionName;
+          } else if (trek.region && typeof trek.region === 'object' && trek.region.name) {
             regionName = trek.region.name;
-          } else if (trek.region && typeof trek.region === 'string' && trek.region.match(/^[0-9a-fA-F]{24}$/)) {
-            try {
-              const regionData = await getRegionById(trek.region);
-              regionName = regionData?.name || 'Unknown Region';
-            } catch (error) {
-              console.error(`Error fetching region ${trek.region} for trek ${trek.name}:`, error);
-              regionName = 'Unknown Region';
-            }
           }
 
           const basePrice = trek.basePrice || (trek.batches && trek.batches.length > 0 ? trek.batches[0].price : 0);

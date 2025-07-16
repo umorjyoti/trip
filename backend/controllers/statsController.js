@@ -65,11 +65,7 @@ exports.getSalesStats = async (req, res) => {
     // Get total revenue and bookings
     const bookings = await Booking.find(bookingFilter).populate({
       path: 'trek',
-      select: 'name region',
-      populate: {
-        path: 'region',
-        select: 'name'
-      }
+      select: 'name regionName'
     });
     
     console.log(`Found ${bookings.length} bookings`);
@@ -120,8 +116,8 @@ exports.getSalesStats = async (req, res) => {
     const regionMap = new Map();
     
     bookings.forEach(booking => {
-      if (booking.trek && booking.trek.region) {
-        const region = booking.trek.region.name || booking.trek.region; // Use name if populated, fallback to ID
+      if (booking.trek && booking.trek.regionName) {
+        const region = booking.trek.regionName;
         const paid = booking.totalPrice || 0;
         // Only subtract refunds if they were successfully processed
         let refunded = 0;
@@ -161,7 +157,7 @@ exports.getSalesStats = async (req, res) => {
       if (booking.trek) {
         const trekId = booking.trek._id.toString();
         const trekName = booking.trek.name;
-        const trekRegion = booking.trek.region.name || booking.trek.region; // Use name if populated, fallback to ID
+        const trekRegion = booking.trek.regionName || 'Unknown Region';
         const paid = booking.totalPrice || 0;
         // Only subtract refunds if they were successfully processed
         let refunded = 0;
@@ -423,15 +419,14 @@ exports.getDashboardStats = async (req, res) => {
 exports.getSalesTreks = async (req, res) => {
   try {
     const treks = await Trek.find({ isEnabled: true })
-      .select('_id name region')
-      .populate('region', 'name')
+      .select('_id name regionName')
       .sort({ name: 1 });
     
     // Format the response to include region names
     const formattedTreks = treks.map(trek => ({
       _id: trek._id,
       name: trek.name,
-      region: trek.region ? trek.region.name : trek.region
+      region: trek.regionName || 'Unknown Region'
     }));
     
     res.json(formattedTreks);

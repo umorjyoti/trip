@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { deleteTrek, toggleTrekStatus, getRegionById } from '../services/api';
+import { deleteTrek, toggleTrekStatus } from '../services/api';
 import { toast } from 'react-toastify';
 import Modal from './Modal';
 import TrekStatusModal from './TrekStatusModal';
@@ -9,30 +9,17 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 function TrekList({ treks, onTrekDeleted, onTrekUpdated, onToggleStatus }) {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, trekId: null, trekName: '' });
   const [statusModal, setStatusModal] = useState({ isOpen: false, trek: null });
-  const [regionNames, setRegionNames] = useState({});
 
-  useEffect(() => {
-    const fetchRegionNames = async () => {
-      const regionIds = [...new Set(treks.map(trek => trek.region))];
-      const namesMap = {};
-      
-      for (const regionId of regionIds) {
-        if (regionId && typeof regionId === 'string') {
-          try {
-            const regionData = await getRegionById(regionId);
-            namesMap[regionId] = regionData.name;
-          } catch (error) {
-            console.error(`Error fetching region ${regionId}:`, error);
-            namesMap[regionId] = 'Unknown Region';
-          }
-        }
-      }
-      
-      setRegionNames(namesMap);
-    };
-    
-    fetchRegionNames();
-  }, [treks]);
+  // Get region name from trek data
+  const getRegionName = (trek) => {
+    if (trek.regionName) {
+      return trek.regionName;
+    }
+    if (trek.region && typeof trek.region === 'object' && trek.region.name) {
+      return trek.region.name;
+    }
+    return 'Unknown Region';
+  };
 
   const openDeleteModal = (trek) => {
     setDeleteModal({
@@ -161,7 +148,7 @@ function TrekList({ treks, onTrekDeleted, onTrekUpdated, onToggleStatus }) {
                 <div className="text-sm text-gray-500">{trek.duration} days</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-gray-900">{trek.region && typeof trek.region === 'object' ? trek.region.name : regionNames[trek.region] || 'Unknown Region'}</div>
+                <div className="text-sm text-gray-900">{getRegionName(trek)}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from 'react-dom';
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
@@ -7,7 +6,8 @@ import {
   getTrekBySlug,
   getActiveOffers,
   getTreksByRegion,
-  getRegionById,
+  formatCurrency,
+  createTrekSlug,
 } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -376,16 +376,12 @@ function TrekDetail() {
 
   useEffect(() => {
     const fetchRegionName = async () => {
-      if (trek?.region && typeof trek.region === 'string' && trek.region.match(/^[0-9a-fA-F]{24}$/)) {
-        try {
-          const regionData = await getRegionById(trek.region);
-          setRegionName(regionData.name);
-        } catch (error) {
-          console.error('Error fetching region:', error);
-          setRegionName('Unknown Region');
-        }
-      } else if (typeof trek?.region === 'object' && trek?.region?.name) {
+      if (trek?.regionName) {
+        setRegionName(trek.regionName);
+      } else if (trek?.region && typeof trek.region === 'object' && trek.region.name) {
         setRegionName(trek.region.name);
+      } else {
+        setRegionName('Unknown Region');
       }
     };
     

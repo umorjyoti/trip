@@ -96,7 +96,12 @@ function AdminTrekList() {
   };
 
   // Helper to get region name from ID
-  const getRegionName = (regionId) => {
+  const getRegionName = (regionId, trek) => {
+    // First try to use the regionName field from trek data
+    if (trek && trek.regionName) {
+      return trek.regionName;
+    }
+    // Fall back to regions lookup
     const region = regions.find(r => r._id === regionId);
     return region ? region.name : regionId;
   };
@@ -129,7 +134,7 @@ function AdminTrekList() {
       const lower = searchTerm.toLowerCase();
       filteredTreks = filteredTreks.filter(trek =>
         trek.name.toLowerCase().includes(lower) ||
-        getRegionName(trek.region).toLowerCase().includes(lower) ||
+        getRegionName(trek.region, trek).toLowerCase().includes(lower) ||
         (trek.difficulty || '').toLowerCase().includes(lower)
       );
     }
@@ -385,7 +390,7 @@ function AdminTrekList() {
                             )}
                           </div>
                           <div className="text-sm text-gray-500">
-                            {getRegionName(trek.region)} • {trek.difficulty} • {trek.duration} days
+                            {getRegionName(trek.region, trek)} • {trek.difficulty} • {trek.duration} days
                             {trek.bookings && trek.bookings.length > 0 && (
                               <span className="ml-2 text-emerald-600">
                                 • {trek.bookings.length} {trek.bookings.length === 1 ? 'booking' : 'bookings'}
@@ -596,7 +601,7 @@ function AdminTrekList() {
                     )}
                   </div>
                   <div className="text-sm text-gray-500 mb-2">
-                    {getRegionName(trek.region)} • {trek.difficulty} • {trek.duration} days
+                    {getRegionName(trek.region, trek)} • {trek.difficulty} • {trek.duration} days
                   </div>
                   {trek.bookings && trek.bookings.length > 0 && (
                     <div className="text-xs text-emerald-600 mb-1">

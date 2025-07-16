@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getActiveOffers, getRegionById, formatCurrency, createTrekSlug } from '../services/api';
-import { FaCalendarAlt, FaMapMarkerAlt, FaUsers, FaClock, FaMountain, FaTag, FaArrowRight, FaWater, FaUmbrellaBeach, FaHiking, FaGlassCheers, FaTheaterMasks, FaMusic } from 'react-icons/fa';
+import { getActiveOffers, formatCurrency, createTrekSlug } from '../services/api';
 import { motion } from 'framer-motion';
+import { 
+  FaMapMarkerAlt, 
+  FaClock, 
+  FaMountain, 
+  FaArrowRight, 
+  FaTag, 
+  FaCalendarAlt,
+  FaWater,
+  FaUmbrellaBeach,
+  FaHiking,
+  FaGlassCheers,
+  FaTheaterMasks,
+  FaMusic
+} from 'react-icons/fa';
 
 // Helper function for safe formatting
 const safeFormatCurrency = (amount) => {
@@ -26,8 +39,6 @@ const formatDate = (dateString) => {
 function WeekendGetawayCard({ trek }) {
   const [activeOffers, setActiveOffers] = useState([]);
   const [loadingOffers, setLoadingOffers] = useState(true);
-  const [regionName, setRegionName] = useState('');
-  const [loadingRegion, setLoadingRegion] = useState(true);
 
   // Fetch Offers
   useEffect(() => {
@@ -46,33 +57,16 @@ function WeekendGetawayCard({ trek }) {
     fetchActiveOffers();
   }, []);
 
-  // Fetch Region Name
-  useEffect(() => {
-    const fetchRegionName = async () => {
-      if (trek.region && typeof trek.region === 'object' && trek.region.name) {
-         setRegionName(trek.region.name);
-         setLoadingRegion(false);
-         return;
-      }
-      if (trek.region && typeof trek.region === 'string' && trek.region.match(/^[0-9a-fA-F]{24}$/)) {
-        setLoadingRegion(true);
-        try {
-          const regionData = await getRegionById(trek.region);
-          setRegionName(regionData?.name || 'Unknown Region');
-        } catch (error) {
-          console.error(`Error fetching region ${trek.region}:`, error);
-          setRegionName('Unknown Region');
-        } finally {
-          setLoadingRegion(false);
-        }
-      } else {
-         setRegionName('N/A');
-         setLoadingRegion(false);
-      }
-    };
-
-    fetchRegionName();
-  }, [trek.region]);
+  // Get region name from trek data
+  const getRegionName = () => {
+    if (trek.regionName) {
+      return trek.regionName;
+    }
+    if (trek.region && typeof trek.region === 'object' && trek.region.name) {
+      return trek.region.name;
+    }
+    return 'N/A';
+  };
 
   // Calculate Price and Offer
   const getPrice = () => trek.displayPrice || (trek.batches && trek.batches.length > 0 ? trek.batches[0].price : 0);
@@ -165,7 +159,7 @@ function WeekendGetawayCard({ trek }) {
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3 text-sm text-gray-600">
             <div className="flex items-center truncate">
               <FaMapMarkerAlt className="text-emerald-600 mr-2 flex-shrink-0" />
-              {loadingRegion ? <span className="text-xs italic">Loading...</span> : <span className="truncate">{regionName}</span>}
+              <span className="truncate">{getRegionName()}</span>
             </div>
             <div className="flex items-center">
               <FaClock className="text-emerald-600 mr-2 flex-shrink-0" />
