@@ -487,6 +487,7 @@ const cancelBooking = async (req, res) => {
 
 // Get all bookings (admin only)
 const getBookings = async (req, res) => {
+ 
   try {
     console.log("User requesting all bookings:", {
       id: req.user._id,
@@ -561,15 +562,55 @@ const getBookings = async (req, res) => {
 
     console.log("Filter query:", filterQuery);
 
-    const [bookings, total] = await Promise.all([
+    const [bookings, total, stats] = await Promise.all([
       Booking.find(filterQuery)
         .populate("user", "name email")
         .populate("trek", "name")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Booking.countDocuments(filterQuery)
+      Booking.countDocuments(filterQuery),
+      Booking.aggregate([
+        { $match: filterQuery },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalPrice" },
+            totalBookings: { $sum: 1 },
+            confirmedBookings: {
+              $sum: { $cond: [{ $eq: ["$status", "confirmed"] }, 1, 0] }
+            },
+            cancelledBookings: {
+              $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] }
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            totalRevenue: { $round: ["$totalRevenue", 2] },
+            totalBookings: 1,
+            confirmedBookings: 1,
+            cancelledBookings: 1,
+            averageBookingValue: {
+              $round: [
+                { $cond: [{ $eq: ["$totalBookings", 0] }, 0, { $divide: ["$totalRevenue", "$totalBookings"] }] },
+                2
+              ]
+            }
+          }
+        }
+      ])
     ]);
+
+    // Extract stats from aggregation result
+    const statsData = stats.length > 0 ? stats[0] : {
+      totalRevenue: 0,
+      totalBookings: 0,
+      confirmedBookings: 0,
+      cancelledBookings: 0,
+      averageBookingValue: 0
+    };
 
     res.json({
       bookings,
@@ -578,7 +619,8 @@ const getBookings = async (req, res) => {
         page,
         pages: Math.ceil(total / limit),
         limit
-      }
+      },
+      stats: statsData
     });
   } catch (error) {
     console.error("Error getting all bookings:", error);
