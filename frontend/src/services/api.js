@@ -546,9 +546,14 @@ export const updateTicketStatus = async (ticketId, status) => {
   }
 };
 
-export const getAllTickets = async () => {
+export const getAllTickets = async (page = 1, limit = 10, status = 'all') => {
   try {
-    const response = await api.get('/tickets');
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+      status: status
+    });
+    const response = await api.get(`/tickets?${params}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching all tickets:', error);

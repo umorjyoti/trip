@@ -603,7 +603,24 @@ exports.getAllTickets = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to view all tickets' });
     }
     
-    const tickets = await Ticket.find()
+    // Get pagination parameters from query
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const status = req.query.status || 'all';
+    const skip = (page - 1) * limit;
+    
+    // Build filter object
+    const filter = {};
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+    
+    // Get total count for pagination
+    const totalTickets = await Ticket.countDocuments(filter);
+    const totalPages = Math.ceil(totalTickets / limit);
+    
+    // Get paginated tickets
+    const tickets = await Ticket.find(filter)
       .populate('user', 'name email')
       .populate({
         path: 'booking',
@@ -612,9 +629,21 @@ exports.getAllTickets = async (req, res) => {
           select: 'name'
         }
       })
-      .sort({ updatedAt: -1 });
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
     
-    res.json(tickets);
+    res.json({
+      tickets,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalTickets,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        limit
+      }
+    });
   } catch (error) {
     console.error('Error fetching all tickets:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
