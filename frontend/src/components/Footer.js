@@ -48,7 +48,7 @@ function Footer() {
           </div>
         </div>
         <p className="mt-8 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} trek Pvt. Ltd. All rights reserved.
+          &copy; {new Date().getFullYear()} TREKTALES EXPLORERS (OPC) PRIVATE LIMITED. All rights reserved.
         </p>
       </div>
     </footer>

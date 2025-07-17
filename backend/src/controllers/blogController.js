@@ -517,7 +517,7 @@ exports.getBlogsByRegion = async (req, res) => {
     const sort = req.query.sort || '-publishedAt';
 
     // Check cache
-    const cacheKey = `blogs_region_${req.params.slug}_${page}_${limit}_${sort}`;
+    const cacheKey = `blogs_region_${req.params.regionId}_${page}_${limit}_${sort}`;
     const cachedData = cache.get(cacheKey);
     if (cachedData) {
       return res.json(cachedData);
