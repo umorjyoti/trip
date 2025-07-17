@@ -1006,6 +1006,7 @@ exports.updateWeekendGetawayGallery = async (req, res) => {
 
 // Get batch performance data
 exports.getBatchPerformance = async (req, res) => {
+  console.log("meow meow meow meow meow meow meow meow meow meow");
   try {
     console.log('Batch performance - req.params:', req.params);
     
@@ -1043,7 +1044,7 @@ exports.getBatchPerformance = async (req, res) => {
     const bookings = await Booking.find({
       trek: trekId,
       batch: batchId
-    }).populate('user', 'name email');
+    }).populate('user', 'name email phone');
 
     // Safely filter bookings
     const safeBookings = bookings.filter(booking => booking != null);
