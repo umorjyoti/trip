@@ -14,6 +14,7 @@ import EditBookingModal from '../components/EditBookingModal';
 
 import ViewBookingModal from '../components/ViewBookingModal';
 import CancellationModal from '../components/CancellationModal';
+import RequestResponseModal from '../components/RequestResponseModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const STATUS_OPTIONS = [
@@ -63,6 +64,7 @@ function AdminBookings() {
 
   const [showViewModal, setShowViewModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [showRequestResponseModal, setShowRequestResponseModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
@@ -304,7 +306,8 @@ function AdminBookings() {
     setSelectedBooking(booking);
     
     switch (action) {
-      case 'view':       setShowViewModal(true);
+      case 'view':       
+        setShowViewModal(true);
         break;
         
       case 'reminder':
@@ -337,13 +340,17 @@ function AdminBookings() {
         }
         break;
         
-      case 'edit':       setShowEditModal(true);
+      case 'edit':       
+        setShowEditModal(true);
         break;
         
-      case 'cancel':       setShowCancellationModal(true);
+      case 'cancel':       
+        setShowCancellationModal(true);
         break;
         
-
+      case 'respond-request':
+        setShowRequestResponseModal(true);
+        break;
         
       default:
         toast.error('Unknown action');
@@ -520,6 +527,7 @@ function AdminBookings() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact & Booking Info</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount & Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
@@ -556,6 +564,55 @@ function AdminBookings() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
+                      {booking.cancellationRequest ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center">
+                            <span className="font-medium capitalize text-xs">{booking.cancellationRequest.type}</span>
+                            <span className={`ml-1 px-1 inline-flex text-xs leading-4 font-semibold rounded-full ${
+                              booking.cancellationRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              booking.cancellationRequest.status === 'approved' ? 'bg-green-100 text-green-800' :
+                              booking.cancellationRequest.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {booking.cancellationRequest.status}
+                            </span>
+                          </div>
+                          {booking.cancellationRequest.reason && (
+                            <div className="text-xs text-gray-400 truncate max-w-32" title={booking.cancellationRequest.reason}>
+                              {booking.cancellationRequest.reason}
+                            </div>
+                          )}
+                          {booking.cancellationRequest.type === 'reschedule' && booking.cancellationRequest.preferredBatch && (
+                            <div className="text-xs text-blue-600">
+                              {(() => {
+                                // Find the preferred batch from trek batches
+                                if (booking.trek && booking.trek.batches) {
+                                  const preferredBatch = booking.trek.batches.find(
+                                    batch => batch._id.toString() === booking.cancellationRequest.preferredBatch.toString()
+                                  );
+                                  if (preferredBatch) {
+                                    const startDate = new Date(preferredBatch.startDate).toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric'
+                                    });
+                                    return `To: ${startDate}`;
+                                  }
+                                }
+                                return 'Batch not found';
+                              })()}
+                            </div>
+                          )}
+                          {booking.cancellationRequest.requestedAt && (
+                            <div className="text-xs text-gray-400">
+                              {formatDate(booking.cancellationRequest.requestedAt)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 italic text-xs">No request</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
                       <button
                         onClick={() => handleRemarksClick(booking)}
                         className="text-left w-full hover:bg-gray-50 p-2 rounded transition-colors"
@@ -584,7 +641,7 @@ function AdminBookings() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
                     No bookings found
                   </td>
                 </tr>
@@ -693,6 +750,13 @@ function AdminBookings() {
         booking={selectedBooking}
         bookingId={selectedBooking?._id}
         onConfirmCancellation={handleCancellationConfirm}
+      />
+
+      <RequestResponseModal
+        isOpen={showRequestResponseModal}
+        onClose={() => setShowRequestResponseModal(false)}
+        booking={selectedBooking}
+        onSuccess={fetchBookings}
       />
     </div>
   );

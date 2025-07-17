@@ -1168,7 +1168,10 @@ exports.getBatchPerformance = async (req, res) => {
           totalPrice: booking.totalPrice || 0,
           status: booking.status || 'unknown',
           bookingDate: booking.createdAt || null,
-          adminRemarks: booking.adminRemarks || ''
+          adminRemarks: booking.adminRemarks || '',
+          cancellationRequest: booking.cancellationRequest || null,
+          refundStatus: booking.refundStatus || null,
+          refundAmount: booking.refundAmount || 0
         };
       }).filter(detail => detail !== null),
       feedback: batch.feedback || []

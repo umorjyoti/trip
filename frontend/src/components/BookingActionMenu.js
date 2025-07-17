@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaEllipsisV, FaEnvelope, FaCheck, FaFileInvoice, FaEdit, FaTimes, FaExchangeAlt, FaEye } from 'react-icons/fa';
+import { FaEllipsisV, FaEnvelope, FaCheck, FaFileInvoice, FaEdit, FaTimes, FaExchangeAlt, FaEye, FaComment } from 'react-icons/fa';
 
 const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -74,13 +74,25 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       icon: <FaExchangeAlt className="w-4 h-4" />,
       color: 'text-indigo-600 hover:bg-indigo-50',
       showFor: ['confirmed']
+    },
+    {
+      id: 'respond-request',
+      label: 'Respond to Request',
+      icon: <FaComment className="w-4 h-4" />,
+      color: 'text-teal-600 hover:bg-teal-50',
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled'],
+      showCondition: (booking) => booking.cancellationRequest && booking.cancellationRequest.status === 'pending'
     }
   ];
 
-  // Filter menu items based on booking status and hideShiftAction prop
-  const menuItems = allMenuItems.filter(item => 
-    item.showFor.includes(booking.status) && !(hideShiftAction && item.id === 'shift')
-  );
+  // Filter menu items based on booking status, hideShiftAction prop, and custom conditions
+  const menuItems = allMenuItems.filter(item => {
+    const statusMatch = item.showFor.includes(booking.status);
+    const shiftActionMatch = !(hideShiftAction && item.id === 'shift');
+    const customCondition = item.showCondition ? item.showCondition(booking) : true;
+    
+    return statusMatch && shiftActionMatch && customCondition;
+  });
 
   return (
     <div className="relative" ref={menuRef}>

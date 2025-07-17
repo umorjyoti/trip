@@ -240,4 +240,24 @@ router.post('/:bookingId/send-invoice', protect, admin, bookingController.sendIn
 // Shift booking to another batch (admin only)
 router.put('/:bookingId/shift-batch', protect, admin, bookingController.shiftBookingToBatch);
 
+// Create cancellation/reschedule request
+router.post('/:bookingId/cancellation-request', 
+  protect, 
+  bookingController.createCancellationRequest
+);
+
+// Admin: Update cancellation/reschedule request status
+router.put('/:bookingId/cancellation-request', 
+  protect, 
+  admin, 
+  bookingController.updateCancellationRequest
+);
+
+// Calculate refund amount for cancellation
+router.post('/calculate-refund', 
+  protect, 
+  admin, 
+  bookingController.calculateRefund
+);
+
 module.exports = router; 

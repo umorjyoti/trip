@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { getBookingById, cancelParticipant, cancelBooking, downloadInvoice } from '../services/api';
+import { getBookingById, downloadInvoice } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CreateTicketModal from '../components/CreateTicketModal';
-import { FaDownload } from 'react-icons/fa';
+import { FaDownload, FaHistory, FaClock, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from 'react-icons/fa';
 
 function BookingDetail() {
   const { id } = useParams();
@@ -14,10 +14,7 @@ function BookingDetail() {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [cancelModal, setCancelModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
-  const [selectedParticipant, setSelectedParticipant] = useState(null);
-  const [cancelling, setCancelling] = useState(false);
   const [downloadingInvoice, setDownloadingInvoice] = useState(false);
 
   useEffect(() => {
@@ -41,7 +38,8 @@ function BookingDetail() {
           status: data.status || 'unknown',
           createdAt: data.createdAt || new Date(),
           cancelledAt: data.cancelledAt || null,
-          participantDetails: Array.isArray(data.participantDetails) ? data.participantDetails : []
+          participantDetails: Array.isArray(data.participantDetails) ? data.participantDetails : [],
+          cancellationRequest: data.cancellationRequest || null
         };
         
         setBooking(bookingData);
@@ -55,36 +53,6 @@ function BookingDetail() {
 
     fetchBooking();
   }, [id]);
-
-  const openCancelModal = (participant = null) => {
-    setSelectedParticipant(participant);
-    setCancelModal(true);
-  };
-
-  const closeCancelModal = () => {
-    setSelectedParticipant(null);
-    setCancelModal(false);
-  };
-
-  const handleCancelBooking = async () => {
-    try {
-      if (selectedParticipant) {
-        // Cancel individual participant
-        await cancelParticipant(id, selectedParticipant._id);
-        toast.success('Participant cancelled successfully');
-        // Update the booking state
-        setBooking(prev => ({
-          ...prev,
-          participantDetails: prev.participantDetails.filter(p => p._id !== selectedParticipant._id),
-          participants: prev.participants - 1
-        }));
-      }
-      closeCancelModal();
-    } catch (error) {
-      console.error('Error cancelling:', error);
-      toast.error(error.response?.data?.message || 'Failed to cancel');
-    }
-  };
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -125,36 +93,132 @@ function BookingDetail() {
     }
   };
 
-  // Cancel a single participant
-  const handleCancelParticipant = async (participant) => {
-    if (!window.confirm(`Are you sure you want to cancel ${participant.name}?`)) return;
-    setCancelling(true);
-    try {
-      await cancelParticipant(id, participant._id, { reason: 'User requested cancellation' });
-      toast.success('Participant cancelled successfully');
-      const updatedBooking = await getBookingById(id);
-      setBooking(updatedBooking);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to cancel participant');
-    } finally {
-      setCancelling(false);
-    }
+  const ParticipantList = ({ participants }) => {
+    return (
+      <div className="space-y-4">
+        {participants.map((participant) => (
+          <div key={participant._id} className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
+            <div>
+              <h4 className="font-medium">{participant.name}</h4>
+              <p className="text-sm text-gray-600">Age: {participant.age}</p>
+              <p className="text-sm text-gray-600">Gender: {participant.gender}</p>
+              <div className="text-xs text-gray-500">Status: {participant.status || (participant.isCancelled ? 'bookingCancelled' : 'confirmed')}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
-  // Cancel the entire booking
-  const handleCancelEntireBooking = async () => {
-    if (!window.confirm('Are you sure you want to cancel the entire booking?')) return;
-    setCancelling(true);
-    try {
-      await cancelBooking(id, { reason: 'User requested full cancellation' });
-      toast.success('Booking cancelled successfully');
-      const updatedBooking = await getBookingById(id);
-      setBooking(updatedBooking);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to cancel booking');
-    } finally {
-      setCancelling(false);
+  const RequestHistory = ({ cancellationRequest }) => {
+    
+    if (!cancellationRequest) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          <FaHistory className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+          <p className="text-sm">No request history available</p>
+        </div>
+      );
     }
+
+    const getStatusIcon = (status) => {
+      switch (status) {
+        case 'pending':
+          return <FaClock className="h-5 w-5 text-yellow-500" />;
+        case 'approved':
+          return <FaCheckCircle className="h-5 w-5 text-green-500" />;
+        case 'rejected':
+          return <FaTimesCircle className="h-5 w-5 text-red-500" />;
+        default:
+          return <FaExclamationTriangle className="h-5 w-5 text-gray-500" />;
+      }
+    };
+
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'pending':
+          return 'border-yellow-200 bg-yellow-50';
+        case 'approved':
+          return 'border-green-200 bg-green-50';
+        case 'rejected':
+          return 'border-red-200 bg-red-50';
+        default:
+          return 'border-gray-200 bg-gray-50';
+      }
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className={`border-l-4 border-l-4 p-4 rounded-r-lg ${getStatusColor(cancellationRequest.status)}`}>
+          <div className="flex items-start space-x-3">
+            <div className="flex-shrink-0 mt-1">
+              {getStatusIcon(cancellationRequest.status)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-medium text-gray-900 capitalize">
+                  {cancellationRequest.type} Request
+                </h4>
+                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  cancellationRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  cancellationRequest.status === 'approved' ? 'bg-green-100 text-green-800' :
+                  cancellationRequest.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {cancellationRequest.status}
+                </span>
+              </div>
+              
+              <div className="mt-2 space-y-2 text-sm text-gray-600">
+                {cancellationRequest.reason && (
+                  <div>
+                    <span className="font-medium">Reason: </span>
+                    <span>{cancellationRequest.reason}</span>
+                  </div>
+                )}
+                
+                {cancellationRequest.type === 'reschedule' && cancellationRequest.preferredBatch && (
+                  <div>
+                    <span className="font-medium">Preferred Batch: </span>
+                    <span>
+                      {(() => {
+                        // Find the preferred batch from trek batches
+                        if (booking.trek && booking.trek.batches) {
+                          const preferredBatch = booking.trek.batches.find(
+                            batch => batch._id.toString() === cancellationRequest.preferredBatch.toString()
+                          );
+                          if (preferredBatch) {
+                            return `${formatDate(preferredBatch.startDate)} - ${formatDate(preferredBatch.endDate)} (₹${preferredBatch.price})`;
+                          }
+                        }
+                        return 'Batch details not available';
+                      })()}
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-center text-xs text-gray-500">
+                  <FaClock className="mr-1 h-3 w-3" />
+                  Requested: {formatDate(cancellationRequest.requestedAt)}
+                </div>
+                
+                {cancellationRequest.adminResponse && (
+                  <div className="mt-3 p-3 bg-white rounded border-l-4 border-l-blue-400">
+                    <div className="font-medium text-sm text-gray-900 mb-1">Admin Response:</div>
+                    <div className="text-sm text-gray-700">{cancellationRequest.adminResponse}</div>
+                    {cancellationRequest.respondedAt && (
+                      <div className="text-xs text-gray-500 mt-2">
+                        Responded: {formatDate(cancellationRequest.respondedAt)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -202,35 +266,6 @@ function BookingDetail() {
       </div>
     );
   }
-
-  const ParticipantList = ({ participants }) => {
-    return (
-      <div className="space-y-4">
-        {participants.map((participant) => (
-          <div key={participant._id} className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
-            <div>
-              <h4 className="font-medium">{participant.name}</h4>
-              <p className="text-sm text-gray-600">Age: {participant.age}</p>
-              <p className="text-sm text-gray-600">Gender: {participant.gender}</p>
-              <div className="text-xs text-gray-500">Status: {participant.status || (participant.isCancelled ? 'bookingCancelled' : 'confirmed')}</div>
-            </div>
-            {participant.status === 'confirmed' && (
-              <button
-                className="px-3 py-1 bg-red-600 text-white rounded disabled:opacity-50"
-                onClick={() => handleCancelParticipant(participant)}
-                disabled={cancelling}
-              >
-                Cancel
-              </button>
-            )}
-            {participant.status === 'bookingCancelled' && (
-              <span className="text-xs text-red-500">Cancelled</span>
-            )}
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -390,16 +425,24 @@ function BookingDetail() {
               <ParticipantList participants={booking.participantDetails} />
             </div>
           </div>
-          {/* Full booking cancel button */}
-          {booking.participantDetails.some(p => (p.status || (p.isCancelled ? 'bookingCancelled' : 'confirmed')) === 'confirmed') && (
-            <button
-              className="mt-4 px-4 py-2 bg-red-700 text-white rounded disabled:opacity-50"
-              onClick={handleCancelEntireBooking}
-              disabled={cancelling}
-            >
-              Cancel Entire Booking
-            </button>
-          )}
+        </div>
+      </div>
+
+      {/* Request History Section */}
+      <div className="mt-8">
+        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+          <div className="px-4 py-5 sm:px-6">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+              <FaHistory className="mr-2 h-5 w-5 text-gray-500" />
+              Request History
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm text-gray-500">
+              Track all cancellation and rescheduling requests for this booking
+            </p>
+          </div>
+          <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+            <RequestHistory cancellationRequest={booking.cancellationRequest} />
+          </div>
         </div>
       </div>
 
@@ -443,56 +486,35 @@ function BookingDetail() {
         </div>
       </div>
 
-      {cancelModal && selectedParticipant && (
-        <div className="fixed z-10 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
-              <div>
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                  <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <div className="mt-3 text-center sm:mt-5">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                    Cancel Participant
-                  </h3>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      Are you sure you want to cancel {selectedParticipant.name}'s participation? This action cannot be undone.
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:col-start-2 sm:text-sm"
-                  onClick={handleCancelBooking}
-                >
-                  Cancel Participant
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:mt-0 sm:col-start-1 sm:text-sm"
-                  onClick={closeCancelModal}
-                >
-                  Go Back
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {showTicketModal && (
         <CreateTicketModal
           bookingId={booking._id}
           onClose={() => setShowTicketModal(false)}
           onSuccess={() => {
-            // Removed duplicate toast.success here
+            // Refresh booking data to show updated request history
+            const fetchBooking = async () => {
+              try {
+                const data = await getBookingById(id);
+                if (data) {
+                  const bookingData = {
+                    ...data,
+                    trek: data.trek || {},
+                    batch: data.batch || {},
+                    participants: data.participants || 0,
+                    totalPrice: data.totalPrice || 0,
+                    status: data.status || 'unknown',
+                    createdAt: data.createdAt || new Date(),
+                    cancelledAt: data.cancelledAt || null,
+                    participantDetails: Array.isArray(data.participantDetails) ? data.participantDetails : [],
+                    cancellationRequest: data.cancellationRequest || null
+                  };
+                  setBooking(bookingData);
+                }
+              } catch (err) {
+                console.error('Error refreshing booking:', err);
+              }
+            };
+            fetchBooking();
           }}
         />
       )}
