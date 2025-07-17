@@ -242,6 +242,32 @@ function TrekDetail() {
   const galleryModalRef = useRef(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const shareMenuRef = useRef(null);
+  const headerScrollRef = useRef(null);
+  const [headerScrollState, setHeaderScrollState] = useState({ isScrollable: false, thumbLeft: 0, thumbWidth: 0 });
+
+  // Calculate scrollbar thumb size and position for header
+  const updateHeaderScrollBar = () => {
+    const el = headerScrollRef.current;
+    if (!el) return;
+    const { scrollWidth, clientWidth, scrollLeft } = el;
+    if (scrollWidth > clientWidth) {
+      const ratio = clientWidth / scrollWidth;
+      const thumbWidth = Math.max(ratio * clientWidth, 40); // min width
+      const maxScrollLeft = scrollWidth - clientWidth;
+      const thumbLeft = (scrollLeft / maxScrollLeft) * (clientWidth - thumbWidth) || 0;
+      setHeaderScrollState({
+        isScrollable: true,
+        thumbWidth,
+        thumbLeft,
+      });
+    } else {
+      setHeaderScrollState({
+        isScrollable: false,
+        thumbWidth: 0,
+        thumbLeft: 0,
+      });
+    }
+  };
 
   // Handle smooth scrolling
   const handleSmoothScroll = (e, targetId) => {
@@ -388,6 +414,25 @@ function TrekDetail() {
     if (trek) {
       fetchRegionName();
     }
+  }, [trek]);
+
+  // Header scrollbar effect
+  useEffect(() => {
+    const headerEl = headerScrollRef.current;
+
+    // Call immediately after mount/DOM update
+    setTimeout(updateHeaderScrollBar, 0);
+
+    if (headerEl) {
+      headerEl.addEventListener('scroll', updateHeaderScrollBar);
+    }
+
+    window.addEventListener('resize', updateHeaderScrollBar);
+
+    return () => {
+      if (headerEl) headerEl.removeEventListener('scroll', updateHeaderScrollBar);
+      window.removeEventListener('resize', updateHeaderScrollBar);
+    };
   }, [trek]);
 
   // Helper function to get price from different possible locations
@@ -1391,10 +1436,10 @@ function TrekDetail() {
           {/* Trek Scroll bar */}
           <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
             <div className="relative">
-              <nav className="flex space-x-6 overflow-x-auto py-2 px-2" style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#10b981 #f3f4f6'
-              }}>
+              <nav 
+                className="flex space-x-6 overflow-x-auto py-2 px-2 scrollbar-hide"
+                ref={headerScrollRef}
+              >
                 <a
                   href="#overview"
                   onClick={(e) => handleSmoothScroll(e, 'overview')}
@@ -1438,6 +1483,22 @@ function TrekDetail() {
                   FAQs
                 </a>
               </nav>
+              {/* Fake green scrollbar for header */}
+              {headerScrollState.isScrollable && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: headerScrollState.thumbLeft,
+                    bottom: 2,
+                    height: 4,
+                    width: headerScrollState.thumbWidth,
+                    background: '#10b981',
+                    borderRadius: 2,
+                    transition: 'left 0.1s',
+                    pointerEvents: 'none',
+                  }}
+                />
+              )}
             </div>
           </div>
 
