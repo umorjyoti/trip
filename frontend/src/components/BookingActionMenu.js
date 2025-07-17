@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaEllipsisV, FaEnvelope, FaCheck, FaFileInvoice, FaEdit, FaTimes, FaExchangeAlt, FaEye } from 'react-icons/fa';
 
-const BookingActionMenu = ({ booking, onAction }) => {
+const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -77,9 +77,9 @@ const BookingActionMenu = ({ booking, onAction }) => {
     }
   ];
 
-  // Filter menu items based on booking status
+  // Filter menu items based on booking status and hideShiftAction prop
   const menuItems = allMenuItems.filter(item => 
-    item.showFor.includes(booking.status)
+    item.showFor.includes(booking.status) && !(hideShiftAction && item.id === 'shift')
   );
 
   return (

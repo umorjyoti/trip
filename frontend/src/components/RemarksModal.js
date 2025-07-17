@@ -13,7 +13,7 @@ const RemarksModal = ({ isOpen, onClose, booking, onUpdate }) => {
 
     setLoading(true);
     try {
-      await updateAdminRemarks(booking.bookingId, remarks);
+      await updateAdminRemarks(booking.id || booking.bookingId, remarks);
       toast.success('Remarks updated successfully');
       onUpdate(remarks);
       onClose();

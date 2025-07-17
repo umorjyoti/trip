@@ -263,7 +263,7 @@ BookingSchema.virtual('formattedDates').get(function() {
 
 // Add virtual for booking ID
 BookingSchema.virtual('bookingId').get(function() {
-  return `BK${this._id.toString().slice(-8).toUpperCase()}`;
+  return `BT${this._id.toString().slice(-8).toUpperCase()}`;
 });
 
 // Add virtual for batch details
