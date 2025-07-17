@@ -1,7 +1,28 @@
 # Active Context
 
 ## Current Focus
-**Enhanced Batch Performance Cancellation Display** - Improved the batch performance page to properly display cancelled participants with strikethrough styling and updated participant counts.
+**Related Blogs Feature Implementation** - Successfully implemented related blogs functionality that shows blogs from the same region on blog detail pages.
+
+## Recent Changes (Latest Session)
+- **Backend Implementation**:
+  - Added `getRelatedBlogs` function to blogController.js to fetch related blogs by region
+  - Added new route `/blogs/related/:blogId/:regionId` to get related blogs
+  - Implemented caching for related blogs with 5-minute TTL
+  - Excludes current blog from related blogs results
+  - Limits results to 3 related blogs by default
+- **Frontend Implementation**:
+  - Created `RelatedBlogs` component with modern card design and hover effects
+  - Added `getRelatedBlogs` API function to services/api.js
+  - Updated BlogDetail.js to fetch and display related blogs
+  - Added related blogs section at the bottom of blog detail pages
+  - Implemented proper loading states and error handling
+- **User Experience Features**:
+  - Related blogs display in a beautiful grid layout with 3 columns
+  - Each related blog card shows image, title, excerpt, author, and date
+  - Hover effects with scale and shadow animations
+  - "Explore All Stories from [Region]" button to view all blogs from that region
+  - Responsive design that works on all screen sizes
+  - Only shows related blogs section if the blog has a region assigned
 
 ## Recent Changes (Latest Session)
 - **URL State Management**: Added URL query parameter support to maintain batch selection after page refresh

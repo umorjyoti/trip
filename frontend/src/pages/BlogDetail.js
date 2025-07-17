@@ -4,6 +4,8 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import { Helmet } from 'react-helmet-async';
 import api from '../services/api';
+import { getRelatedBlogs } from '../services/api';
+import RelatedBlogs from '../components/RelatedBlogs';
 
 function BlogDetail() {
   const { slug } = useParams();
@@ -11,6 +13,8 @@ function BlogDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [imageLoading, setImageLoading] = useState(true);
+  const [relatedBlogs, setRelatedBlogs] = useState([]);
+  const [relatedBlogsLoading, setRelatedBlogsLoading] = useState(false);
 
   useEffect(() => {
     fetchBlog();
@@ -22,11 +26,29 @@ function BlogDetail() {
       const response = await api.get(`/blogs/${slug}`);
       setBlog(response.data);
       setError(null);
+      
+      // Fetch related blogs if the blog has a region
+      if (response.data.region) {
+        fetchRelatedBlogs(response.data._id, response.data.region._id);
+      }
     } catch (err) {
       setError('Failed to fetch blog. Please try again later.');
       console.error('Error fetching blog:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRelatedBlogs = async (blogId, regionId) => {
+    try {
+      setRelatedBlogsLoading(true);
+      const relatedBlogsData = await getRelatedBlogs(blogId, regionId, 3);
+      setRelatedBlogs(relatedBlogsData);
+    } catch (err) {
+      console.error('Error fetching related blogs:', err);
+      // Don't show error to user for related blogs, just log it
+    } finally {
+      setRelatedBlogsLoading(false);
     }
   };
 
@@ -324,6 +346,15 @@ function BlogDetail() {
           </div>
         </div>
       </div>
+
+      {/* Related Blogs Section */}
+      {blog.region && (
+        <RelatedBlogs
+          blogs={relatedBlogs}
+          regionName={blog.region.name}
+          regionSlug={blog.region.slug}
+        />
+      )}
     </>
   );
 }

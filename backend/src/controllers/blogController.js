@@ -551,4 +551,37 @@ exports.getBlogsByRegion = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+// Get related blogs by region (excluding current blog)
+exports.getRelatedBlogs = async (req, res) => {
+  try {
+    const { blogId, regionId } = req.params;
+    const limit = parseInt(req.query.limit) || 3;
+
+    // Check cache
+    const cacheKey = `related_blogs_${blogId}_${regionId}_${limit}`;
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    const query = { 
+      status: 'published',
+      region: regionId,
+      _id: { $ne: blogId } // Exclude current blog
+    };
+
+    const relatedBlogs = await Blog.find(query)
+      .sort('-publishedAt')
+      .limit(limit)
+      .populate('author', 'name')
+      .populate('region', 'name slug image description');
+
+    // Cache the response
+    cache.set(cacheKey, relatedBlogs);
+    res.json(relatedBlogs);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 }; 

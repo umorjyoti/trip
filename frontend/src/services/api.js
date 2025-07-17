@@ -1397,6 +1397,16 @@ export const getBlogsByRegion = async (regionId, params = {}) => {
   }
 };
 
+export const getRelatedBlogs = async (blogId, regionId, limit = 3) => {
+  try {
+    const response = await api.get(`/blogs/related/${blogId}/${regionId}?limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching related blogs:', error);
+    throw error;
+  }
+};
+
 // Helper function to convert trek name to URL-friendly slug
 export const createTrekSlug = (name) => {
   return name
