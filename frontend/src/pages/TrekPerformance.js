@@ -17,6 +17,7 @@ import EditBookingModal from '../components/EditBookingModal';
 import ShiftBookingModal from '../components/ShiftBookingModal';
 import ViewBookingModal from '../components/ViewBookingModal';
 import CancellationModal from '../components/CancellationModal';
+import RequestResponseModal from '../components/RequestResponseModal';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 const TrekPerformance = () => {
@@ -34,6 +35,7 @@ const TrekPerformance = () => {
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [showRequestResponseModal, setShowRequestResponseModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
@@ -186,9 +188,24 @@ const TrekPerformance = () => {
         setShowShiftModal(true);
         break;
         
+      case 'respond-request':
+        setShowRequestResponseModal(true);
+        break;
+        
       default:
         toast.error('Unknown action');
     }
+  };
+
+  const handleRequestResponseSuccess = () => {
+    // Refresh both batch details and overall performance data
+    if (selectedBatch) {
+      fetchBatchDetails(selectedBatch._id);
+      // Ensure URL maintains the batch ID
+      setSearchParams({ batchId: selectedBatch._id });
+    }
+    // Also refresh the overall performance data to update batch participant counts
+    fetchPerformanceData();
   };
 
   const handleCancellationConfirm = async (cancellationData) => {
@@ -391,6 +408,7 @@ const TrekPerformance = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact & Booking Info</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount & Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -465,6 +483,35 @@ const TrekPerformance = () => {
                         }`}>
                           {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {booking.cancellationRequest ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="capitalize font-medium text-gray-900">
+                                {booking.cancellationRequest.type}
+                              </span>
+                              <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                booking.cancellationRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                booking.cancellationRequest.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                booking.cancellationRequest.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {booking.cancellationRequest.status}
+                              </span>
+                            </div>
+                            {booking.cancellationRequest.reason && (
+                              <p className="text-xs text-gray-600 truncate max-w-32">
+                                {booking.cancellationRequest.reason}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-400">
+                              {booking.cancellationRequest.requestedAt ? formatDate(booking.cancellationRequest.requestedAt) : "-"}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No request</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 w-48 max-w-48">
                         <button
@@ -549,6 +596,14 @@ const TrekPerformance = () => {
         bookingId={selectedBooking?.bookingId}
         trek={performanceData?.trek}
         onConfirmCancellation={handleCancellationConfirm}
+      />
+
+      {/* Request Response Modal */}
+      <RequestResponseModal
+        isOpen={showRequestResponseModal}
+        onClose={() => setShowRequestResponseModal(false)}
+        booking={selectedBooking}
+        onSuccess={handleRequestResponseSuccess}
       />
     </div>
   );

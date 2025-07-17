@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendRescheduleApprovalEmail } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
@@ -355,6 +355,9 @@ const getBookingById = async (req, res) => {
     const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled);
     const activeParticipantCount = activeParticipants.length;
 
+    // Debug log for cancellation request
+    console.log("Cancellation request data:", booking.cancellationRequest);
+
     // Format the response data
     const responseData = {
       _id: booking._id,
@@ -363,7 +366,8 @@ const getBookingById = async (req, res) => {
         ? {
             _id: trekInfo._id,
             name: trekInfo.name,
-            imageUrl: trekInfo.imageUrl
+            imageUrl: trekInfo.imageUrl,
+            batches: trekInfo.batches || []
           }
         : null,
       batch: batchData,
@@ -378,7 +382,11 @@ const getBookingById = async (req, res) => {
       userDetails: booking.userDetails,
       addOns: booking.addOns,
       activeParticipants,
-      activeParticipantCount
+      activeParticipantCount,
+      cancellationRequest: booking.cancellationRequest || null,
+      refundStatus: booking.refundStatus,
+      refundAmount: booking.refundAmount,
+      refundDate: booking.refundDate
     };
 
     res.json(responseData);
@@ -565,7 +573,7 @@ const getBookings = async (req, res) => {
     const [bookings, total, stats] = await Promise.all([
       Booking.find(filterQuery)
         .populate("user", "name email")
-        .populate("trek", "name")
+        .populate("trek", "name batches")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -1618,6 +1626,287 @@ const shiftBookingToBatch = async (req, res) => {
   }
 };
 
+// Create cancellation or reschedule request
+const createCancellationRequest = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { requestType, reason, preferredBatch } = req.body;
+
+    // Validate request type
+    if (!['cancellation', 'reschedule'].includes(requestType)) {
+      return res.status(400).json({ message: 'Invalid request type. Must be either "cancellation" or "reschedule"' });
+    }
+
+    // Find the booking
+    const booking = await Booking.findById(bookingId).populate('trek');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user owns this booking
+    if (booking.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to modify this booking' });
+    }
+
+    // Check if booking is already cancelled
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ message: 'Cannot create request for cancelled booking' });
+    }
+
+    // Check if there's already a pending request
+    if (booking.cancellationRequest && booking.cancellationRequest.status === 'pending') {
+      return res.status(400).json({ message: 'There is already a pending request for this booking' });
+    }
+
+    // For reschedule requests, validate preferred batch
+    if (requestType === 'reschedule' && !preferredBatch) {
+      return res.status(400).json({ message: 'Preferred batch is required for reschedule requests' });
+    }
+
+    if (requestType === 'reschedule' && preferredBatch) {
+      // Check if the preferred batch exists and belongs to the same trek
+      const trek = booking.trek;
+      if (!trek || !trek.batches) {
+        return res.status(400).json({ message: 'Trek or batches not found' });
+      }
+
+      const batchExists = trek.batches.some(batch => batch._id.toString() === preferredBatch.toString());
+      if (!batchExists) {
+        return res.status(400).json({ message: 'Preferred batch does not belong to this trek' });
+      }
+
+      // Check if the preferred batch is the same as current batch
+      if (booking.batch.toString() === preferredBatch.toString()) {
+        return res.status(400).json({ message: 'Preferred batch cannot be the same as current batch' });
+      }
+
+      // Check if the preferred batch has available spots
+      const preferredBatchData = trek.batches.find(batch => batch._id.toString() === preferredBatch.toString());
+      if (preferredBatchData.currentParticipants >= preferredBatchData.maxParticipants) {
+        return res.status(400).json({ message: 'Preferred batch is full' });
+      }
+    }
+
+    // Update booking with the request
+    booking.cancellationRequest = {
+      type: requestType,
+      reason: reason || '',
+      preferredBatch: requestType === 'reschedule' ? preferredBatch : null,
+      requestedAt: new Date(),
+      status: 'pending',
+      adminResponse: '',
+      respondedAt: null
+    };
+
+    await booking.save();
+
+    res.json({ 
+      message: `${requestType} request created successfully`, 
+      booking 
+    });
+  } catch (error) {
+    console.error('Error creating cancellation request:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Admin: Update cancellation/reschedule request status
+const updateCancellationRequest = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status, adminResponse } = req.body;
+
+    // Validate status
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status. Must be either "approved" or "rejected"' });
+    }
+
+    // Find the booking with trek and user populated
+    const booking = await Booking.findById(bookingId).populate('trek').populate('user');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if there's a pending request
+    if (!booking.cancellationRequest || booking.cancellationRequest.status !== 'pending') {
+      return res.status(400).json({ message: 'No pending request found for this booking' });
+    }
+
+    // Update the request
+    booking.cancellationRequest.status = status;
+    booking.cancellationRequest.adminResponse = adminResponse || '';
+    booking.cancellationRequest.respondedAt = new Date();
+
+    // Note: For cancellation requests, the actual cancellation is now handled by the adminCancelBooking API
+    // This function only updates the request status and admin response
+    if (status === 'approved' && booking.cancellationRequest.type === 'cancellation') {
+      // The actual cancellation logic is handled by adminCancelBooking API
+      // This function just updates the request status
+      console.log(`Cancellation request approved for booking ${booking._id}. Actual cancellation handled by adminCancelBooking API.`);
+    }
+
+    // If approved and it's a reschedule request, shift the booking to the preferred batch
+    if (status === 'approved' && booking.cancellationRequest.type === 'reschedule') {
+      const preferredBatchId = booking.cancellationRequest.preferredBatch;
+      
+      if (!preferredBatchId) {
+        return res.status(400).json({ message: 'Preferred batch not found in reschedule request' });
+      }
+
+      // Get the trek with full batch details
+      const trek = await require('../models/Trek').findById(booking.trek._id);
+      if (!trek || !trek.batches) {
+        return res.status(400).json({ message: 'Trek or batches not found' });
+      }
+
+      // Find the preferred batch
+      const preferredBatch = trek.batches.find(batch => 
+        batch._id.toString() === preferredBatchId.toString()
+      );
+
+      if (!preferredBatch) {
+        return res.status(400).json({ message: 'Preferred batch not found in trek' });
+      }
+
+      // Check if the preferred batch is the same as current batch
+      if (booking.batch.toString() === preferredBatchId.toString()) {
+        return res.status(400).json({ message: 'Preferred batch is the same as current batch' });
+      }
+
+      // Check if the preferred batch has available spots
+      if (preferredBatch.currentParticipants >= preferredBatch.maxParticipants) {
+        return res.status(400).json({ message: 'Preferred batch is full' });
+      }
+
+      // Check if new batch is in the future
+      const currentDate = new Date();
+      const newBatchStartDate = new Date(preferredBatch.startDate);
+      if (newBatchStartDate <= currentDate) {
+        return res.status(400).json({ message: 'Cannot shift to a batch that has already started' });
+      }
+
+      // Find the current batch to update participant count
+      const currentBatch = trek.batches.find(batch => 
+        batch._id.toString() === booking.batch.toString()
+      );
+
+      // Update old batch participants count
+      if (currentBatch) {
+        currentBatch.currentParticipants = Math.max(0, currentBatch.currentParticipants - booking.numberOfParticipants);
+      }
+
+      // Update new batch participants count
+      preferredBatch.currentParticipants += booking.numberOfParticipants;
+
+      // Update booking batch
+      booking.batch = preferredBatchId;
+
+      // Save trek changes
+      await trek.save();
+
+      // Send reschedule approval email notification to user
+      try {
+        await sendRescheduleApprovalEmail(booking, trek, booking.user, currentBatch, preferredBatch, adminResponse);
+      } catch (emailError) {
+        console.error('Error sending reschedule approval email:', emailError);
+        // Don't fail the operation if email fails
+      }
+
+      console.log(`Booking ${booking._id} shifted from batch ${booking.batch} to ${preferredBatchId}`);
+    }
+
+    await booking.save();
+
+    res.json({ 
+      message: `Request ${status} successfully${status === 'approved' && booking.cancellationRequest.type === 'reschedule' ? ' and booking shifted to preferred batch' : ''}`, 
+      booking 
+    });
+  } catch (error) {
+    console.error('Error updating cancellation request:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Calculate refund amount for cancellation
+const calculateRefund = async (req, res) => {
+  try {
+    const { bookingId, cancellationType, selectedParticipants, refundType, customRefundAmount } = req.body;
+
+    // Find the booking
+    const booking = await Booking.findById(bookingId).populate('trek');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Get the batch from trek
+    const batch = booking.trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+    if (!batch) {
+      return res.status(400).json({ message: 'Batch not found' });
+    }
+
+    let totalRefund = 0;
+
+    if (cancellationType === 'individual' && selectedParticipants && selectedParticipants.length > 0) {
+      // Calculate refund for individual participants
+      const perPrice = booking.totalPrice / booking.participantDetails.length;
+      
+      for (const participantId of selectedParticipants) {
+        const participant = booking.participantDetails.find(p => p._id.toString() === participantId);
+        if (!participant || participant.isCancelled) continue;
+
+        let participantRefund = 0;
+        
+        if (refundType === 'custom' && customRefundAmount) {
+          participantRefund = customRefundAmount / selectedParticipants.length;
+        } else {
+          participantRefund = getRefundAmount(perPrice, batch.startDate, new Date(), refundType);
+        }
+
+        totalRefund += participantRefund;
+      }
+    } else {
+      // Calculate refund for entire booking
+      if (refundType === 'custom' && customRefundAmount) {
+        totalRefund = customRefundAmount;
+      } else {
+        totalRefund = getRefundAmount(booking.totalPrice, batch.startDate, new Date(), refundType);
+      }
+    }
+
+    // Get cancellation policy description
+    const now = new Date();
+    const start = new Date(batch.startDate);
+    const diffDays = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
+
+    let policyDescription = '';
+    let policyColor = '';
+
+    if (diffDays > 21) {
+      policyDescription = 'Free cancellation (100% refund)';
+      policyColor = 'text-green-600';
+    } else if (diffDays >= 15) {
+      policyDescription = '75% refund (25% cancellation charge)';
+      policyColor = 'text-yellow-600';
+    } else if (diffDays >= 8) {
+      policyDescription = '50% refund (50% cancellation charge)';
+      policyColor = 'text-orange-600';
+    } else {
+      policyDescription = 'No refund (within 7 days of trek)';
+      policyColor = 'text-red-600';
+    }
+
+    res.json({
+      totalRefund,
+      policyDescription,
+      policyColor,
+      daysUntilTrek: diffDays
+    });
+  } catch (error) {
+    console.error('Error calculating refund:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -1639,5 +1928,8 @@ module.exports = {
   sendReminderEmail,
   sendConfirmationEmail,
   sendInvoiceEmail,
-  shiftBookingToBatch
+  shiftBookingToBatch,
+  createCancellationRequest,
+  updateCancellationRequest,
+  calculateRefund
 };

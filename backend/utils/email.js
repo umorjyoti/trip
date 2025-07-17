@@ -1632,6 +1632,265 @@ For support, contact us through our website or mobile app.
   });
 };
 
+/**
+ * Send reschedule request approval notification email
+ * @param {Object} booking - Booking object
+ * @param {Object} trek - Trek object
+ * @param {Object} user - User object
+ * @param {Object} oldBatch - Previous batch object
+ * @param {Object} newBatch - New batch object
+ * @param {string} adminResponse - Admin's response message
+ */
+const sendRescheduleApprovalEmail = async (booking, trek, user, oldBatch, newBatch, adminResponse) => {
+  const emailSubject = `✅ Reschedule Request Approved - ${trek?.name || 'Trek Booking'}`;
+  
+  const emailContent = `
+Dear ${user.name},
+
+✅ RESCHEDULE REQUEST APPROVED
+
+Your reschedule request has been approved and your booking has been successfully shifted to the preferred batch.
+
+📋 BOOKING DETAILS:
+Booking ID: ${booking._id}
+Trek: ${trek?.name || 'N/A'}
+Participants: ${booking.numberOfParticipants}
+Total Amount: ₹${booking.totalPrice}
+
+📅 BATCH CHANGE:
+Previous Batch: ${oldBatch?.startDate ? new Date(oldBatch.startDate).toLocaleDateString() : 'N/A'} to ${oldBatch?.endDate ? new Date(oldBatch.endDate).toLocaleDateString() : 'N/A'}
+New Batch: ${newBatch?.startDate ? new Date(newBatch.startDate).toLocaleDateString() : 'N/A'} to ${newBatch?.endDate ? new Date(newBatch.endDate).toLocaleDateString() : 'N/A'}
+
+📍 PICKUP & DROP LOCATIONS:
+Pickup: ${booking.pickupLocation || 'To be confirmed'}
+Drop: ${booking.dropLocation || 'To be confirmed'}
+
+💬 ADMIN RESPONSE:
+${adminResponse || 'Your reschedule request has been approved.'}
+
+⚠️ IMPORTANT INFORMATION:
+• Your booking has been automatically shifted to the new batch
+• All participant details and other booking information remain unchanged
+• Our team will contact you with updated pickup details for the new dates
+• If you have any concerns, please contact us immediately
+
+📞 NEXT STEPS:
+Our team will contact you 24-48 hours before the new trek date with final instructions and pickup details.
+
+❓ NEED HELP?
+If you have any questions or need to make changes, please contact us immediately.
+
+🏔️ We look forward to an amazing trek with you!
+
+Best regards,
+The Trek Team
+Your Adventure Awaits!
+
+---
+This is an automated message. Please do not reply to this email.
+For support, contact us through our website or mobile app.
+  `;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${emailSubject}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .approval-container {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .batch-change {
+            background-color: #ecfdf5;
+            border: 2px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .old-batch {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        .new-batch {
+            color: #059669;
+            font-weight: bold;
+        }
+        .admin-response {
+            background-color: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">✅ Reschedule Approved</div>
+            <div class="subtitle">Your Trek Dates Have Been Updated</div>
+        </div>
+
+        <h2>Dear ${user.name},</h2>
+        
+        <div class="approval-container">
+            <div class="section-title">✅ Reschedule Request Approved</div>
+            <p>Your reschedule request has been approved and your booking has been successfully shifted to the preferred batch.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📋 Booking Details</div>
+            <ul class="info-list">
+                <li><strong>Booking ID:</strong> ${booking._id}</li>
+                <li><strong>Trek:</strong> ${trek?.name || 'N/A'}</li>
+                <li><strong>Participants:</strong> ${booking.numberOfParticipants}</li>
+                <li><strong>Total Amount:</strong> ₹${booking.totalPrice}</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📅 Batch Change</div>
+            <div class="batch-change">
+                <p><span class="old-batch">Previous Batch:</span> ${oldBatch?.startDate ? new Date(oldBatch.startDate).toLocaleDateString() : 'N/A'} to ${oldBatch?.endDate ? new Date(oldBatch.endDate).toLocaleDateString() : 'N/A'}</p>
+                <p><span class="new-batch">New Batch:</span> ${newBatch?.startDate ? new Date(newBatch.startDate).toLocaleDateString() : 'N/A'} to ${newBatch?.endDate ? new Date(newBatch.endDate).toLocaleDateString() : 'N/A'}</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📍 Pickup & Drop Locations</div>
+            <ul class="info-list">
+                <li><strong>Pickup:</strong> ${booking.pickupLocation || 'To be confirmed'}</li>
+                <li><strong>Drop:</strong> ${booking.dropLocation || 'To be confirmed'}</li>
+            </ul>
+        </div>
+
+        ${adminResponse ? `
+        <div class="section">
+            <div class="section-title">💬 Admin Response</div>
+            <div class="admin-response">
+                <p>${adminResponse}</p>
+            </div>
+        </div>
+        ` : ''}
+
+        <div class="section">
+            <div class="section-title">⚠️ Important Information</div>
+            <ul class="info-list">
+                <li>Your booking has been automatically shifted to the new batch</li>
+                <li>All participant details and other booking information remain unchanged</li>
+                <li>Our team will contact you with updated pickup details for the new dates</li>
+                <li>If you have any concerns, please contact us immediately</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📞 Next Steps</div>
+            <ul class="info-list">
+                <li>Our team will contact you 24-48 hours before the new trek date</li>
+                <li>You will receive final instructions and pickup details</li>
+                <li>Please ensure all participants are available for the new dates</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>Best regards,<br>The Trek Team</p>
+            <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+
+  return await sendEmail({
+    to: user.email,
+    subject: emailSubject,
+    text: emailContent,
+    html: htmlContent
+  });
+};
+
 module.exports = { 
   sendEmail, 
   sendBookingConfirmationEmail, 
@@ -1640,5 +1899,6 @@ module.exports = {
   sendBatchShiftNotificationEmail,
   sendProfessionalInvoiceEmail,
   sendCancellationEmail,
+  sendRescheduleApprovalEmail,
   sendEmailWithAttachment
 };

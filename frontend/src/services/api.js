@@ -1422,3 +1422,34 @@ export const getTrekBySlug = async (slug) => {
     throw error;
   }
 };
+
+// Cancellation/Reschedule request APIs
+export const createCancellationRequest = async (bookingId, requestData) => {
+  try {
+    const response = await api.post(`/bookings/${bookingId}/cancellation-request`, requestData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating cancellation request:', error);
+    throw error;
+  }
+};
+
+export const updateCancellationRequest = async (bookingId, updateData) => {
+  try {
+    const response = await api.put(`/bookings/${bookingId}/cancellation-request`, updateData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating cancellation request:', error);
+    throw error;
+  }
+};
+
+export const calculateRefund = async (refundData) => {
+  try {
+    const response = await api.post('/bookings/calculate-refund', refundData);
+    return response.data;
+  } catch (error) {
+    console.error('Error calculating refund:', error);
+    throw error;
+  }
+};

@@ -2,7 +2,7 @@ const getRefundAmount = (total, trekStartDate, now = new Date(), refundType = 'a
   if (refundType === 'full') return total;
   
   const start = new Date(trekStartDate);
-  const diffDays = Math.ceil((start - now) / (10 * 60 * 60 * 24));
+  const diffDays = Math.ceil((start - now) / (1000 * 60 * 60 * 24));
   
   // Based on the cancellation policy table:
   // UPTO 21 Free Cancellation (100% refund)
@@ -13,9 +13,9 @@ const getRefundAmount = (total, trekStartDate, now = new Date(), refundType = 'a
   if (diffDays > 21) {
     return total; // Free cancellation - full refund
   } else if (diffDays >= 15) {
-    return Math.round(total * 0.75); // 25% charge - 75refund
+    return Math.round(total * 0.75); // 25% charge - 75% refund
   } else if (diffDays >= 8) {
-    return Math.round(total * 0.5); // 50% charge - 50refund
+    return Math.round(total * 0.5); // 50% charge - 50% refund
   } else {
     return 0; // 100% charge - no refund
   }

@@ -239,6 +239,41 @@ const BookingSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  // Cancellation/Reschedule request fields
+  cancellationRequest: {
+    type: {
+      type: String,
+      enum: ['cancellation', 'reschedule', null],
+      default: null
+    },
+    reason: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    preferredBatch: {
+      type: mongoose.Schema.Types.ObjectId, // For reschedule requests
+      default: null
+    },
+    requestedAt: {
+      type: Date,
+      default: null
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', null],
+      default: null
+    },
+    adminResponse: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    respondedAt: {
+      type: Date,
+      default: null
+    }
   }
 }, { 
   timestamps: true,

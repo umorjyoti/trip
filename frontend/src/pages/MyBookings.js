@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserBookings, cancelBooking, downloadInvoice } from '../services/api';
+import { getUserBookings, downloadInvoice } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { FaDownload, FaEye, FaTimes, FaCalendarAlt, FaUsers, FaRupeeSign, FaTicketAlt } from 'react-icons/fa';
+import { FaDownload, FaEye, FaCalendarAlt, FaUsers, FaRupeeSign, FaTicketAlt } from 'react-icons/fa';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
-  const [cancellingId, setCancellingId] = useState(null);
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
 
   useEffect(() => {
@@ -124,22 +123,6 @@ function MyBookings() {
   const filteredBookings = showIncompleteOnly 
     ? bookings.filter(booking => isIncompleteBooking(booking.status))
     : bookings;
-
-  const handleCancelBooking = async (bookingId) => {
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
-    setCancellingId(bookingId);
-    try {
-      await cancelBooking(bookingId, { reason: 'User cancelled from My Bookings' });
-      toast.success('Booking cancelled successfully');
-      // Refresh bookings
-      const data = await getUserBookings();
-      setBookings(Array.isArray(data) ? data : []);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to cancel booking');
-    } finally {
-      setCancellingId(null);
-    }
-  };
 
   const handleDownloadInvoice = async (bookingId) => {
     try {
@@ -444,17 +427,6 @@ function MyBookings() {
                         </>
                       )}
                     </button>
-                    
-                    {(booking.status === 'confirmed' || booking.status === 'pending_payment') && (
-                      <button
-                        onClick={() => handleCancelBooking(booking._id)}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 flex-1 sm:flex-none"
-                        disabled={cancellingId === booking._id}
-                      >
-                        <FaTimes className="mr-2 h-4 w-4" />
-                        {cancellingId === booking._id ? 'Cancelling...' : 'Cancel'}
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
