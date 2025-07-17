@@ -255,7 +255,7 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -493,7 +493,7 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -741,7 +741,7 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -1241,7 +1241,7 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -1421,7 +1421,7 @@ If you have any questions about this cancellation or would like to book another 
 We appreciate your understanding.
 
 Best regards,
-The Trek Adventures Team
+The Bengaluru Trekkers Team
 
 ---
 This is an automated message. Please do not reply to this email.
@@ -1546,7 +1546,7 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
         
@@ -1613,7 +1613,7 @@ For support, contact us through our website or mobile app.
         </div>
         
         <div class="footer">
-            <p>Best regards,<br>The Trek Adventures Team</p>
+            <p>Best regards,<br>The Bengaluru Trekkers Team</p>
             <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
                 This is an automated message. Please do not reply to this email.<br>
                 For support, contact us through our website or mobile app.
