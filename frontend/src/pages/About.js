@@ -72,26 +72,26 @@ function About() {
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-emerald-700 to-blue-600 text-white">
         <div className="absolute inset-0 bg-black opacity-20"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
           <div className="text-center">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">
               About Bengaluru Trekkers
             </h1>
-            <p className="text-xl md:text-2xl text-emerald-100 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl md:text-2xl text-emerald-100 max-w-3xl mx-auto leading-relaxed px-4">
               Connecting adventure enthusiasts with the world's most breathtaking trails since 2018
             </p>
-            <div className="mt-8 flex justify-center space-x-4">
-              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-6 py-3">
-                <span className="text-2xl font-bold">500+</span>
-                <p className="text-sm">Treks Completed</p>
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-center gap-4 sm:space-x-4">
+              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 sm:px-6 py-2 sm:py-3">
+                <span className="text-xl sm:text-2xl font-bold">500+</span>
+                <p className="text-xs sm:text-sm">Treks Completed</p>
               </div>
-              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-6 py-3">
-                <span className="text-2xl font-bold">10K+</span>
-                <p className="text-sm">Happy Trekkers</p>
+              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 sm:px-6 py-2 sm:py-3">
+                <span className="text-xl sm:text-2xl font-bold">10K+</span>
+                <p className="text-xs sm:text-sm">Happy Trekkers</p>
               </div>
-              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-6 py-3">
-                <span className="text-2xl font-bold">50+</span>
-                <p className="text-sm">Destinations</p>
+              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 sm:px-6 py-2 sm:py-3">
+                <span className="text-xl sm:text-2xl font-bold">50+</span>
+                <p className="text-xs sm:text-sm">Destinations</p>
               </div>
             </div>
           </div>
@@ -99,93 +99,93 @@ function About() {
       </section>
 
       {/* Mission & Vision Section */}
-      <section className="py-20 bg-white">
+      <section className="py-12 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-start md:items-center">
             <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
-              <p className="text-xl text-gray-600 leading-relaxed mb-8">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">Our Mission</h2>
+              <p className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-6 sm:mb-8">
               To create a safe, inclusive, and unforgettable trekking experience for everyone — whether you're a solo traveler or an adventure-seeking group.
               </p>
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  <span className="text-gray-700">Promote sustainable tourism practices</span>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-sm sm:text-base text-gray-700">Promote sustainable tourism practices</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  <span className="text-gray-700">Support local communities and economies</span>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-sm sm:text-base text-gray-700">Support local communities and economies</span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                  <span className="text-gray-700">Ensure safety and accessibility for all</span>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-sm sm:text-base text-gray-700">Ensure safety and accessibility for all</span>
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="bg-gradient-to-br from-emerald-100 to-blue-100 rounded-2xl p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Vision</h3>
-                <p className="text-gray-700 leading-relaxed">
+            <div className="relative mt-8 md:mt-0">
+              <div className="bg-gradient-to-br from-emerald-100 to-blue-100 rounded-2xl p-6 sm:p-8">
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Our Vision</h3>
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">
                 To go pan-India with unmatched safety standards, promote rural tourism, and help more people discover unexplored trails and responsible travel.
                 </p>
               </div>
-              <div className="absolute -top-4 -right-4 w-24 h-24 bg-emerald-500 rounded-full opacity-20"></div>
-              <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-blue-500 rounded-full opacity-20"></div>
+              <div className="absolute -top-4 -right-4 w-16 h-16 sm:w-24 sm:h-24 bg-emerald-500 rounded-full opacity-20"></div>
+              <div className="absolute -bottom-4 -left-4 w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full opacity-20"></div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Founders' Story Section */}
-      <section className="py-20 bg-white">
+      <section className="py-12 sm:py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-16">
-            <div className="flex items-center mb-8">
-              <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center mr-4">
-                <span className="text-white text-sm">👣</span>
+          <div className="mb-12 sm:mb-16">
+            <div className="flex items-center mb-6 sm:mb-8">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-emerald-600 rounded-lg flex items-center justify-center mr-3 sm:mr-4">
+                <span className="text-white text-xs sm:text-sm">👣</span>
               </div>
-              <h2 className="text-3xl font-bold text-emerald-700">Founders' Story</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-emerald-700">Founders' Story</h2>
             </div>
-            <p className="text-gray-700 leading-relaxed text-lg mb-6">
+            <p className="text-gray-700 leading-relaxed text-base sm:text-lg mb-6">
               Chandu MR and Varun H, co-founders of Bengaluru Trekkers, became friends in SJCE Engineering College through shared weekend trekking escapes. After graduation, while working in the same IT company in Bengaluru, their passion for trekking led Chandu to propose starting a trekking group to Varun, "not for business, just for people like us." Varun agreed, and they were later joined by college-mates Suresh and Karthik, forming a four-partner team built on trust, passion, and shared experience.
             </p>
-            <div className="text-gray-400 text-sm italic">Founders</div>
+            <div className="text-gray-400 text-xs sm:text-sm italic">Founders</div>
           </div>
           
           <div>
-            <div className="flex items-center mb-8">
-              <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center mr-4">
-                <span className="text-white text-sm">🚀</span>
+            <div className="flex items-center mb-6 sm:mb-8">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 bg-red-500 rounded-lg flex items-center justify-center mr-3 sm:mr-4">
+                <span className="text-white text-xs sm:text-sm">🚀</span>
               </div>
-              <h2 className="text-3xl font-bold text-emerald-700">How It All Started</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-emerald-700">How It All Started</h2>
             </div>
-            <p className="text-gray-700 leading-relaxed text-lg mb-6">
+            <p className="text-gray-700 leading-relaxed text-base sm:text-lg mb-6">
               Without a marketing budget, Chandu discovered a Twitter page called "Bangalore Roomie" (a hub for professionals in Bengaluru). He posted about their trek, tagged the page, and gained over 100 followers in one day. Their first trek to Bandaje Falls included 11 strangers from Twitter who became friends. The project scaled rapidly from one trek a month to multiple batches every weekend. By 2024, they formalized operations as TrekTales Explorers (OPC) Pvt. Ltd. under MCA, aiming to provide safe, inclusive, and quality trekking.
             </p>
-            <p className="text-emerald-600 font-semibold text-lg">And it all started with one tweet.</p>
-            <div className="text-gray-400 text-sm italic mt-4">Twitter Post</div>
+            <p className="text-emerald-600 font-semibold text-base sm:text-lg">And it all started with one tweet.</p>
+            <div className="text-gray-400 text-xs sm:text-sm italic mt-4">Twitter Post</div>
           </div>
         </div>
       </section>
 
       {/* Team Section */}
-      <section className="py-20 bg-white">
+      <section className="py-12 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <div className="flex items-center justify-center mb-6">
-              <span className="text-3xl mr-3">👨‍👨‍</span>
-              <h2 className="text-4xl font-bold text-gray-900">Meet the Core Team</h2>
+          <div className="text-center mb-12 sm:mb-16">
+            <div className="flex items-center justify-center mb-4 sm:mb-6">
+              <span className="text-2xl sm:text-3xl mr-2 sm:mr-3">👨‍👨‍</span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">Meet the Core Team</h2>
             </div>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {teamMembers.map((member, index) => (
               <div key={index} className="text-center">
-                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">{member.image}</span>
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <span className="text-xl sm:text-2xl">{member.image}</span>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">{member.name}</h3>
-                <p className="text-gray-600 text-sm">{member.role}</p>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1">{member.name}</h3>
+                <p className="text-xs sm:text-sm text-gray-600">{member.role}</p>
               </div>
             ))}
           </div>
@@ -193,25 +193,25 @@ function About() {
       </section>
 
       {/* Corporate Treks Section */}
-      <section className="py-20 bg-gradient-to-r from-gray-50 to-emerald-50">
+      <section className="py-12 sm:py-20 bg-gradient-to-r from-gray-50 to-emerald-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Corporate Treks</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">Our Corporate Treks</h2>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-4">
               Successfully organized team building and corporate adventure experiences for leading companies
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {corporateTreks.map((trek, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-6 border border-gray-100">
+              <div key={index} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-4 sm:p-6 border border-gray-100">
                 <div className="text-center mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-emerald-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-emerald-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 text-lg sm:text-2xl">
                     {trek.logo}
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">{trek.company}</h3>
-                  <p className="text-gray-600 text-sm mb-3">{trek.description}</p>
-                  <div className="bg-emerald-50 rounded-lg p-3">
+                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{trek.company}</h3>
+                  <p className="text-gray-600 text-xs sm:text-sm mb-3">{trek.description}</p>
+                  <div className="bg-emerald-50 rounded-lg p-2 sm:p-3">
                     <p className="text-emerald-700 text-xs font-semibold">{trek.details}</p>
                   </div>
                 </div>
@@ -269,22 +269,22 @@ function About() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-emerald-600 to-blue-600 text-white">
+      <section className="py-12 sm:py-20 bg-gradient-to-r from-emerald-600 to-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold mb-6">Ready for Your Next Adventure?</h2>
-          <p className="text-xl text-emerald-100 mb-8 max-w-2xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">Ready for Your Next Adventure?</h2>
+          <p className="text-lg sm:text-xl text-emerald-100 mb-6 sm:mb-8 max-w-2xl mx-auto px-4">
             Join thousands of trekkers who have discovered the world's most beautiful trails with us.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
             <button 
               onClick={() => navigate('/treks')}
-              className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold py-3 px-8 rounded-lg transition-colors duration-300"
+              className="bg-white text-emerald-600 hover:bg-gray-100 font-semibold py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg transition-colors duration-300 text-sm sm:text-base"
             >
               Explore Treks
             </button>
             <button 
               onClick={() => navigate('/contact')}
-              className="border-2 border-white text-white hover:bg-white hover:text-emerald-600 font-semibold py-3 px-8 rounded-lg transition-colors duration-300"
+              className="border-2 border-white text-white hover:bg-white hover:text-emerald-600 font-semibold py-2.5 sm:py-3 px-6 sm:px-8 rounded-lg transition-colors duration-300 text-sm sm:text-base"
             >
               Contact Us
             </button>
