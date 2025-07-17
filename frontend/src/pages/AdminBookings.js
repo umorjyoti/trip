@@ -106,8 +106,16 @@ function AdminBookings() {
       setTotalPages(data.pagination.pages);
       setTotalBookings(data.pagination.total);
       
-      // Calculate performance metrics
-      calculatePerformanceMetrics(Array.isArray(data.bookings) ? data.bookings : []);
+      // Use stats from API response instead of calculating from paginated data
+      if (data.stats) {
+        setPerformanceMetrics({
+          totalRevenue: data.stats.totalRevenue || 0,
+          totalBookings: data.stats.totalBookings || 0,
+          confirmedBookings: data.stats.confirmedBookings || 0,
+          cancelledBookings: data.stats.cancelledBookings || 0,
+          averageBookingValue: data.stats.averageBookingValue || 0
+        });
+      }
     } catch (err) {
       console.error('Error fetching bookings:', err);
       setError('Failed to load bookings. Please try again later.');
