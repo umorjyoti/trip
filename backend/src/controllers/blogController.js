@@ -31,6 +31,7 @@ const validateBlogData = (data) => {
   if (!data.metaTitle?.trim()) errors.push('Meta title is required');
   if (!data.metaDescription?.trim()) errors.push('Meta description is required');
   if (!data.keywords?.length) errors.push('At least one keyword is required');
+  if (!data.region) errors.push('Region is required');
   if (data.status === 'published' && !data.bannerImage) {
     errors.push('Banner image is required for published blogs');
   }
