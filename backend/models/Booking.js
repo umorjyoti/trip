@@ -190,6 +190,31 @@ const BookingSchema = new mongoose.Schema({
       type: String,
       enum: ['confirmed', 'bookingCancelled'],
       default: 'confirmed'
+    },
+    // Add cancellation fields
+    isCancelled: {
+      type: Boolean,
+      default: false
+    },
+    cancelledAt: {
+      type: Date
+    },
+    cancellationReason: {
+      type: String,
+      default: ''
+    },
+    // Add refund fields
+    refundStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'success', 'failed', 'not_applicable'],
+      default: 'not_applicable'
+    },
+    refundAmount: {
+      type: Number,
+      default: 0
+    },
+    refundDate: {
+      type: Date
     }
   }],
   // Add pickup and drop location fields
