@@ -27,12 +27,17 @@ const blogSchema = new mongoose.Schema({
   },
   bannerImage: {
     type: String,
-    required: [true, 'Banner image is required'],
+    required: function() {
+      return this.status === 'published';
+    },
     validate: {
       validator: function(v) {
-        return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(v);
+        if (this.status === 'published') {
+          return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(v);
+        }
+        return true;
       },
-      message: 'Banner image must be a valid image URL'
+      message: 'Banner image must be a valid image URL for published blogs'
     }
   },
   region: {

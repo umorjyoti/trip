@@ -32,8 +32,9 @@ const EditBookingModal = ({ isOpen, onClose, booking, trekData, onUpdate }) => {
     if (!booking) return;
 
     // Validate that we have details for all participants
-    if (formData.participantDetails.length !== booking.participants) {
-      toast.error(`Please provide details for all ${booking.participants} participants`);
+    const participantCount = booking.participants || booking.numberOfParticipants || 0;
+    if (formData.participantDetails.length !== participantCount) {
+      toast.error(`Please provide details for all ${participantCount} participants`);
       return;
     }
 
@@ -48,7 +49,7 @@ const EditBookingModal = ({ isOpen, onClose, booking, trekData, onUpdate }) => {
 
     setLoading(true);
     try {
-      await updateBooking(booking.bookingId, formData);
+      await updateBooking(booking.bookingId || booking._id, formData);
       toast.success('Participant details updated successfully');
       onUpdate(formData);
       onClose();
@@ -73,7 +74,7 @@ const EditBookingModal = ({ isOpen, onClose, booking, trekData, onUpdate }) => {
       <div className="space-y-6">
         <div>
           <p className="text-gray-600 mb-4">
-            Update participant information for this booking. Please provide details for all {booking?.participants || 0} participants.
+            Update participant information for this booking. Please provide details for all {booking?.participants || booking?.numberOfParticipants || 0} participants.
           </p>
           
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -82,7 +83,7 @@ const EditBookingModal = ({ isOpen, onClose, booking, trekData, onUpdate }) => {
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-900 flex items-center">
                   <FaUser className="mr-2 text-emerald-600" />
-                  Participant Details ({formData.participantDetails.length} of {booking?.participants || 0})
+                  Participant Details ({formData.participantDetails.length} of {booking?.participants || booking?.numberOfParticipants || 0})
                 </h4>
               </div>
 

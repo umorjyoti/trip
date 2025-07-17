@@ -1,16 +1,73 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { FaCheck, FaTimes } from 'react-icons/fa';
 
 const CancellationPolicy = () => {
+  const scrollRef = useRef(null);
+  const [scrollState, setScrollState] = useState({
+    isScrollable: false,
+    thumbWidth: 0,
+    thumbLeft: 0,
+  });
+
+  // Calculate scrollbar thumb size and position for table
+  const updateScrollBar = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const { scrollWidth, clientWidth, scrollLeft } = el;
+    if (scrollWidth > clientWidth) {
+      const ratio = clientWidth / scrollWidth;
+      const thumbWidth = Math.max(ratio * clientWidth, 40); // min width
+      const maxScrollLeft = scrollWidth - clientWidth;
+      const thumbLeft = (scrollLeft / maxScrollLeft) * (clientWidth - thumbWidth) || 0;
+      setScrollState({
+        isScrollable: true,
+        thumbWidth,
+        thumbLeft,
+      });
+    } else {
+      setScrollState({
+        isScrollable: false,
+        thumbWidth: 0,
+        thumbLeft: 0,
+      });
+    }
+  };
+
+  useEffect(() => {
+    updateScrollBar();
+    
+    const tableEl = scrollRef.current;
+    
+    if (tableEl) {
+      tableEl.addEventListener('scroll', updateScrollBar);
+    }
+    
+    window.addEventListener('resize', () => {
+      updateScrollBar();
+    });
+    
+    return () => {
+      if (tableEl) {
+        tableEl.removeEventListener('scroll', updateScrollBar);
+      }
+      window.removeEventListener('resize', () => {
+        updateScrollBar();
+      });
+    };
+  }, []);
+
   return (
     <div className="mt-12 scroll-mt-20">
       <h2 className="text-2xl font-bold text-gray-800 mb-6">
         Cancellation Policy
       </h2>
       
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden relative">
         {/* Policy Table */}
-        <div className="overflow-x-auto">
+        <div
+          className="overflow-x-auto scrollbar-hide"
+          ref={scrollRef}
+        >
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -103,8 +160,23 @@ const CancellationPolicy = () => {
             </tbody>
           </table>
         </div>
+        {/* Fake green scrollbar for table */}
+        {scrollState.isScrollable && (
+          <div
+            style={{
+              position: 'absolute',
+              left: scrollState.thumbLeft,
+              bottom: 2,
+              height: 4,
+              width: scrollState.thumbWidth,
+              background: '#10b981',
+              borderRadius: 2,
+              transition: 'left 0.1s',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </div>
-
       {/* Policy Notes */}
       <div className="mt-6 space-y-4">
         {/* <div className="bg-blue-50 border-l-4 border-blue-400 p-4">

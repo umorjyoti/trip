@@ -23,11 +23,11 @@ const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500">Booking ID</p>
-              <p className="font-medium text-gray-900">{booking.bookingId}</p>
+              <p className="font-medium text-gray-900">{booking.id || booking._id}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Booking Date</p>
-              <p className="font-medium text-gray-900">{formatDate(booking.bookingDate)}</p>
+              <p className="font-medium text-gray-900">{formatDate(booking.bookingDate || booking.createdAt)}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Status</p>
@@ -133,7 +133,7 @@ const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
               <p className="text-sm text-gray-500">Number of Participants</p>
               <p className="font-medium text-gray-900 flex items-center">
                 <FaUsers className="mr-1" />
-                {booking.participants}
+                {booking.participants || booking.numberOfParticipants}
               </p>
             </div>
           </div>

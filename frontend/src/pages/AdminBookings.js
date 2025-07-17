@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllBookings, updateBookingStatus, getAllTreks, exportBookings, adminCancelBooking } from '../services/api';
+import { getAllBookings, updateBookingStatus, getAllTreks, exportBookings, adminCancelBooking, sendReminderEmail, sendConfirmationEmail, sendInvoiceEmail, cancelBooking } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import ExportBookingsModal from '../components/ExportBookingsModal';
 import BookingsTable from './BookingsTable';
+import ParticipantExportModal from '../components/ParticipantExportModal';
+import RemarksModal from '../components/RemarksModal';
+import BookingActionMenu from '../components/BookingActionMenu';
+import EditBookingModal from '../components/EditBookingModal';
+
+import ViewBookingModal from '../components/ViewBookingModal';
+import CancellationModal from '../components/CancellationModal';
+import { formatCurrency, formatDate } from '../utils/formatters';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
@@ -38,6 +46,24 @@ function AdminBookings() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [searchValue, setSearchValue] = useState('');
+
+  // Performance metrics states
+  const [performanceMetrics, setPerformanceMetrics] = useState({
+    totalRevenue: 0,
+    totalBookings: 0,
+    confirmedBookings: 0,
+    cancelledBookings: 0,
+    averageBookingValue: 0
+  });
+
+  // Modal states
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [showRemarksModal, setShowRemarksModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showCancellationModal, setShowCancellationModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   useEffect(() => {
     fetchTreks();
@@ -79,6 +105,9 @@ function AdminBookings() {
       setBookings(Array.isArray(data.bookings) ? data.bookings : []);
       setTotalPages(data.pagination.pages);
       setTotalBookings(data.pagination.total);
+      
+      // Calculate performance metrics
+      calculatePerformanceMetrics(Array.isArray(data.bookings) ? data.bookings : []);
     } catch (err) {
       console.error('Error fetching bookings:', err);
       setError('Failed to load bookings. Please try again later.');
@@ -86,6 +115,37 @@ function AdminBookings() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const calculatePerformanceMetrics = (bookingsData) => {
+    const totalRevenue = bookingsData.reduce((sum, booking) => {
+      const paid = booking.totalPrice || 0;
+      let refunded = 0;
+      if (booking.refundStatus === 'success') {
+        refunded += booking.refundAmount || 0;
+      }
+      if (Array.isArray(booking.participantDetails)) {
+        refunded += booking.participantDetails.reduce((rSum, p) => {
+          if (p.refundStatus === 'success') {
+            return rSum + (p.refundAmount || 0);
+          }
+          return rSum;
+        }, 0);
+      }
+      return sum + (paid - refunded);
+    }, 0);
+
+    const confirmedBookings = bookingsData.filter(b => b.status === 'confirmed').length;
+    const cancelledBookings = bookingsData.filter(b => b.status === 'cancelled').length;
+    const averageBookingValue = bookingsData.length > 0 ? totalRevenue / bookingsData.length : 0;
+
+    setPerformanceMetrics({
+      totalRevenue,
+      totalBookings: bookingsData.length,
+      confirmedBookings,
+      cancelledBookings,
+      averageBookingValue
+    });
   };
 
   const handleStatusChange = async (bookingId, newStatus) => {
@@ -199,6 +259,103 @@ function AdminBookings() {
     setCurrentPage(1);
   };
 
+  // Enhanced booking action handlers
+  const handleRemarksClick = (booking) => {
+    setSelectedBooking(booking);
+    setShowRemarksModal(true);
+  };
+
+  const handleRemarksUpdate = (newRemarks) => {
+    if (selectedBooking) {
+      const updatedBookings = bookings.map(booking =>
+        booking._id === selectedBooking._id
+          ? { ...booking, adminRemarks: newRemarks }
+          : booking
+      );
+      setBookings(updatedBookings);
+    }
+  };
+
+  const handleBookingUpdate = (updatedData) => {
+    if (selectedBooking) {
+      const updatedBookings = bookings.map(booking =>
+        booking._id === selectedBooking._id
+          ? { 
+              ...booking, 
+              participantDetails: updatedData.participantDetails
+            }
+          : booking
+      );
+      setBookings(updatedBookings);
+    }
+  };
+
+
+
+  const handleBookingAction = async (action, booking) => {
+    setSelectedBooking(booking);
+    
+    switch (action) {
+      case 'view':       setShowViewModal(true);
+        break;
+        
+      case 'reminder':
+        try {
+          await sendReminderEmail(booking._id);
+          toast.success('Reminder email sent successfully');
+        } catch (error) {
+          console.error('Error sending reminder email:', error);
+          toast.error(error.response?.data?.message || 'Failed to send reminder email');
+        }
+        break;
+        
+      case 'confirmation':
+        try {
+          await sendConfirmationEmail(booking._id);
+          toast.success('Confirmation email sent successfully');
+        } catch (error) {
+          console.error('Error sending confirmation email:', error);
+          toast.error(error.response?.data?.message || 'Failed to send confirmation email');
+        }
+        break;
+        
+      case 'invoice':
+        try {
+          await sendInvoiceEmail(booking._id);
+          toast.success('Invoice email sent successfully');
+        } catch (error) {
+          console.error('Error sending invoice email:', error);
+          toast.error(error.response?.data?.message || 'Failed to send invoice email');
+        }
+        break;
+        
+      case 'edit':       setShowEditModal(true);
+        break;
+        
+      case 'cancel':       setShowCancellationModal(true);
+        break;
+        
+
+        
+      default:
+        toast.error('Unknown action');
+    }
+  };
+
+  const handleCancellationConfirm = async (cancellationData) => {
+    try {
+      await cancelBooking(cancellationData.bookingId || selectedBooking._id, cancellationData);
+      toast.success('Booking cancelled successfully');
+      
+      // Refresh the bookings list
+      fetchBookings();
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast.error(error.response?.data?.message || 'Failed to cancel booking');
+      throw error; // Re-throw to let the modal handle the error state
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -217,6 +374,40 @@ function AdminBookings() {
         >
           Export Bookings
         </button>
+      </div>
+
+      {/* Performance Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Revenue</h3>
+          <p className="text-3xl font-bold text-emerald-600">
+            {formatCurrency(performanceMetrics.totalRevenue)}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Bookings</h3>
+          <p className="text-3xl font-bold text-blue-600">
+            {performanceMetrics.totalBookings}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmed Bookings</h3>
+          <p className="text-3xl font-bold text-green-600">
+            {performanceMetrics.confirmedBookings}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancelled Bookings</h3>
+          <p className="text-3xl font-bold text-red-600">
+            {performanceMetrics.cancelledBookings}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Avg. Booking</h3>
+          <p className="text-3xl font-bold text-yellow-600">
+            {formatCurrency(performanceMetrics.averageBookingValue)}
+          </p>
+        </div>
       </div>
 
       {/* Filters Section */}
@@ -309,17 +500,91 @@ function AdminBookings() {
         </div>
       )}
 
-      <BookingsTable
-        bookings={bookings}
-        loading={loading}
-        error={error}
-        openCancelModal={openCancelModal}
-        cancelModal={cancelModal}
-        closeCancelModal={closeCancelModal}
-        handleCancelBooking={handleCancelBooking}
-        cancelLoading={cancelLoading}
-        calculateRefund={calculateRefund}
-      />
+      {/* Enhanced Bookings Table */}
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Bookings</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact & Booking Info</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Participants</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount & Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {bookings.length > 0 ? (
+                bookings.map((booking) => (
+                  <tr key={booking._id}>
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900">{booking.user?.name || 'Unknown User'}</div>
+                      <div className="text-sm text-gray-500">{booking.user?.email || 'No email'}</div>
+                      <div className="text-sm text-gray-500">{booking.user?.phone || 'No phone'}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        ID: {booking.id ? booking.id.substring(0, 8) + '...' : booking._id.substring(0, 8) + '...'} | Booked: {formatDate(booking.createdAt)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {booking.numberOfParticipants || booking.participants || 0} participants
+                      {booking.participantDetails && booking.participantDetails.length > 0 && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          {booking.participantDetails.length} details available
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <div className="font-medium text-gray-900">{formatCurrency(booking.totalPrice || 0)}</div>
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                        booking.status === 'pending_payment' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {booking.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <button
+                        onClick={() => handleRemarksClick(booking)}
+                        className="text-left w-full hover:bg-gray-50 p-2 rounded transition-colors"
+                      >
+                        {booking.adminRemarks ? (
+                          <div className="max-w-40">
+                            <p className="text-gray-900 truncate text-xs">{booking.adminRemarks}</p>
+                            <p className="text-xs text-gray-400 mt-1">Click to edit</p>
+                          </div>
+                        ) : (
+                          <div className="text-gray-400 italic">
+                            <p className="text-xs">No remarks</p>
+                            <p className="text-xs mt-1">Click to add</p>
+                          </div>
+                        )}
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <BookingActionMenu 
+                        booking={booking} 
+                        onAction={handleBookingAction}
+                        hideShiftAction={true}
+                      />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                    No bookings found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Pagination */}
       <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
@@ -383,10 +648,43 @@ function AdminBookings() {
         </div>
       </div>
 
+      {/* Modals */}
       <ExportBookingsModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         onExport={handleExport}
+      />
+
+      <RemarksModal
+        isOpen={showRemarksModal}
+        onClose={() => setShowRemarksModal(false)}
+        booking={selectedBooking}
+        onUpdate={handleRemarksUpdate}
+      />
+
+      <EditBookingModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        booking={selectedBooking}
+        trekData={selectedBooking ? treks.find(t => t._id === selectedBooking.trek) : null}
+        onUpdate={handleBookingUpdate}
+      />
+
+
+
+      <ViewBookingModal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        booking={selectedBooking}
+        trekData={selectedBooking ? treks.find(t => t._id === selectedBooking.trek) : null}
+      />
+
+      <CancellationModal
+        isOpen={showCancellationModal}
+        onClose={() => setShowCancellationModal(false)}
+        booking={selectedBooking}
+        bookingId={selectedBooking?._id}
+        onConfirmCancellation={handleCancellationConfirm}
       />
     </div>
   );

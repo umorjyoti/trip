@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -67,7 +67,7 @@ function BlogEditor() {
     debounce(async (data) => {
       if (id && data.status === 'draft') {
         try {
-          await axios.put(`/blogs/${id}`, {
+          await api.put(`/blogs/${id}`, {
             ...data,
             keywords: data.keywords.split(',').map(k => k.trim()).filter(k => k)
           });
@@ -89,8 +89,8 @@ function BlogEditor() {
 
   const fetchBlogRegions = async () => {
     try {
-      const response = await getBlogRegions();
-      setBlogRegions(response);
+      const regions = await getBlogRegions();
+      setBlogRegions(regions);
     } catch (error) {
       console.error('Error fetching blog regions:', error);
       toast.error('Failed to fetch blog regions');
@@ -100,8 +100,7 @@ function BlogEditor() {
   const fetchBlog = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/blogs/admin/${id}`);
-      const blog = response.data;
+      const blog = await api.get(`/blogs/admin/${id}`);
       setFormData({
         title: blog.title,
         content: blog.content,
@@ -162,7 +161,7 @@ function BlogEditor() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageUpload = async (file) => {
+  const handleImageUpload = useCallback(async (file) => {
     try {
       setUploadingImage(true);
       
@@ -198,7 +197,12 @@ function BlogEditor() {
     } finally {
       setUploadingImage(false);
     }
-  };
+  }, []);
+
+  const handleContentChange = useCallback((content) => {
+    setFormData(prev => ({ ...prev, content }));
+    setErrors(prev => ({ ...prev, content: '' }));
+  }, []);
 
   const handleBannerImageChange = async (e) => {
     const file = e.target.files[0];
@@ -273,10 +277,10 @@ function BlogEditor() {
       };
 
       if (id) {
-        await axios.put(`/blogs/${id}`, blogData);
+        await api.put(`/blogs/${id}`, blogData);
         toast.success('Blog updated successfully');
       } else {
-        await axios.post('/blogs', blogData);
+        await api.post('/blogs', blogData);
         toast.success('Blog created successfully');
       }
       navigate('/admin/blogs');
@@ -515,7 +519,7 @@ function BlogEditor() {
                 type="text"
                 value={formData.title}
                 onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value });
+                  setFormData(prev => ({ ...prev, title: e.target.value }));
                   setErrors(prev => ({ ...prev, title: '' }));
                 }}
                 className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.title ? 'border-red-300' : 'border-gray-300'}`}
@@ -535,7 +539,7 @@ function BlogEditor() {
               <textarea
                 value={formData.excerpt}
                 onChange={(e) => {
-                  setFormData({ ...formData, excerpt: e.target.value });
+                  setFormData(prev => ({ ...prev, excerpt: e.target.value }));
                   setErrors(prev => ({ ...prev, excerpt: '' }));
                 }}
                 rows={3}
@@ -562,7 +566,7 @@ function BlogEditor() {
                 <select
                   value={formData.region}
                   onChange={(e) => {
-                    setFormData({ ...formData, region: e.target.value });
+                    setFormData(prev => ({ ...prev, region: e.target.value }));
                     setErrors(prev => ({ ...prev, region: '' }));
                   }}
                   className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base transition-all duration-200 ${
@@ -619,11 +623,9 @@ function BlogEditor() {
               <label className="block text-base font-medium text-gray-800 mb-1">Content</label>
               <div className={`rounded-lg border bg-gray-50 ${errors.content ? 'border-red-300' : 'border-gray-300'}`}> 
                 <RichTextEditor
+                  key="blog-content-editor"
                   value={formData.content}
-                  onChange={(content) => {
-                    setFormData({ ...formData, content });
-                    setErrors(prev => ({ ...prev, content: '' }));
-                  }}
+                  onChange={handleContentChange}
                   onImageUpload={handleImageUpload}
                 />
               </div>
@@ -678,7 +680,7 @@ function BlogEditor() {
                 type="text"
                 value={formData.metaTitle}
                 onChange={(e) => {
-                  setFormData({ ...formData, metaTitle: e.target.value });
+                  setFormData(prev => ({ ...prev, metaTitle: e.target.value }));
                   setErrors(prev => ({ ...prev, metaTitle: '' }));
                 }}
                 className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.metaTitle ? 'border-red-300' : 'border-gray-300'}`}
@@ -703,7 +705,7 @@ function BlogEditor() {
               <textarea
                 value={formData.metaDescription}
                 onChange={(e) => {
-                  setFormData({ ...formData, metaDescription: e.target.value });
+                  setFormData(prev => ({ ...prev, metaDescription: e.target.value }));
                   setErrors(prev => ({ ...prev, metaDescription: '' }));
                 }}
                 rows={3}
@@ -728,7 +730,7 @@ function BlogEditor() {
                 type="text"
                 value={formData.keywords}
                 onChange={(e) => {
-                  setFormData({ ...formData, keywords: e.target.value });
+                  setFormData(prev => ({ ...prev, keywords: e.target.value }));
                   setErrors(prev => ({ ...prev, keywords: '' }));
                 }}
                 className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.keywords ? 'border-red-300' : 'border-gray-300'}`}
@@ -745,7 +747,7 @@ function BlogEditor() {
               <label className="block text-base font-medium text-gray-800 mb-1">Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50"
                 disabled={submitting}
               >

@@ -13,6 +13,7 @@ function BookingPage() {
   const [trek, setTrek] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [razorpayKey, setRazorpayKey] = useState(null);
   const [taxInfo, setTaxInfo] = useState({
@@ -253,6 +254,7 @@ function BookingPage() {
         order_id: order.id,
         handler: async function (response) {
           try {
+            setVerifyingPayment(true);
             // Razorpay closes the modal automatically; no need to call this.modal.hide()
             // Verify payment using the API service
             await verifyPayment({
@@ -261,9 +263,8 @@ function BookingPage() {
               razorpay_signature: response.razorpay_signature,
               bookingId: booking._id,
             });
-
             toast.success('Payment successful! Please fill in participant details.');
-            
+            setVerifyingPayment(false);
             // Redirect to participant details page with necessary information
             navigate(`/booking/${booking._id}/participant-details`, { 
               state: { 
@@ -275,6 +276,7 @@ function BookingPage() {
               } 
             });
           } catch (error) {
+            setVerifyingPayment(false);
             console.error('Payment verification error:', error);
             toast.error(error.message || 'Payment verification failed. Please contact support.');
             navigate(`/booking-detail/${booking._id}`, { state: { paymentStatus: 'failure' } });
@@ -775,6 +777,15 @@ function BookingPage() {
           </div>
         </div>
       </div>
+      {verifyingPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4">
+            <LoadingSpinner />
+            <p className="text-lg font-medium text-gray-900">Verifying Payment...</p>
+            <p className="text-sm text-gray-600">Please wait while we verify your payment</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
