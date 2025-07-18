@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import { useParams, Link, useLocation } from "react-router-dom";
 import {
   getRegionById,
@@ -13,7 +14,6 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import LoadingSpinner from "../components/LoadingSpinner";
-import ImageGallery from "../components/ImageGallery";
 import TrekCard from "../components/TrekCard";
 import VideoCarousel from "../components/VideoCarousel";
 import TrekSection from "../components/TrekSection";
@@ -25,8 +25,56 @@ function RegionDetail() {
   const [treks, setTreks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showGallery, setShowGallery] = useState(false);
   const [showVideos, setShowVideos] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const galleryModalRef = useRef(null);
+
+  // Touch support for carousel
+  const touchStartX = useRef(null);
+
+  // Trap focus in modal
+  useEffect(() => {
+    if (galleryOpen && galleryModalRef.current) {
+      galleryModalRef.current.focus();
+    }
+  }, [galleryOpen]);
+
+  // Prevent background scroll when gallery is open
+  useEffect(() => {
+    if (!galleryOpen) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [galleryOpen]);
+
+  // Gallery functions
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchMove = (e) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.touches[0].clientX - touchStartX.current;
+    if (Math.abs(deltaX) > 50) {
+      if (deltaX > 0) handlePrevImage();
+      else handleNextImage();
+      touchStartX.current = null;
+    }
+  };
+  const handleTouchEnd = () => {
+    touchStartX.current = null;
+  };
+
+  const handleOpenGallery = (idx) => {
+    setGalleryIndex(idx);
+    setGalleryOpen(true);
+  };
+  const handleCloseGallery = () => setGalleryOpen(false);
+  const handlePrevImage = () =>
+    setGalleryIndex((prev) => (prev === 0 ? (region?.images?.length || 1) - 1 : prev - 1));
+  const handleNextImage = () =>
+    setGalleryIndex((prev) => (prev === (region?.images?.length || 1) - 1 ? 0 : prev + 1));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -174,7 +222,7 @@ function RegionDetail() {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold">Gallery</h2>
                   <button
-                    onClick={() => setShowGallery(true)}
+                    onClick={() => handleOpenGallery(0)}
                     className="text-emerald-600 hover:text-emerald-700 flex items-center"
                   >
                     <FaImages className="mr-2" />
@@ -185,8 +233,8 @@ function RegionDetail() {
                   {region.images.slice(0, 4).map((image, index) => (
                     <div
                       key={index}
-                      className="relative h-40 rounded-lg overflow-hidden cursor-pointer"
-                      onClick={() => setShowGallery(true)}
+                      className="relative aspect-square rounded-lg overflow-hidden cursor-pointer bg-gray-100"
+                      onClick={() => handleOpenGallery(index)}
                     >
                       <img
                         src={image}
@@ -300,13 +348,96 @@ function RegionDetail() {
         <VideoCarousel videos={region.videos} title="Memories For Life" />
       )}
 
-      {/* Full Screen Image Gallery */}
-      {showGallery && (
-        <ImageGallery
-          images={region.images || []}
-          onClose={() => setShowGallery(false)}
-          title={region.name}
-        />
+      {/* Gallery modal */}
+      {galleryOpen && ReactDOM.createPortal(
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 transition-opacity"
+          tabIndex={-1}
+          ref={galleryModalRef}
+          onClick={handleCloseGallery}
+        >
+          <div
+            className="relative max-w-4xl w-full mx-4 bg-transparent rounded-xl flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Close button */}
+            <button
+              className="absolute top-0 right-0 -mr-12 text-white bg-black bg-opacity-50 rounded-full p-2 shadow hover:bg-opacity-75 z-10"
+              onClick={handleCloseGallery}
+              aria-label="Close gallery"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                className="h-6 w-6"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            {/* Carousel navigation */}
+            <button
+              className="absolute left-0 top-1/2 -translate-y-1/2 -ml-12 bg-black bg-opacity-50 rounded-full p-2 shadow hover:bg-opacity-75 z-10"
+              onClick={handlePrevImage}
+              aria-label="Previous image"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                className="h-6 w-6 text-white"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <button
+              className="absolute right-0 top-1/2 -translate-y-1/2 -mr-12 bg-black bg-opacity-50 rounded-full p-2 shadow hover:bg-opacity-75 z-10"
+              onClick={handleNextImage}
+              aria-label="Next image"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                className="h-6 w-6 text-white"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+            {/* Main image */}
+            <img
+              src={region.images[galleryIndex]}
+              alt={`Region gallery ${galleryIndex + 1}`}
+              className="max-h-[85vh] w-auto rounded-lg object-contain shadow-lg transition-all duration-300"
+            />
+            {/* Image counter */}
+            <div className="mt-4 text-white text-sm">
+              {galleryIndex + 1} / {region.images.length}
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
