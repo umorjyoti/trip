@@ -88,7 +88,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: Math.round(amount), // Send as integer rupees
+          amount: amount, // Send exact amount
           bookingId,
           partial_payment: allowPartialPayment,
         }),

@@ -245,7 +245,7 @@ function BookingPage() {
       const booking = await createBooking(bookingData);
       
       // Create Razorpay order using the API service
-      const { order } = await createPaymentOrder(Math.round(booking.totalPrice), booking._id);
+      const { order } = await createPaymentOrder(booking.totalPrice, booking._id);
 
       // Initialize Razorpay
       const options = {

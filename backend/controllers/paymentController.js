@@ -29,7 +29,7 @@ exports.createOrder = async (req, res) => {
 
     // Create order
     const options = {
-      amount: amount * 100, // Razorpay amount is in paisa (multiply by 100)
+      amount: Math.round(amount * 100), // Razorpay amount is in paisa (multiply by 100 and round to avoid floating point issues)
       currency,
       receipt: `booking_${bookingId}`,
       notes: {
@@ -42,7 +42,7 @@ exports.createOrder = async (req, res) => {
 
     // Add partial payment options if enabled
     if (partial_payment) {
-      options.first_payment_min_amount = Math.floor(amount * 0.2 * 100); // Minimum 20% of total amount
+      options.first_payment_min_amount = Math.round(amount * 0.2 * 100); // Minimum 20% of total amount
     }
 
     const order = await razorpay.orders.create(options);
