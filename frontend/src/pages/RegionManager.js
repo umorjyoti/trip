@@ -14,7 +14,7 @@ import {
 import AdminLayout from "../layouts/AdminLayout";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Modal from "../components/Modal";
-import { formatLocation } from "../utils/formatters";
+import { createRegionSlug } from "../services/api";
 
 function RegionManager() {
   const [regions, setRegions] = useState([]);
@@ -184,7 +184,7 @@ function RegionManager() {
                     )}
                     <div className="absolute top-2 right-2 flex space-x-2">
                       <Link
-                        to={`/regions/${formatLocation(region.name)}`}
+                        to={`/regions/${createRegionSlug(region.name)}`}
                         state={{ id: region?._id }}
                         className="p-2 bg-white rounded-full shadow-md text-emerald-600 hover:bg-emerald-50"
                       >
@@ -235,7 +235,7 @@ function RegionManager() {
                         {region.isEnabled ? "Active" : "Inactive"}
                       </span>
                       <Link
-                         to={`/regions/${formatLocation(region.name)}`}
+                         to={`/regions/${createRegionSlug(region.name)}`}
                          state={{ id: region?._id }}
                         className="text-sm font-medium text-emerald-600 hover:text-emerald-500"
                       >
@@ -290,7 +290,7 @@ function RegionManager() {
                       </div>
                       <div className="flex items-center space-x-4">
                         <Link
-                          to={`/regions/${formatLocation(region.name)}`}
+                          to={`/regions/${createRegionSlug(region.name)}`}
                           state={{ id: region?._id }}
                           className="text-emerald-600 hover:text-emerald-900"
                           title="View"

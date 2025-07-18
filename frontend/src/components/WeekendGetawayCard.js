@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { getActiveOffers, formatCurrency, createTrekSlug } from '../services/api';
+import { formatCurrency, createTrekSlug } from '../services/api';
 import { motion } from 'framer-motion';
 import { 
   FaMapMarkerAlt, 
@@ -36,27 +36,7 @@ const formatDate = (dateString) => {
   }
 };
 
-function WeekendGetawayCard({ trek }) {
-  const [activeOffers, setActiveOffers] = useState([]);
-  const [loadingOffers, setLoadingOffers] = useState(true);
-
-  // Fetch Offers
-  useEffect(() => {
-    const fetchActiveOffers = async () => {
-      setLoadingOffers(true);
-      try {
-        const offers = await getActiveOffers();
-        setActiveOffers(offers || []);
-      } catch (error) {
-        console.error('Error fetching active offers:', error);
-        setActiveOffers([]);
-      } finally {
-        setLoadingOffers(false);
-      }
-    };
-    fetchActiveOffers();
-  }, []);
-
+function WeekendGetawayCard({ trek, offers = [] }) {
   // Get region name from trek data
   const getRegionName = () => {
     if (trek.regionName) {
@@ -72,7 +52,7 @@ function WeekendGetawayCard({ trek }) {
   const getPrice = () => trek.displayPrice || (trek.batches && trek.batches.length > 0 ? trek.batches[0].price : 0);
   const basePrice = getPrice();
 
-  const applicableOffer = !loadingOffers && activeOffers.find(offer =>
+  const applicableOffer = offers.find(offer =>
     offer.isActive &&
     (!offer.applicableTreks || offer.applicableTreks.length === 0 || offer.applicableTreks.includes(trek._id)) &&
     new Date(offer.startDate) <= new Date() &&

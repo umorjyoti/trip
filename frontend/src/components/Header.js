@@ -6,7 +6,7 @@ import { FaHeart, FaUser, FaSignOutAlt, FaCog, FaClipboardList, FaTicketAlt, FaB
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRegions } from '../services/api';
 import { FaHome, FaHiking, FaMapMarkedAlt, FaBlog, FaInfoCircle, FaPhone, FaGlobe } from 'react-icons/fa';
-import { formatLocation } from '../utils/formatters';
+import { createRegionSlug } from '../services/api';
 
 const MobileNavLink = ({ to, icon: Icon, children, onClick }) => (
   <Link
@@ -190,7 +190,7 @@ function Header() {
                       {regions.map(region => (
                         <Link
                           key={region._id}
-                          to={`/regions/${formatLocation(region.name)}`}
+                          to={`/regions/${createRegionSlug(region.name)}`}
                           state={{ id: region?._id }}
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                           role="menuitem"

@@ -90,10 +90,11 @@ function App() {
   const permissions = currentUser?.group?.permissions;
   const location = useLocation();
 
-  useEffect(() => {
-    // Refresh user data when app loads
-    refreshUser();
-  }, [refreshUser]);
+  // Remove this useEffect as AuthContext already handles user refresh on mount
+  // useEffect(() => {
+  //   // Refresh user data when app loads
+  //   refreshUser();
+  // }, [refreshUser]);
 
   // Check if current path is an admin route
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -568,8 +569,8 @@ function App() {
                 }
               />
 
-              {/* Region Detail Route */}
-              <Route path="/regions/:id" element={<RegionDetail />} />
+              {/* Region Detail Routes */}
+              <Route path="/regions/:slug" element={<RegionDetail />} />
 
               {/* Region List Route */}
               <Route path="/regions" element={<RegionList />} />

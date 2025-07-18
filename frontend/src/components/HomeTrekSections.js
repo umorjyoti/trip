@@ -9,23 +9,37 @@ function HomeTrekSections() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    console.log('HomeTrekSections mounted - fetching sections');
+    let isMounted = true;
+    
     const fetchSections = async () => {
       try {
         setLoading(true);
         console.log('Fetching active trek sections...');
         const data = await getActiveTrekSections();
         console.log('Received trek sections:', data);
-        setSections(data);
-        setError(null);
+        
+        if (isMounted) {
+          setSections(data);
+          setError(null);
+        }
       } catch (err) {
         console.error('Error fetching trek sections:', err);
-        setError('Failed to load trek sections');
+        if (isMounted) {
+          setError('Failed to load trek sections');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchSections();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
 

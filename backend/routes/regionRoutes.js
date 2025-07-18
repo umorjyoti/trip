@@ -5,6 +5,7 @@ const { protect, admin } = require('../middleware/authMiddleware');
 
 // Public routes
 router.get('/', regionController.getAllRegions);
+router.get('/slug/:slug', regionController.getRegionBySlug);
 router.get('/:id', regionController.getRegionById);
 
 // Protected routes

@@ -14,6 +14,7 @@ export function AuthProvider({ children }) {
 
   const refreshUser = useCallback(async () => {
     try {
+      console.log('AuthContext: refreshUser called');
       setLoading(true);
       const userData = await getCurrentUser();
       setCurrentUser(userData);
@@ -27,7 +28,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     refreshUser();
-  }, [refreshUser]);
+  }, []); // Remove refreshUser from dependencies to prevent infinite loops
 
   const login = async (email, password) => {
     try {

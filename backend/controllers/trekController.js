@@ -195,6 +195,62 @@ exports.getTrekById = async (req, res) => {
   }
 };
 
+// Get trek by slug
+exports.getTrekBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    
+    if (!slug) {
+      return res.status(400).json({ message: 'Trek slug is required' });
+    }
+    
+    // Get current date for filtering batches
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); // Set to start of day
+
+    // Fetch trek by slug with populated batches and include customFields
+    const trek = await Trek.findOne({ slug: slug.toLowerCase() }).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
+    
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+
+    // Filter batches manually to ensure proper date comparison
+    trek.batches = trek.batches.filter(batch => {
+      const batchStartDate = new Date(batch.startDate);
+      batchStartDate.setHours(0, 0, 0, 0);
+      
+      return (
+        // Batch hasn't started yet
+        batchStartDate > currentDate &&
+        // Has available spots
+        batch.currentParticipants < batch.maxParticipants
+      );
+    });
+    
+    // Ensure GST and gateway details are included in the response
+    const response = trek.toObject();
+    response.gstDetails = {
+      percent: trek.gstPercent || 0,
+      type: trek.gstType || 'excluded'
+    };
+    response.gatewayDetails = {
+      percent: trek.gatewayPercent || 0,
+      type: trek.gatewayType || 'customer'
+    };
+    
+    console.log('Trek found by slug:', trek.name);
+    console.log('Available future batches:', trek.batches.length);
+    console.log('Custom fields:', trek.customFields);
+    console.log('GST and Gateway details:', { gst: response.gstDetails, gateway: response.gatewayDetails });
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting trek by slug:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // Get trek by custom access token
 exports.getTrekByCustomToken = async (req, res) => {
   try {
@@ -308,6 +364,15 @@ exports.getTrekByCustomToken = async (req, res) => {
 exports.createTrek = async (req, res) => {
   try {
     console.log('Creating trek with data:', req.body);
+    
+    // Check for duplicate trek name
+    const existingTrek = await Trek.findOne({ name: req.body.name });
+    if (existingTrek) {
+      return res.status(400).json({ 
+        message: 'A trek with this name already exists. Please choose a different name.',
+        field: 'name'
+      });
+    }
     
     // Get region name if region ID is provided
     let regionName = req.body.regionName || 'Unknown Region';

@@ -882,6 +882,27 @@ export const getRegionById = async (id) => {
   }
 };
 
+// Get region by slug
+export const getRegionBySlug = async (slug) => {
+  try {
+    const response = await api.get(`/regions/slug/${slug}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching region by slug:', error);
+    throw error;
+  }
+};
+
+// Helper function to convert region name to URL-friendly slug
+export const createRegionSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+};
+
 // Get treks by region name
 export const getTreksByRegion = async (regionName) => {
   try {
@@ -1414,7 +1435,7 @@ export const createTrekSlug = (name) => {
     .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .trim('-'); // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 };
 
 // Helper function to get trek ID from slug
