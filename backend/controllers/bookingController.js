@@ -68,8 +68,28 @@ const createCustomTrekBooking = async (req, res) => {
       return res.status(404).json({ message: "Custom batch not found" });
     }
 
-    // Check if batch is full
-    if (customBatch.currentParticipants + participantsCount > customBatch.maxParticipants) {
+    // Calculate actual current participants by querying confirmed bookings
+    const confirmedBookings = await Booking.find({
+      batch: customBatch._id,
+      status: 'confirmed'
+    });
+    
+    const actualCurrentParticipants = confirmedBookings.reduce((sum, booking) => {
+      if (booking && booking.status === 'confirmed') {
+        const activeParticipants = booking.participantDetails ? 
+          booking.participantDetails.filter(p => !p.isCancelled).length : 
+          booking.numberOfParticipants || 0;
+        return sum + activeParticipants;
+      }
+      return sum;
+    }, 0);
+    
+    console.log("Custom trek - Actual current participants:", actualCurrentParticipants);
+    console.log("Custom trek - Requested participants:", participantsCount);
+    console.log("Custom trek - Max participants:", customBatch.maxParticipants);
+    
+    // Check if batch is full using actual participant count
+    if (actualCurrentParticipants + participantsCount > customBatch.maxParticipants) {
       return res
         .status(400)
         .json({ message: "Not enough spots available in this custom trek" });
@@ -177,9 +197,30 @@ const createBooking = async (req, res) => {
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
-
-    // Check if batch is full
-    if (batch.currentParticipants + participantsCount > batch.maxParticipants) {
+    console.log("batch", batch);
+    
+    // Calculate actual current participants by querying confirmed bookings
+    const confirmedBookings = await Booking.find({
+      batch: batchId,
+      status: 'confirmed'
+    });
+    
+    const actualCurrentParticipants = confirmedBookings.reduce((sum, booking) => {
+      if (booking && booking.status === 'confirmed') {
+        const activeParticipants = booking.participantDetails ? 
+          booking.participantDetails.filter(p => !p.isCancelled).length : 
+          booking.numberOfParticipants || 0;
+        return sum + activeParticipants;
+      }
+      return sum;
+    }, 0);
+    
+    console.log("Actual current participants:", actualCurrentParticipants);
+    console.log("Requested participants:", participantsCount);
+    console.log("Max participants:", batch.maxParticipants);
+    
+    // Check if batch is full using actual participant count
+    if (actualCurrentParticipants + participantsCount > batch.maxParticipants) {
       return res
         .status(400)
         .json({ message: "Not enough spots available in this batch" });
