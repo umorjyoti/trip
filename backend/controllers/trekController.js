@@ -89,8 +89,63 @@ exports.getTrekById = async (req, res) => {
       return res.status(404).json({ message: 'Trek not found' });
     }
 
-    // Filter batches manually to ensure proper date comparison
-    trek.batches = trek.batches.filter(batch => {
+    // Get all bookings for this trek's batches to calculate actual current participants
+    const batchIds = trek.batches
+      .filter(batch => batch && batch._id)
+      .map(batch => batch._id);
+    
+    let bookings = [];
+    if (batchIds.length > 0) {
+      bookings = await Booking.find({
+        batch: { $in: batchIds }
+      }).populate('user', 'name email');
+    }
+
+    // Safely filter bookings
+    const safeBookings = bookings.filter(booking => booking != null);
+
+    // Calculate actual current participants and confirmed booking count for each batch
+    const updatedBatches = await Promise.all(trek.batches.map(async batch => {
+      const batchBookings = safeBookings.filter(booking => {
+        if (!booking || !booking.batch || !batch || !batch._id) {
+          return false;
+        }
+        // Safe string comparison
+        const bookingBatchId = booking.batch.toString ? booking.batch.toString() : String(booking.batch);
+        const batchId = batch._id.toString ? batch._id.toString() : String(batch._id);
+        return bookingBatchId === batchId;
+      });
+
+      // Query DB for confirmed bookings for this batch
+      const bookingCountConfirmed = await Booking.countDocuments({
+        batch: batch._id,
+        status: 'confirmed'
+      });
+
+      // Calculate actual current participants using the improved logic
+      const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
+        if (booking && booking.status === 'confirmed') {
+          if (booking.participantDetails && booking.participantDetails.length > 0) {
+            return sum + booking.participantDetails.filter(p => !p.isCancelled).length;
+          }
+          return sum + (booking.numberOfParticipants || 0);
+        }
+        return sum;
+      }, 0);
+
+      // Calculate available spots based on confirmed booking count (not participant count)
+      const availableSpots = Math.max(0, batch.maxParticipants - bookingCountConfirmed);
+
+      return {
+        ...batch.toObject(),
+        currentParticipants: actualCurrentParticipants,
+        availableSpots: availableSpots,
+        bookingCountConfirmed: bookingCountConfirmed // new attribute
+      };
+    }));
+
+    // Filter batches to only show future batches with available spots
+    const availableBatches = updatedBatches.filter(batch => {
       const batchStartDate = new Date(batch.startDate);
       batchStartDate.setHours(0, 0, 0, 0);
       
@@ -98,12 +153,13 @@ exports.getTrekById = async (req, res) => {
         // Batch hasn't started yet
         batchStartDate > currentDate &&
         // Has available spots
-        batch.currentParticipants < batch.maxParticipants
+        batch.availableSpots > 0
       );
     });
-    
+
     // Ensure GST and gateway details are included in the response
     const response = trek.toObject();
+    response.batches = availableBatches;
     response.gstDetails = {
       percent: trek.gstPercent || 0,
       type: trek.gstType || 'excluded'
@@ -114,9 +170,23 @@ exports.getTrekById = async (req, res) => {
     };
     
     console.log('Trek found:', trek.name);
-    console.log('Available future batches:', trek.batches.length);
+    console.log('Available future batches:', availableBatches.length);
     console.log('Custom fields:', trek.customFields);
     console.log('GST and Gateway details:', { gst: response.gstDetails, gateway: response.gatewayDetails });
+    
+    // Debug the specific batch that's showing 3 participants
+    const debugBatch = availableBatches.find(batch => batch._id.toString() === '6868f9c33aaf550003d8807e');
+    if (debugBatch) {
+      console.log(`\n=== DEBUG: Specific batch ${debugBatch._id} ===`);
+      console.log(`currentParticipants: ${debugBatch.currentParticipants}`);
+      console.log(`availableSpots: ${debugBatch.availableSpots}`);
+    }
+    
+    // Debug all bookings for this trek
+    console.log(`\n=== DEBUG: All bookings for trek ${trek._id} ===`);
+    safeBookings.forEach(booking => {
+      console.log(`Booking ${booking._id}: batch=${booking.batch}, status=${booking.status}, numberOfParticipants=${booking.numberOfParticipants}`);
+    });
     
     res.json(response);
   } catch (error) {
@@ -147,8 +217,60 @@ exports.getTrekByCustomToken = async (req, res) => {
     const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
     
-    // Filter batches manually to ensure proper date comparison
-    trek.batches = trek.batches.filter(batch => {
+    // Get all bookings for this trek's batches to calculate actual current participants
+    const batchIds = trek.batches
+      .filter(batch => batch && batch._id)
+      .map(batch => batch._id);
+    
+    let bookings = [];
+    if (batchIds.length > 0) {
+      bookings = await Booking.find({
+        batch: { $in: batchIds }
+      }).populate('user', 'name email');
+    }
+
+    // Safely filter bookings
+    const safeBookings = bookings.filter(booking => booking != null);
+
+    // Calculate actual current participants for each batch
+    const updatedBatches = trek.batches.map(batch => {
+      const batchBookings = safeBookings.filter(booking => {
+        if (!booking || !booking.batch || !batch || !batch._id) {
+          return false;
+        }
+        
+        // Safe string comparison
+        const bookingBatchId = booking.batch.toString ? booking.batch.toString() : String(booking.batch);
+        const batchId = batch._id.toString ? batch._id.toString() : String(batch._id);
+        
+        return bookingBatchId === batchId;
+      });
+      
+      // Calculate actual current participants using the same logic as getTrekPerformance
+      const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
+        // Only count participants from confirmed bookings
+        if (booking && booking.status === 'confirmed') {
+          // Count only non-cancelled participants
+          const activeParticipants = booking.participantDetails ? 
+            booking.participantDetails.filter(p => !p.isCancelled).length : 
+            booking.numberOfParticipants || 0;
+          return sum + activeParticipants;
+        }
+        return sum;
+      }, 0);
+
+      // Calculate available spots
+      const availableSpots = Math.max(0, batch.maxParticipants - actualCurrentParticipants);
+      
+      return {
+        ...batch.toObject(),
+        currentParticipants: actualCurrentParticipants,
+        availableSpots: availableSpots
+      };
+    });
+
+    // Filter batches to only show future batches with available spots
+    const availableBatches = updatedBatches.filter(batch => {
       const batchStartDate = new Date(batch.startDate);
       batchStartDate.setHours(0, 0, 0, 0);
       
@@ -156,12 +278,13 @@ exports.getTrekByCustomToken = async (req, res) => {
         // Batch hasn't started yet
         batchStartDate > currentDate &&
         // Has available spots
-        batch.currentParticipants < batch.maxParticipants
+        batch.availableSpots > 0
       );
     });
     
     // Ensure GST and gateway details are included in the response
     const response = trek.toObject();
+    response.batches = availableBatches;
     response.gstDetails = {
       percent: trek.gstPercent || 0,
       type: trek.gstType || 'excluded'
@@ -172,7 +295,7 @@ exports.getTrekByCustomToken = async (req, res) => {
     };
     
     console.log('Custom trek found:', trek.name);
-    console.log('Available future batches:', trek.batches.length);
+    console.log('Available future batches:', availableBatches.length);
     console.log('Custom fields:', trek.customFields);
     
     res.json(response);
@@ -1196,6 +1319,8 @@ exports.getBatchPerformance = async (req, res) => {
 exports.getTrekPerformance = async (req, res) => {
   try {
     console.log('Getting trek performance for ID:', req.params.id);
+
+    console.log("meow meow meow meow meow meow meow meow meow meow");
     
     // Validate input parameter
     if (!req.params.id) {

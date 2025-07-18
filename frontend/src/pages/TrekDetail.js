@@ -160,7 +160,7 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
         {batchesByMonth[format(selectedMonth, 'yyyy-MM')]?.map((batch) => {
           const isFull = batch.currentParticipants >= batch.maxParticipants;
           const isDisabled = isTrekDisabled || isFull;
-          const availability = batch.maxParticipants - batch.currentParticipants;
+          const availability = batch.availableSpots || (batch.maxParticipants - batch.currentParticipants);
           const isSelected = selectedBatch?._id === batch._id;
 
           return (
@@ -718,7 +718,7 @@ function TrekDetail() {
           {trek.batches.map((batch) => {
             const isFull = batch.currentParticipants >= batch.maxParticipants;
             const isDisabled = isTrekDisabled || isFull;
-            const spotsLeft = batch.maxParticipants - batch.currentParticipants;
+            const spotsLeft = batch.availableSpots || (batch.maxParticipants - batch.currentParticipants);
 
             return (
               <div
@@ -796,8 +796,7 @@ function TrekDetail() {
                 {formatDate(selectedBatch.endDate)}
               </p>
               <p className="text-sm text-gray-500">
-                {selectedBatch.maxParticipants -
-                  selectedBatch.currentParticipants}{" "}
+                {selectedBatch.availableSpots || (selectedBatch.maxParticipants - selectedBatch.currentParticipants)}{" "}
                 spots left
               </p>
             </div>
