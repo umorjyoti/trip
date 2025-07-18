@@ -1480,11 +1480,11 @@ exports.exportBatchParticipants = async (req, res) => {
                 });
                 return participant.phone || participant.contactNumber || 'N/A';
               case 'emergencyContactName':
-                return participant.emergencyContact?.name || 'N/A';
+                return booking.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
-                return participant.emergencyContact?.phone || 'N/A';
+                return booking.emergencyContact?.phone || 'N/A';
               case 'emergencyContactRelation':
-                return participant.emergencyContact?.relationship || participant.emergencyContact?.relation || 'N/A';
+                return booking.emergencyContact?.relation || 'N/A';
               case 'medicalConditions':
                 return participant.allergies || participant.medicalConditions || 'N/A';
               case 'specialRequests':

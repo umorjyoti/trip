@@ -36,11 +36,6 @@ const ParticipantDetailSchema = new mongoose.Schema({
     enum: ['Male', 'Female', 'Other']
   },
   contactNumber: String,
-  emergencyContact: {
-    name: String,
-    relationship: String,
-    phone: String
-  },
   medicalConditions: String,
   specialRequests: String,
   customFieldResponses: [CustomFieldResponseSchema],
@@ -128,6 +123,21 @@ const BookingSchema = new mongoose.Schema({
     type: UserDetailsSchema,
     required: true
   },
+  // Single emergency contact for the entire booking (filled during participant details step)
+  emergencyContact: {
+    name: {
+      type: String,
+      required: false
+    },
+    phone: {
+      type: String,
+      required: false
+    },
+    relation: {
+      type: String,
+      required: false
+    }
+  },
   totalPrice: {
     type: Number,
     required: true,
@@ -168,11 +178,6 @@ const BookingSchema = new mongoose.Schema({
     },
     allergies: String,
     extraComment: String,
-    emergencyContact: {
-      name: String,
-      phone: String,
-      relation: String
-    },
     customFields: {
       type: Map,
       of: String
