@@ -38,6 +38,15 @@ exports.createRegion = async (req, res) => {
       return res.status(400).json({ message: 'Name, location, and description are required' });
     }
 
+    // Check for duplicate region name
+    const existingRegion = await Region.findOne({ name: name });
+    if (existingRegion) {
+      return res.status(400).json({ 
+        message: 'A region with this name already exists. Please choose a different name.',
+        field: 'name'
+      });
+    }
+
     // Create the region with explicit field mapping
     const region = await Region.create({
       name,
@@ -163,6 +172,33 @@ exports.getRegionById = async (req, res) => {
     res.json(region);
   } catch (error) {
     console.error('Error fetching region:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get region by slug
+exports.getRegionBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    
+    if (!slug) {
+      return res.status(400).json({ message: 'Region slug is required' });
+    }
+    
+    console.log('Fetching region with slug:', slug);
+    
+    const region = await Region.findOne({ slug: slug.toLowerCase() })
+      .populate('relatedRegions', 'name coverImage');
+    
+    if (!region) {
+      console.log('Region not found with slug:', slug);
+      return res.status(404).json({ message: 'Region not found' });
+    }
+    
+    console.log('Region found by slug:', region.name);
+    res.json(region);
+  } catch (error) {
+    console.error('Error fetching region by slug:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 }; 

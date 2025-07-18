@@ -41,6 +41,21 @@
     - SEO optimization with meta tags and structured data
     - Region-based blog browsing and filtering
     - Admin interface for managing blog regions and content
+*   **Trek Slug-Based URLs**: SEO-friendly trek URLs using trek names instead of IDs:
+    - Automatic slug generation from trek names (spaces become hyphens)
+    - Unique constraint on trek names to prevent duplicates
+    - Proper validation and error handling for duplicate names
+    - Migration script to add slugs to existing treks
+    - Enhanced user experience with readable URLs (e.g., `/treks/everest-base-camp-trek`)
+    - Admin form validation with specific error messages for duplicate names
+*   **Region Slug-Based URLs**: SEO-friendly region URLs using region names instead of IDs:
+    - Automatic slug generation from region names (spaces become hyphens)
+    - Unique constraint on region names to prevent duplicates
+    - Proper validation and error handling for duplicate names
+    - Migration script to add slugs to existing regions
+    - Enhanced user experience with readable URLs (e.g., `/regions/meghalaya`)
+    - Admin form validation with specific error messages for duplicate names
+    - Updated all region navigation components throughout the application
 
 **What's Left to Build:**
 

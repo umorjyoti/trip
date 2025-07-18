@@ -5,7 +5,7 @@ import WeekendGetawayCard from './WeekendGetawayCard';
 import LoadingSpinner from './LoadingSpinner';
 import { FaUmbrellaBeach, FaArrowRight } from 'react-icons/fa';
 
-function WeekendGetawaySection() {
+function WeekendGetawaySection({ offers = [] }) {
   const [weekendGetaways, setWeekendGetaways] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,7 +61,7 @@ function WeekendGetawaySection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {weekendGetaways.map(trek => (
-            <WeekendGetawayCard key={trek._id} trek={trek} />
+            <WeekendGetawayCard key={trek._id} trek={trek} offers={offers} />
           ))}
         </div>
 

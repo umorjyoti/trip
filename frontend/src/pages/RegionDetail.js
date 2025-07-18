@@ -3,8 +3,10 @@ import ReactDOM from "react-dom";
 import { useParams, Link, useLocation } from "react-router-dom";
 import {
   getRegionById,
+  getRegionBySlug,
   getTreksByRegion,
   getTreksByExactRegion,
+  createRegionSlug,
 } from "../services/api";
 import {
   FaMapMarkerAlt,
@@ -20,7 +22,9 @@ import TrekSection from "../components/TrekSection";
 
 function RegionDetail() {
   const location = useLocation();
-  const { id } = location?.state;
+  const params = useParams();
+  const slug = params?.slug;
+  const { id } = location?.state || {};
   const [region, setRegion] = useState(null);
   const [treks, setTreks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,52 +84,80 @@ function RegionDetail() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        console.log("Fetching data for region ID:", id);
+        
+        // Check if we have either an ID or a slug
+        if (!id && !slug) {
+          setError("No region identifier provided");
+          setLoading(false);
+          return;
+        }
+        
+        // Get region ID from location state or fetch by slug
+        let regionId = id;
+        let regionData;
 
-        // First get the region data
-        const regionData = await getRegionById(id);
+        if (regionId) {
+          // Use ID from location state
+          console.log("Fetching data for region ID:", regionId);
+          regionData = await getRegionById(regionId);
+        } else if (slug && slug.trim()) {
+          // Fetch by slug
+          console.log("Fetching data for region slug:", slug);
+          regionData = await getRegionBySlug(slug);
+          regionId = regionData._id;
+        } else {
+          setError("Invalid region identifier");
+          setLoading(false);
+          return;
+        }
+        
         console.log("Region data:", regionData);
 
+        // Check if region data was found
+        if (!regionData) {
+          setError("Region not found");
+          setLoading(false);
+          return;
+        }
+
         // Ensure all arrays exist to prevent "length of undefined" errors
-        if (regionData) {
-          regionData.images = regionData.images || [];
-          regionData.videos = regionData.videos || [];
-          regionData.relatedRegions = regionData.relatedRegions || [];
-          setRegion(regionData);
+        regionData.images = regionData.images || [];
+        regionData.videos = regionData.videos || [];
+        regionData.relatedRegions = regionData.relatedRegions || [];
+        setRegion(regionData);
 
-          // Now fetch treks for this region using the exact match endpoint
-          try {
-            const exactTreks = await getTreksByExactRegion(id);
-            console.log("Exact treks for region:", exactTreks);
+        // Now fetch treks for this region using the exact match endpoint
+        try {
+          const exactTreks = await getTreksByExactRegion(regionId);
+          console.log("Exact treks for region:", exactTreks);
 
-            if (exactTreks.length > 0) {
-              setTreks(exactTreks);
-            } else {
-              // Fallback to the original method if no exact matches
-              console.log("No exact matches, trying alternative method");
-              const treksData = await getTreksByRegion(id);
+          if (exactTreks.length > 0) {
+            setTreks(exactTreks);
+          } else {
+            // Fallback to the original method if no exact matches
+            console.log("No exact matches, trying alternative method");
+            const treksData = await getTreksByRegion(regionId);
 
-              // Filter treks to ensure they belong to this region
-              const filteredTreks = treksData.filter((trek) => {
-                // Check if trek.region is an object with _id or a string
-                const trekRegionId =
-                  typeof trek.region === "object"
-                    ? trek.region._id
-                    : trek.region;
+            // Filter treks to ensure they belong to this region
+            const filteredTreks = treksData.filter((trek) => {
+              // Check if trek.region is an object with _id or a string
+              const trekRegionId =
+                typeof trek.region === "object"
+                  ? trek.region._id
+                  : trek.region;
 
-                // Compare as strings to avoid type mismatches
-                return String(trekRegionId) === String(id);
-              });
+              // Compare as strings to avoid type mismatches
+              return String(trekRegionId) === String(regionId);
+            });
 
-              console.log(
-                `Filtered ${filteredTreks.length} treks for region ${id}`
-              );
-              setTreks(filteredTreks);
-            }
-          } catch (trekError) {
-            console.error("Error fetching treks for region:", trekError);
-            setTreks([]);
+            console.log(
+              `Filtered ${filteredTreks.length} treks for region ${regionId}`
+            );
+            setTreks(filteredTreks);
           }
+        } catch (trekError) {
+          console.error("Error fetching treks for region:", trekError);
+          setTreks([]);
         }
 
         setError(null);
@@ -138,7 +170,7 @@ function RegionDetail() {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, slug]);
 
   if (loading) {
     return (
@@ -317,7 +349,7 @@ function RegionDetail() {
                   {region.relatedRegions.map((relatedRegion) => (
                     <Link
                       key={relatedRegion._id}
-                      to={`/regions/${relatedRegion.name}`}
+                      to={`/regions/${createRegionSlug(relatedRegion.name)}`}
                       state={{ id: relatedRegion?._id }}
                       className="flex items-center p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
