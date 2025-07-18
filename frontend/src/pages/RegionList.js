@@ -17,7 +17,7 @@ function RegionList() {
         console.log('Fetched regions:', data);
         
         // Only show active regions to users
-        const activeRegions = data.filter(region => region.isActive);
+        const activeRegions = data.filter(region => region.isEnabled);
         console.log('Active regions:', activeRegions);
         
         setRegions(activeRegions);

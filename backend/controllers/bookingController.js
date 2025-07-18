@@ -62,21 +62,6 @@ const createCustomTrekBooking = async (req, res) => {
       return res.status(410).json({ message: "This custom trek link has expired." });
     }
 
-    // Check for existing booking for the same user and custom trek
-    const existingBooking = await Booking.findOne({
-      user: req.user._id,
-      trek: trekId,
-      status: { $in: ['confirmed', 'payment_completed', 'trek_completed'] }
-    });
-
-    if (existingBooking) {
-      return res.status(409).json({
-        message: "You already have a confirmed booking for this custom trek.",
-        existingBooking: existingBooking._id,
-        error: "DUPLICATE_CUSTOM_TREK_BOOKING"
-      });
-    }
-
     // Find the custom batch (should be the first/only batch for custom treks)
     const customBatch = trek.batches[0];
     if (!customBatch) {
@@ -154,9 +139,6 @@ const createBooking = async (req, res) => {
       totalPrice,
     } = req.body;
 
-    console.log('Creating booking for user:', req.user._id);
-    console.log('Booking data:', { trekId, batchId, numberOfParticipants, totalPrice });
-
     // Validate required fields
     if (!trekId || !batchId || !numberOfParticipants || !userDetails) {
       return res
@@ -175,27 +157,6 @@ const createBooking = async (req, res) => {
     const participantsCount = Number(numberOfParticipants);
     if (isNaN(participantsCount) || participantsCount < 1) {
       return res.status(400).json({ message: "Invalid number of participants" });
-    }
-
-    // Check for existing pending booking for the same user, trek, and batch
-    // This prevents users from creating multiple pending bookings for the same trek
-    console.log('Checking for existing pending bookings for same user, trek, and batch...');
-    const existingPendingBooking = await Booking.findOne({
-      user: req.user._id,
-      trek: trekId,
-      batch: batchId,
-      status: { $in: ['pending', 'pending_payment'] }
-    });
-
-
-
-    if (existingPendingBooking) {
-      console.log(`Found existing pending booking ${existingPendingBooking._id} for user ${req.user._id}, trek ${trekId}, batch ${batchId}`);
-      return res.status(409).json({
-        message: "You already have a pending booking for this trek. Please complete your existing booking first.",
-        existingBooking: existingPendingBooking._id,
-        error: "DUPLICATE_PENDING_BOOKING"
-      });
     }
 
     // Find the trek and check if it exists
@@ -224,11 +185,7 @@ const createBooking = async (req, res) => {
         .json({ message: "Not enough spots available in this batch" });
     }
 
-
-   
-
     // Create booking
-    console.log('Creating new booking...');
     const booking = new Booking({
       user: req.user._id,
       trek: trekId,
@@ -242,7 +199,6 @@ const createBooking = async (req, res) => {
 
     // Save booking
     await booking.save();
-    console.log(`New booking created: ${booking._id}`);
 
     // Update batch participants count
     batch.currentParticipants += participantsCount;
