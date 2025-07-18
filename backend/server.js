@@ -43,7 +43,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5001', 'https://trip-ctuq.onrender.com',"89.117.157.153","https://bengalurutrekkers.in","https://www.bengalurutrekkers.in"],
+  origin: ['http://localhost:5001' , 'http://localhost:3000', 'https://trip-ctuq.onrender.com',"89.117.157.153","https://bengalurutrekkers.in","https://www.bengalurutrekkers.in"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
