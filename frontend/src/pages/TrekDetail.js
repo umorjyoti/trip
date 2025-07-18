@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import ReactDOM from 'react-dom';
+import ReactDOM from "react-dom";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import {
   getTrekById,
@@ -29,19 +29,26 @@ import LeadCaptureForm from "../components/LeadCaptureForm";
 import TrekCard from "../components/TrekCard";
 import TrekItinerary from "../components/TrekItinerary";
 import TrekInclusionsExclusions from "../components/TrekInclusionsExclusions";
-import ThingsToPack from '../components/ThingsToPack';
-import TrekFAQs from '../components/TrekFAQs';
-import Modal from '../components/Modal';
-import CancellationPolicy from '../components/CancellationPolicy';
-import { format, parseISO, addMonths, isSameMonth } from 'date-fns';
-import CustomTrekBookingForm from '../components/CustomTrekBookingForm';
+import ThingsToPack from "../components/ThingsToPack";
+import TrekFAQs from "../components/TrekFAQs";
+import Modal from "../components/Modal";
+import CancellationPolicy from "../components/CancellationPolicy";
+import { format, parseISO, addMonths, isSameMonth } from "date-fns";
+import CustomTrekBookingForm from "../components/CustomTrekBookingForm";
 
 // Add this new component at the top level of the file
-const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, navigate, trekId }) => {
+const BatchesTabView = ({
+  batches,
+  onBatchSelect,
+  isTrekDisabled,
+  currentUser,
+  navigate,
+  trekId,
+}) => {
   // Group batches by month
   const batchesByMonth = batches.reduce((acc, batch) => {
     const startDate = parseISO(batch.startDate);
-    const monthKey = format(startDate, 'yyyy-MM');
+    const monthKey = format(startDate, "yyyy-MM");
     if (!acc[monthKey]) {
       acc[monthKey] = [];
     }
@@ -51,28 +58,40 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
 
   // Get unique months from batches and sort them
   const uniqueMonths = Object.keys(batchesByMonth)
-    .map(key => parseISO(key + '-01'))
+    .map((key) => parseISO(key + "-01"))
     .sort((a, b) => a - b)
-    .filter(month => batchesByMonth[format(month, 'yyyy-MM')].length > 0); // Only keep months with batches
+    .filter((month) => batchesByMonth[format(month, "yyyy-MM")].length > 0); // Only keep months with batches
 
   // Initialize selected month to the first available month
-  const [selectedMonth, setSelectedMonth] = useState(uniqueMonths[0] || new Date());
+  const [selectedMonth, setSelectedMonth] = useState(
+    uniqueMonths[0] || new Date()
+  );
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [showMonthDropdown, setShowMonthDropdown] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Get next three months for tabs
   const nextThreeMonths = uniqueMonths.slice(0, 3);
   const remainingMonths = uniqueMonths.slice(3);
 
+  // Debug remaining months
+  console.log('Remaining months:', remainingMonths.length, remainingMonths.map(m => format(m, "MMMM yyyy")));
+
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
     }).format(amount);
   };
 
   const handleBatchSelect = (batch) => {
     setSelectedBatch(batch._id === selectedBatch?._id ? null : batch);
+  };
+
+  const handleMonthSelect = (month) => {
+    console.log('Setting selected month to:', format(month, "MMMM yyyy"));
+    setSelectedMonth(month);
+    setShowMonthDropdown(false);
   };
 
   const handleBookNow = () => {
@@ -87,6 +106,31 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
     }
   };
 
+  // Handle clicking outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if the click is on a dropdown item
+      const isDropdownItem = event.target.closest('[role="menuitem"]');
+      if (isDropdownItem) {
+        return; // Don't close if clicking on a dropdown item
+      }
+      
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowMonthDropdown(false);
+      }
+    };
+
+    if (showMonthDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMonthDropdown]);
+
+
+
   // If no batches are available, show a message
   if (uniqueMonths.length === 0) {
     return (
@@ -99,56 +143,83 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
   return (
     <div className="mt-8">
       <div className="border-b border-gray-200">
-        <div className="flex items-center">
+        <div className="flex items-center overflow-x-auto relative">
           {/* Tabs for next three months */}
-          <nav className="flex -mb-px space-x-4 flex-grow">
+          <nav className="flex -mb-px space-x-2 sm:space-x-4 flex-grow min-w-0">
             {nextThreeMonths.map((month) => (
               <button
-                key={format(month, 'yyyy-MM')}
+                key={format(month, "yyyy-MM")}
                 onClick={() => setSelectedMonth(month)}
                 className={`
-                  py-4 px-6 text-sm font-medium border-b-2 whitespace-nowrap
-                  ${isSameMonth(month, selectedMonth)
-                    ? 'border-emerald-500 text-emerald-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                  py-4 px-3 sm:px-6 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap flex-shrink-0
+                  ${
+                    isSameMonth(month, selectedMonth)
+                      ? "border-emerald-500 text-emerald-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }
                 `}
               >
-                {format(month, 'MMMM yyyy')}
+                {format(month, "MMM yyyy")}
               </button>
             ))}
           </nav>
 
           {/* Dropdown for remaining months */}
           {remainingMonths.length > 0 && (
-            <div className="relative">
+            <div className="relative flex-shrink-0" ref={dropdownRef}>
               <button
                 onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-                className="py-4 px-6 text-sm font-medium text-gray-500 hover:text-gray-700 flex items-center"
+                className={`py-4 px-3 sm:px-6 text-xs sm:text-sm font-medium flex items-center rounded-md transition-colors ${
+                  showMonthDropdown 
+                    ? 'text-emerald-600 bg-emerald-50 border-emerald-200' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
               >
-                More Months
-                <svg className="ml-2 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                <span className="hidden sm:inline">More Months</span>
+                <span className="sm:hidden">More</span>
+                <svg
+                  className={`ml-1 sm:ml-2 h-4 w-4 sm:h-5 sm:w-5 transition-transform ${
+                    showMonthDropdown ? 'rotate-180' : ''
+                  }`}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </button>
 
-              {showMonthDropdown && (
-                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+              {showMonthDropdown && ReactDOM.createPortal(
+                <div 
+                  className="fixed z-50 w-48 rounded-md shadow-xl bg-white ring-1 ring-black ring-opacity-5 border border-gray-200 max-h-60 overflow-y-auto"
+                  style={{
+                    top: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().bottom + 4 : 0,
+                    left: dropdownRef.current ? dropdownRef.current.getBoundingClientRect().right - 192 : 0,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="py-1" role="menu">
                     {remainingMonths.map((month) => (
                       <button
-                        key={format(month, 'yyyy-MM')}
-                        onClick={() => {
-                          setSelectedMonth(month);
-                          setShowMonthDropdown(false);
+                        key={format(month, "yyyy-MM")}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleMonthSelect(month);
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none cursor-pointer"
                         role="menuitem"
+                        type="button"
                       >
-                        {format(month, 'MMMM yyyy')}
+                        {format(month, "MMMM yyyy")}
                       </button>
                     ))}
                   </div>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           )}
@@ -157,7 +228,7 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
 
       {/* Batches for selected month */}
       <div className="mt-4">
-        {batchesByMonth[format(selectedMonth, 'yyyy-MM')]?.map((batch) => {
+        {batchesByMonth[format(selectedMonth, "yyyy-MM")]?.map((batch) => {
           const isFull = batch.currentParticipants >= batch.maxParticipants;
           const isDisabled = isTrekDisabled || isFull;
           const availability = batch.availableSpots || (batch.maxParticipants - batch.currentParticipants);
@@ -169,14 +240,23 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
               onClick={() => !isDisabled && handleBatchSelect(batch)}
               className={`
                 p-4 mb-4 rounded-lg border-2 cursor-pointer transition-all
-                ${isDisabled ? 'bg-gray-50 cursor-not-allowed' : 'hover:border-emerald-200'}
-                ${isSelected ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'}
+                ${
+                  isDisabled
+                    ? "bg-gray-50 cursor-not-allowed"
+                    : "hover:border-emerald-200"
+                }
+                ${
+                  isSelected
+                    ? "border-emerald-500 bg-emerald-50"
+                    : "border-gray-200"
+                }
               `}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                 <div>
                   <div className="text-sm font-medium text-gray-900">
-                    {format(parseISO(batch.startDate), 'dd MMM')} - {format(parseISO(batch.endDate), 'dd MMM yyyy')}
+                    {format(parseISO(batch.startDate), "dd MMM")} -{" "}
+                    {format(parseISO(batch.endDate), "dd MMM yyyy")}
                   </div>
                   <div className="mt-1">
                     {isFull ? (
@@ -184,14 +264,21 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
                         Full
                       </span>
                     ) : (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                        ${availability <= 3 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                        {availability} {availability === 1 ? 'spot' : 'spots'} left
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                        ${
+                          availability <= 3
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {availability} {availability === 1 ? "spot" : "spots"}{" "}
+                        left
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                   <div className="text-lg font-bold text-emerald-600">
                     {formatCurrency(batch.price)}
                   </div>
@@ -207,12 +294,12 @@ const BatchesTabView = ({ batches, onBatchSelect, isTrekDisabled, currentUser, n
             disabled={!selectedBatch}
             onClick={handleBookNow}
             className={`w-full py-3 px-4 rounded-lg font-medium shadow-lg transition-colors ${
-              selectedBatch 
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              selectedBatch
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            {selectedBatch ? 'Book Now' : 'Select a batch to book'}
+            {selectedBatch ? "Book Now" : "Select a batch to book"}
           </button>
         </div>
       </div>
@@ -235,7 +322,7 @@ function TrekDetail() {
   const [discountedPrice, setDiscountedPrice] = useState(null);
   const [applicableOffer, setApplicableOffer] = useState(null);
   const [showLeadForm, setShowLeadForm] = useState(false);
-  const [regionName, setRegionName] = useState('');
+  const [regionName, setRegionName] = useState("");
   const [downloading, setDownloading] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -243,7 +330,11 @@ function TrekDetail() {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const shareMenuRef = useRef(null);
   const headerScrollRef = useRef(null);
-  const [headerScrollState, setHeaderScrollState] = useState({ isScrollable: false, thumbLeft: 0, thumbWidth: 0 });
+  const [headerScrollState, setHeaderScrollState] = useState({
+    isScrollable: false,
+    thumbLeft: 0,
+    thumbWidth: 0,
+  });
 
   // Calculate scrollbar thumb size and position for header
   const updateHeaderScrollBar = () => {
@@ -254,7 +345,8 @@ function TrekDetail() {
       const ratio = clientWidth / scrollWidth;
       const thumbWidth = Math.max(ratio * clientWidth, 40); // min width
       const maxScrollLeft = scrollWidth - clientWidth;
-      const thumbLeft = (scrollLeft / maxScrollLeft) * (clientWidth - thumbWidth) || 0;
+      const thumbLeft =
+        (scrollLeft / maxScrollLeft) * (clientWidth - thumbWidth) || 0;
       setHeaderScrollState({
         isScrollable: true,
         thumbWidth,
@@ -280,14 +372,14 @@ function TrekDetail() {
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   };
 
   // Scroll to batch selection area
   const scrollToBatchSelection = () => {
-    const batchSection = document.querySelector('[data-batch-section]');
+    const batchSection = document.querySelector("[data-batch-section]");
     if (batchSection) {
       const offset = 120; // Account for header + sticky nav + some padding
       const elementPosition = batchSection.getBoundingClientRect().top;
@@ -295,7 +387,7 @@ function TrekDetail() {
 
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   };
@@ -331,8 +423,7 @@ function TrekDetail() {
     );
 
   useEffect(() => {
-
-    console.log("location",location)
+    console.log("location", location);
 
     const fetchData = async () => {
       try {
@@ -404,13 +495,17 @@ function TrekDetail() {
     const fetchRegionName = async () => {
       if (trek?.regionName) {
         setRegionName(trek.regionName);
-      } else if (trek?.region && typeof trek.region === 'object' && trek.region.name) {
+      } else if (
+        trek?.region &&
+        typeof trek.region === "object" &&
+        trek.region.name
+      ) {
         setRegionName(trek.region.name);
       } else {
-        setRegionName('Unknown Region');
+        setRegionName("Unknown Region");
       }
     };
-    
+
     if (trek) {
       fetchRegionName();
     }
@@ -424,14 +519,15 @@ function TrekDetail() {
     setTimeout(updateHeaderScrollBar, 0);
 
     if (headerEl) {
-      headerEl.addEventListener('scroll', updateHeaderScrollBar);
+      headerEl.addEventListener("scroll", updateHeaderScrollBar);
     }
 
-    window.addEventListener('resize', updateHeaderScrollBar);
+    window.addEventListener("resize", updateHeaderScrollBar);
 
     return () => {
-      if (headerEl) headerEl.removeEventListener('scroll', updateHeaderScrollBar);
-      window.removeEventListener('resize', updateHeaderScrollBar);
+      if (headerEl)
+        headerEl.removeEventListener("scroll", updateHeaderScrollBar);
+      window.removeEventListener("resize", updateHeaderScrollBar);
     };
   }, [trek]);
 
@@ -456,7 +552,9 @@ function TrekDetail() {
   const getMinimumPrice = (trekData) => {
     const trek = trekData || {};
     if (trek.batches && trek.batches.length > 0) {
-      const prices = trek.batches.map(batch => Number(batch.price)).filter(price => !isNaN(price));
+      const prices = trek.batches
+        .map((batch) => Number(batch.price))
+        .filter((price) => !isNaN(price));
       return prices.length > 0 ? Math.min(...prices) : 0;
     }
     return getPrice(trekData);
@@ -534,16 +632,16 @@ function TrekDetail() {
     console.log("Selected batch:", batch);
 
     // If all checks pass, proceed with booking
-    navigate(`/treks/${name}/book`, { 
-      state: { 
+    navigate(`/treks/${name}/book`, {
+      state: {
         selectedBatchId: batch._id,
         trekName: trek.name,
         trekId: trek._id,
         batchDates: {
           startDate: batch.startDate,
-          endDate: batch.endDate
-        }
-      } 
+          endDate: batch.endDate,
+        },
+      },
     });
   };
 
@@ -554,11 +652,11 @@ function TrekDetail() {
       return;
     }
 
-    navigate(`/treks/${name}/book`, { 
-      state: { 
+    navigate(`/treks/${name}/book`, {
+      state: {
         trekId: trek._id,
-        trekName: trek.name 
-      } 
+        trekName: trek.name,
+      },
     });
   };
 
@@ -569,16 +667,16 @@ function TrekDetail() {
       return;
     }
 
-    navigate(`/treks/${name}/book`, { 
-      state: { 
+    navigate(`/treks/${name}/book`, {
+      state: {
         selectedBatchId: batch._id,
         trekName: trek.name,
         trekId: trek._id,
         batchDates: {
           startDate: batch.startDate,
-          endDate: batch.endDate
-        }
-      } 
+          endDate: batch.endDate,
+        },
+      },
     });
   };
 
@@ -603,15 +701,19 @@ function TrekDetail() {
   // Close share menu on outside click
   useEffect(() => {
     function handleClickOutside(event) {
-      if (showShareMenu && shareMenuRef.current && !shareMenuRef.current.contains(event.target)) {
+      if (
+        showShareMenu &&
+        shareMenuRef.current &&
+        !shareMenuRef.current.contains(event.target)
+      ) {
         setShowShareMenu(false);
       }
     }
     if (showShareMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showShareMenu]);
 
@@ -643,7 +745,7 @@ function TrekDetail() {
         .then(() => setShowShareMenu(false))
         .catch((error) => {
           setShowShareMenu(false);
-          if (error.name !== 'AbortError') {
+          if (error.name !== "AbortError") {
             toast.error("Error sharing: " + error.message);
           }
         });
@@ -652,17 +754,17 @@ function TrekDetail() {
 
   const handleDownloadItinerary = async () => {
     if (!trek) return;
-    
+
     try {
       setDownloading(true);
-      
+
       if (!trek.itineraryPdfUrl) {
         toast.error("Itinerary PDF is not available for this trek.");
         return;
       }
 
       // Open the PDF URL in a new tab
-      window.open(trek.itineraryPdfUrl, '_blank');
+      window.open(trek.itineraryPdfUrl, "_blank");
       toast.success("Itinerary downloaded successfully!");
     } catch (error) {
       console.error("Error downloading itinerary:", error);
@@ -677,8 +779,10 @@ function TrekDetail() {
     setGalleryOpen(true);
   };
   const handleCloseGallery = () => setGalleryOpen(false);
-  const handlePrevImage = () => setGalleryIndex((prev) => (prev === 0 ? trek.images.length - 1 : prev - 1));
-  const handleNextImage = () => setGalleryIndex((prev) => (prev === trek.images.length - 1 ? 0 : prev + 1));
+  const handlePrevImage = () =>
+    setGalleryIndex((prev) => (prev === 0 ? trek.images.length - 1 : prev - 1));
+  const handleNextImage = () =>
+    setGalleryIndex((prev) => (prev === trek.images.length - 1 ? 0 : prev + 1));
 
   // Trap focus in modal
   useEffect(() => {
@@ -690,9 +794,9 @@ function TrekDetail() {
   // Prevent background scroll when gallery is open
   useEffect(() => {
     if (!galleryOpen) return;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = "auto";
     };
   }, [galleryOpen]);
 
@@ -809,7 +913,7 @@ function TrekDetail() {
                         ? selectedBatch.price -
                             (selectedBatch.price *
                               applicableOffer.discountValue) /
-                            100
+                              100
                         : Math.max(
                             0,
                             selectedBatch.price - applicableOffer.discountValue
@@ -865,14 +969,14 @@ function TrekDetail() {
 
         {discountedPrice ? (
           <div className="mt-2">
-            <div className="flex items-center">
-              <span className="text-3xl font-bold text-emerald-600 mr-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0">
+              <span className="text-3xl font-bold text-emerald-600 sm:mr-3">
                 {formatCurrency(discountedPrice)}
               </span>
               <span className="text-xl text-gray-500 line-through">
                 {formatCurrency(displayPrice)}
               </span>
-              <span className="ml-3 bg-gradient-to-r from-amber-600 to-orange-400 text-white text-sm px-3 py-1 rounded-md flex items-center shadow-sm">
+              <span className="bg-gradient-to-r from-amber-600 to-orange-400 text-white text-sm px-3 py-1 rounded-md flex items-center shadow-sm sm:ml-3 w-fit">
                 <FaTag className="mr-1" />
                 {applicableOffer.discountType === "percentage"
                   ? `${applicableOffer.discountValue}% OFF`
@@ -896,15 +1000,17 @@ function TrekDetail() {
           </div>
         ) : displayPrice > 0 ? (
           <div className="mt-2">
-            <span className="text-3xl font-bold text-emerald-600">
-              {formatCurrency(displayPrice)}
-            </span>
-            {trek.strikedPrice && trek.strikedPrice > displayPrice && (
-              <span className="ml-2 text-xl text-gray-500 line-through">
-                {formatCurrency(trek.strikedPrice)}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0">
+              <span className="text-3xl font-bold text-emerald-600">
+                {formatCurrency(displayPrice)}
               </span>
-            )}
-            <span className="ml-2 text-gray-500">per person</span>
+              {trek.strikedPrice && trek.strikedPrice > displayPrice && (
+                <span className="text-xl text-gray-500 line-through sm:ml-2">
+                  {formatCurrency(trek.strikedPrice)}
+                </span>
+              )}
+              <span className="text-gray-500 sm:ml-2">per person</span>
+            </div>
           </div>
         ) : (
           <div className="mt-2">
@@ -940,7 +1046,10 @@ function TrekDetail() {
               Share
             </button>
             {showShareMenu && (
-              <div ref={shareMenuRef} className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+              <div
+                ref={shareMenuRef}
+                className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+              >
                 <button
                   onClick={handleCopyLink}
                   className="w-full flex items-center px-4 py-2 text-gray-700 hover:bg-emerald-50 rounded-t-lg"
@@ -1052,8 +1161,15 @@ function TrekDetail() {
     const DesktopGallery = () => {
       if (images.length === 1) {
         return (
-          <div className="w-full aspect-w-16 aspect-h-9 rounded-xl overflow-hidden shadow-lg cursor-pointer" onClick={() => handleOpenGallery(0)}>
-            <img src={images[0]} alt={`${trekName} - Image 1`} className="object-cover w-full h-full transition-transform duration-300 hover:scale-105" />
+          <div
+            className="w-full aspect-w-16 aspect-h-9 rounded-xl overflow-hidden shadow-lg cursor-pointer"
+            onClick={() => handleOpenGallery(0)}
+          >
+            <img
+              src={images[0]}
+              alt={`${trekName} - Image 1`}
+              className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+            />
           </div>
         );
       }
@@ -1068,47 +1184,78 @@ function TrekDetail() {
         <div className="rounded-xl overflow-hidden shadow-lg">
           <div className="flex h-[400px] gap-1">
             {/* Left main image (taller) */}
-            <div className="w-3/5 cursor-pointer bg-gray-100" onClick={() => handleOpenGallery(0)}>
+            <div
+              className="w-3/5 cursor-pointer bg-gray-100"
+              onClick={() => handleOpenGallery(0)}
+            >
               {img1 ? (
-                <img src={img1} alt={`${trekName} - Image 1`} className="object-cover w-full h-full transition-transform duration-300 hover:scale-105" />
+                <img
+                  src={img1}
+                  alt={`${trekName} - Image 1`}
+                  className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">Image not available</div>
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  Image not available
+                </div>
               )}
             </div>
             {/* Right column with 3 images */}
             <div className="w-2/5 flex flex-col gap-1">
               {/* Top two smaller images */}
               <div className="flex-1 h-[50%] flex gap-1">
-                <div className="flex-1 cursor-pointer bg-gray-100" onClick={() => img2 && handleOpenGallery(1)}>
+                <div
+                  className="flex-1 cursor-pointer bg-gray-100"
+                  onClick={() => img2 && handleOpenGallery(1)}
+                >
                   {img2 ? (
-                    <img src={img2} alt={`${trekName} - Image 2`} className="object-cover w-full h-full transition-transform duration-300 hover:scale-105" />
+                    <img
+                      src={img2}
+                      alt={`${trekName} - Image 2`}
+                      className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400"></div>
                   )}
                 </div>
-                <div className="flex-1 cursor-pointer bg-gray-100" onClick={() => img3 && handleOpenGallery(2)}>
+                <div
+                  className="flex-1 cursor-pointer bg-gray-100"
+                  onClick={() => img3 && handleOpenGallery(2)}
+                >
                   {img3 ? (
-                    <img src={img3} alt={`${trekName} - Image 3`} className="object-cover w-full h-full transition-transform duration-300 hover:scale-105" />
+                    <img
+                      src={img3}
+                      alt={`${trekName} - Image 3`}
+                      className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400"></div>
                   )}
                 </div>
               </div>
               {/* Bottom larger image with overlay */}
-              <div className="flex-1 relative cursor-pointer bg-gray-100" onClick={() => img4 && handleOpenGallery(3)}>
+              <div
+                className="flex-1 relative cursor-pointer bg-gray-100"
+                onClick={() => img4 && handleOpenGallery(3)}
+              >
                 {img4 ? (
-                  <img src={img4} alt={`${trekName} - Image 4`} className="object-cover w-full h-full transition-transform duration-300 hover:scale-105" />
+                  <img
+                    src={img4}
+                    alt={`${trekName} - Image 4`}
+                    className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400"></div>
                 )}
                 {images.length > 4 && (
-                  <div 
+                  <div
                     className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center"
-                    onClick={(e) => { e.stopPropagation(); handleOpenGallery(4); }} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenGallery(4);
+                    }}
                   >
-                    <button
-                      className="text-white text-sm font-semibold bg-blue-600 px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition"
-                    >
+                    <button className="text-white text-sm font-semibold bg-blue-600 px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition">
                       +{remainingImagesCount} Photos
                     </button>
                   </div>
@@ -1127,11 +1274,20 @@ function TrekDetail() {
       return (
         <div className="flex flex-col gap-2">
           {/* Banner image */}
-          <div className="w-full aspect-w-16 aspect-h-9 rounded-xl overflow-hidden shadow-lg cursor-pointer bg-gray-100" onClick={() => images[0] && handleOpenGallery(0)}>
+          <div
+            className="w-full aspect-w-16 aspect-h-9 rounded-xl overflow-hidden shadow-lg cursor-pointer bg-gray-100"
+            onClick={() => images[0] && handleOpenGallery(0)}
+          >
             {images[0] ? (
-                <img src={images[0]} alt={`${trekName} - Image 1`} className="object-cover w-full h-full transition-transform duration-300 hover:scale-105" />
+              <img
+                src={images[0]}
+                alt={`${trekName} - Image 1`}
+                className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+              />
             ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">Image not available</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                Image not available
+              </div>
             )}
           </div>
           {/* Thumbnails row */}
@@ -1139,28 +1295,45 @@ function TrekDetail() {
             <div className="flex gap-2 mt-2 overflow-x-auto pb-2">
               {thumbnails.map((img, idx) => {
                 const imageIndexInAllImages = idx + 1; // images[0] is banner, so thumbnails start at images[1]
-                // The 4th thumbnail slot (idx === 3 for thumbnails array, which is images[4]) 
+                // The 4th thumbnail slot (idx === 3 for thumbnails array, which is images[4])
                 // will show the overlay if there are more than 5 images total (i.e. images.length > 4 for 0-indexed array).
-                if (images.length > 4 && imageIndexInAllImages === 4) { 
+                if (images.length > 4 && imageIndexInAllImages === 4) {
                   return (
-                    <div key={imageIndexInAllImages} className="relative w-20 h-20 rounded-lg overflow-hidden shadow cursor-pointer flex-shrink-0 bg-gray-100" onClick={() => handleOpenGallery(imageIndexInAllImages)}>
-                      <img src={img} alt={`${trekName} - Image ${imageIndexInAllImages + 1}`} className="object-cover w-full h-full" />
-                      <div 
+                    <div
+                      key={imageIndexInAllImages}
+                      className="relative w-20 h-20 rounded-lg overflow-hidden shadow cursor-pointer flex-shrink-0 bg-gray-100"
+                      onClick={() => handleOpenGallery(imageIndexInAllImages)}
+                    >
+                      <img
+                        src={img}
+                        alt={`${trekName} - Image ${imageIndexInAllImages + 1}`}
+                        className="object-cover w-full h-full"
+                      />
+                      <div
                         className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg"
-                        onClick={(e) => { e.stopPropagation(); handleOpenGallery(4); }} // Open gallery from 5th image (index 4)
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenGallery(4);
+                        }} // Open gallery from 5th image (index 4)
                       >
-                        <button
-                          className="text-white text-xs font-semibold bg-blue-600 px-2 py-1 rounded-md shadow hover:bg-blue-700 transition"
-                        >
-                          +{images.length - 4} 
+                        <button className="text-white text-xs font-semibold bg-blue-600 px-2 py-1 rounded-md shadow hover:bg-blue-700 transition">
+                          +{images.length - 4}
                         </button>
                       </div>
                     </div>
                   );
                 }
                 return (
-                  <div key={imageIndexInAllImages} className="w-20 h-20 rounded-lg overflow-hidden shadow cursor-pointer flex-shrink-0 bg-gray-100" onClick={() => handleOpenGallery(imageIndexInAllImages)}>
-                    <img src={img} alt={`${trekName} - Image ${imageIndexInAllImages + 1}`} className="object-cover w-full h-full" />
+                  <div
+                    key={imageIndexInAllImages}
+                    className="w-20 h-20 rounded-lg overflow-hidden shadow cursor-pointer flex-shrink-0 bg-gray-100"
+                    onClick={() => handleOpenGallery(imageIndexInAllImages)}
+                  >
+                    <img
+                      src={img}
+                      alt={`${trekName} - Image ${imageIndexInAllImages + 1}`}
+                      className="object-cover w-full h-full"
+                    />
                   </div>
                 );
               })}
@@ -1185,7 +1358,7 @@ function TrekDetail() {
   // Gallery modal
   const renderGalleryModal = () => {
     if (!galleryOpen || !trek?.images) return null;
-    
+
     const modalContent = (
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 transition-opacity"
@@ -1195,7 +1368,7 @@ function TrekDetail() {
       >
         <div
           className="relative max-w-4xl w-full mx-4 bg-transparent rounded-xl flex flex-col items-center"
-          onClick={e => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -1206,8 +1379,19 @@ function TrekDetail() {
             onClick={handleCloseGallery}
             aria-label="Close gallery"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              className="h-6 w-6"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
           {/* Carousel navigation */}
@@ -1216,8 +1400,19 @@ function TrekDetail() {
             onClick={handlePrevImage}
             aria-label="Previous image"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6 text-white">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              className="h-6 w-6 text-white"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </button>
           <button
@@ -1225,8 +1420,19 @@ function TrekDetail() {
             onClick={handleNextImage}
             aria-label="Next image"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="h-6 w-6 text-white">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              className="h-6 w-6 text-white"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
             </svg>
           </button>
           {/* Main image */}
@@ -1247,7 +1453,12 @@ function TrekDetail() {
   };
 
   // MobileTrekFooter component using React Portal
-  const MobileTrekFooter = ({ price, discountedPrice, onBookNow, isTrekDisabled }) => {
+  const MobileTrekFooter = ({
+    price,
+    discountedPrice,
+    onBookNow,
+    isTrekDisabled,
+  }) => {
     return ReactDOM.createPortal(
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-[9999] pointer-events-auto">
         <div className="flex items-center justify-between px-4 py-3">
@@ -1257,9 +1468,13 @@ function TrekDetail() {
               {discountedPrice ? (
                 <>
                   {discountedPrice}
-                  <span className="text-sm text-gray-500 line-through ml-2">{price}</span>
+                  <span className="text-sm text-gray-500 line-through ml-2">
+                    {price}
+                  </span>
                 </>
-              ) : price}
+              ) : (
+                price
+              )}
             </span>
           </div>
           <button
@@ -1267,11 +1482,11 @@ function TrekDetail() {
             disabled={isTrekDisabled}
             className={`px-6 py-3 rounded-lg font-medium shadow-md transition-colors ${
               isTrekDisabled
-                ? 'bg-gray-300 text-gray-400 cursor-not-allowed'
-                : 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800'
+                ? "bg-gray-300 text-gray-400 cursor-not-allowed"
+                : "bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800"
             }`}
           >
-            {isTrekDisabled ? 'Not Available' : 'Book Now'}
+            {isTrekDisabled ? "Not Available" : "Book Now"}
           </button>
         </div>
       </div>,
@@ -1287,15 +1502,15 @@ function TrekDetail() {
       (batch) => batch.currentParticipants < batch.maxParticipants
     );
     if (availableBatches.length === 0) {
-      toast.error('All batches are full.');
+      toast.error("All batches are full.");
       return;
     }
     const lowestPriceBatch = availableBatches.reduce((minBatch, batch) =>
       Number(batch.price) < Number(minBatch.price) ? batch : minBatch
     );
     if (!currentUser) {
-      toast.info('Please log in to book this trek');
-      navigate('/login', { state: { from: `/treks/${name}/book` } });
+      toast.info("Please log in to book this trek");
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
     // Proceed to booking page with the lowest price batch selected
@@ -1396,7 +1611,13 @@ function TrekDetail() {
         />
       </Modal>
 
-      <div className={`bg-white ${!loading && !error && trek && trek.batches && trek.batches.length > 0 ? 'md:pb-0 pb-20' : ''}`}>
+      <div
+        className={`bg-white ${
+          !loading && !error && trek && trek.batches && trek.batches.length > 0
+            ? "md:pb-0 pb-20"
+            : ""
+        }`}
+      >
         {/* Trek disabled warning */}
         {isTrekDisabled && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 bg-yellow-50">
@@ -1435,48 +1656,48 @@ function TrekDetail() {
           {/* Trek Scroll bar */}
           <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
             <div className="relative">
-              <nav 
+              <nav
                 className="flex space-x-6 overflow-x-auto py-2 px-2 scrollbar-hide"
                 ref={headerScrollRef}
               >
                 <a
                   href="#overview"
-                  onClick={(e) => handleSmoothScroll(e, 'overview')}
+                  onClick={(e) => handleSmoothScroll(e, "overview")}
                   className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
                 >
                   Overview
                 </a>
                 <a
                   href="#itinerary"
-                  onClick={(e) => handleSmoothScroll(e, 'itinerary')}
+                  onClick={(e) => handleSmoothScroll(e, "itinerary")}
                   className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
                 >
                   Trek Itinerary
                 </a>
                 <a
                   href="#inclusions"
-                  onClick={(e) => handleSmoothScroll(e, 'inclusions')}
+                  onClick={(e) => handleSmoothScroll(e, "inclusions")}
                   className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
                 >
                   Inclusions & Exclusions
                 </a>
                 <a
                   href="#cancellationPolicy"
-                  onClick={(e) => handleSmoothScroll(e, 'cancellationPolicy')}
+                  onClick={(e) => handleSmoothScroll(e, "cancellationPolicy")}
                   className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
                 >
                   Cancellation Policy
                 </a>
                 <a
                   href="#thingsToPack"
-                  onClick={(e) => handleSmoothScroll(e, 'thingsToPack')}
+                  onClick={(e) => handleSmoothScroll(e, "thingsToPack")}
                   className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
                 >
                   Things To Pack
                 </a>
                 <a
                   href="#faqs"
-                  onClick={(e) => handleSmoothScroll(e, 'faqs')}
+                  onClick={(e) => handleSmoothScroll(e, "faqs")}
                   className="text-gray-600 hover:text-emerald-600 whitespace-nowrap text-sm font-medium transition-colors duration-200"
                 >
                   FAQs
@@ -1486,15 +1707,15 @@ function TrekDetail() {
               {headerScrollState.isScrollable && (
                 <div
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     left: headerScrollState.thumbLeft,
                     bottom: 2,
                     height: 4,
                     width: headerScrollState.thumbWidth,
-                    background: '#10b981',
+                    background: "#10b981",
                     borderRadius: 2,
-                    transition: 'left 0.1s',
-                    pointerEvents: 'none',
+                    transition: "left 0.1s",
+                    pointerEvents: "none",
                   }}
                 />
               )}
@@ -1537,245 +1758,266 @@ function TrekDetail() {
               </div>
 
               <div className="lg:mt-0 lg:col-span-1">
-                <div className="flex justify-between">
-                  <h1 className="mt-8 text-3xl font-extrabold text-gray-900">
-                    {trek.name}
-                  </h1>
-                </div>
-
-                {/* Trek details */}
-                <div className="mt-4 space-y-4">
-                  {trek.location && (
-                    <div className="flex items-start">
-                      <FaMapMarkerAlt className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                      <p className="ml-3 text-base text-gray-700">
-                        {trek.location}
-                      </p>
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
+                  <div className="flex flex-col">
+                    <div className="flex justify-between">
+                      <h1 className="mt-8 text-2xl sm:text-3xl font-extrabold text-gray-900">
+                        {trek.name}
+                      </h1>
                     </div>
-                  )}
 
-                  {trek.duration && (
-                    <div className="flex items-start">
-                      <FaClock className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                      <p className="ml-3 text-base text-gray-700">
-                        {trek.duration} days
-                      </p>
+                    {/* Trek details */}
+                    <div className="mt-4 space-y-4 lg:max-w-md">
+                      {trek.location && (
+                        <div className="flex items-start">
+                          <FaMapMarkerAlt className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                          <p className="ml-3 text-base text-gray-700 break-words overflow-wrap-anywhere">
+                            {trek.location}
+                          </p>
+                        </div>
+                      )}
+
+                      {trek.duration && (
+                        <div className="flex items-start">
+                          <FaClock className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                          <p className="ml-3 text-base text-gray-700">
+                            {trek.duration} days
+                          </p>
+                        </div>
+                      )}
+
+                      {trek.maxGroupSize && (
+                        <div className="flex items-start">
+                          <FaUsers className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                          <p className="ml-3 text-base text-gray-700 break-words overflow-wrap-anywhere">
+                            Max group size: {trek.maxGroupSize} people
+                          </p>
+                        </div>
+                      )}
+
+                      {trek.maxAltitude && (
+                        <div className="flex items-start">
+                          <FaMountain className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
+                          <p className="ml-3 text-base text-gray-700 break-words overflow-wrap-anywhere">
+                            Max altitude: {trek.maxAltitude} meters
+                          </p>
+                        </div>
+                      )}
+
+                      {trek.distance && (
+                        <div className="flex items-start">
+                          <svg
+                            className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5"
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <p className="ml-3 text-base text-gray-700 break-words overflow-wrap-anywhere">
+                            Total distance: {trek.distance} km
+                          </p>
+                        </div>
+                      )}
                     </div>
-                  )}
 
-                  {trek.maxGroupSize && (
-                    <div className="flex items-start">
-                      <FaUsers className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                      <p className="ml-3 text-base text-gray-700">
-                        Max group size: {trek.maxGroupSize} people
-                      </p>
+                    {/* Additional Trek Details */}
+                    <div className="mt-6 border-t border-gray-200 pt-6 lg:max-w-md">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        Trek Details
+                      </h3>
+
+                      <div className="mt-4 flex flex-col gap-4">
+                        {trek.region && (
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-emerald-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Region
+                              </p>
+                              <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
+                                {regionName}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {trek.bestTimeToVisit && (
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-emerald-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 9.586V6z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Best Time to Visit
+                              </p>
+                              <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
+                                {trek.bestTimeToVisit}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {trek.startingPoint && (
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-emerald-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Starting Point
+                              </p>
+                              <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
+                                {trek.startingPoint}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {trek.endingPoint && (
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-emerald-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Ending Point
+                              </p>
+                              <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
+                                {trek.endingPoint}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {trek.altitude && (
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-emerald-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Maximum Altitude
+                              </p>
+                              <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
+                                {trek.altitude} meters
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {trek.difficulty && (
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-emerald-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Difficulty Level
+                              </p>
+                              <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
+                                {trek.difficulty}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-
-                  {trek.maxAltitude && (
-                    <div className="flex items-start">
-                      <FaMountain className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5" />
-                      <p className="ml-3 text-base text-gray-700">
-                        Max altitude: {trek.maxAltitude} meters
-                      </p>
-                    </div>
-                  )}
-
-                  {trek.distance && (
-                    <div className="flex items-start">
-                      <svg
-                        className="flex-shrink-0 h-5 w-5 text-emerald-600 mt-0.5"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M12 1.586l-4 4v12.828l4-4V1.586zM3.707 3.293A1 1 0 002 4v10a1 1 0 00.293.707L6 18.414V5.586L3.707 3.293zM17.707 5.293L14 1.586v12.828l2.293 2.293A1 1 0 0018 16V6a1 1 0 00-.293-.707z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      <p className="ml-3 text-base text-gray-700">
-                        Total distance: {trek.distance} km
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Additional Trek Details */}
-                <div className="mt-6 border-t border-gray-200 pt-6">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Trek Details
-                  </h3>
-
-                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    {trek.region && (
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-5 w-5 text-emerald-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">
-                            Region
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {regionName}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {trek.bestTimeToVisit && (
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-5 w-5 text-emerald-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 9.586V6z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">
-                            Best Time to Visit
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {trek.bestTimeToVisit}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {trek.startingPoint && (
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-5 w-5 text-emerald-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">
-                            Starting Point
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {trek.startingPoint}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {trek.endingPoint && (
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-5 w-5 text-emerald-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">
-                            Ending Point
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {trek.endingPoint}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {trek.altitude && (
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-5 w-5 text-emerald-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">
-                            Maximum Altitude
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {trek.altitude} meters
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {trek.difficulty && (
-                      <div className="flex items-start">
-                        <div className="flex-shrink-0">
-                          <svg
-                            className="h-5 w-5 text-emerald-600"
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-3">
-                          <p className="text-sm font-medium text-gray-900">
-                            Difficulty Level
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {trek.difficulty}
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
+
+                  {/* Trek batches/dates */}
+                  {trek.batches && trek.batches.length > 0 && (
+                    <div className="mt-8 lg:mt-0 lg:ml-8" data-batch-section>
+                      <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                        Available Dates
+                      </h2>
+                      <BatchesTabView
+                        batches={trek.batches}
+                        onBatchSelect={handleBatchSelect}
+                        isTrekDisabled={isTrekDisabled}
+                        currentUser={currentUser}
+                        navigate={navigate}
+                        trekId={trek._id}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Trek Highlights */}
                 {trek.highlights && trek.highlights.length > 0 && (
-                  <div className="mt-6">
+                  <div className="mt-6 lg:mt-8">
                     <h3 className="text-lg font-medium text-gray-900 mb-4">
                       Highlights
                     </h3>
@@ -1795,7 +2037,7 @@ function TrekDetail() {
                                 clipRule="evenodd"
                               />
                             </svg>
-                            <span className="ml-3 text-gray-700">
+                            <span className="ml-3 text-gray-700 break-words overflow-wrap-anywhere">
                               {highlight}
                             </span>
                           </li>
@@ -1814,44 +2056,28 @@ function TrekDetail() {
 
               {/* Trek description */}
               <div id="overview" className="mt-12 scroll-mt-20">
-                <h2 className="text-2xl font-bold text-gray-900">Overview</h2>
-                <div className="mt-4 prose prose-emerald prose-lg text-gray-500 max-w-none">
-                  <p>{trek.description}</p>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Overview</h2>
+                <div className="mt-4 text-gray-500 leading-relaxed">
+                  <p className="text-base sm:text-lg break-words overflow-wrap-anywhere hyphens-auto">{trek.description}</p>
                 </div>
               </div>
             </div>
-            {/* Trek batches/dates */}
-            {trek.batches && trek.batches.length > 0 && (
-              <div className="mt-12" data-batch-section>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Available Dates
-                </h2>
-                <BatchesTabView
-                  batches={trek.batches}
-                  onBatchSelect={handleBatchSelect}
-                  isTrekDisabled={isTrekDisabled}
-                  currentUser={currentUser}
-                  navigate={navigate}
-                  trekId={trek._id}
-                />
-              </div>
-            )}
           </div>
 
           {/* Trek itinerary */}
           {trek.itinerary && trek.itinerary.length > 0 && (
             <div id="itinerary" className="mt-12 scroll-mt-20">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">
                 Trek Itinerary
               </h2>
-              <TrekItinerary itinerary={trek.itinerary} />{' '}
+              <TrekItinerary itinerary={trek.itinerary} />{" "}
             </div>
           )}
 
           {/* Trek inclusions & exclusions */}
           {(trek.includes?.length > 0 || trek.excludes?.length > 0) && (
             <div id="inclusions" className="mt-12 scroll-mt-20">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-6">
                 Inclusions & Exclusions
               </h2>
               <TrekInclusionsExclusions
@@ -1908,14 +2134,20 @@ function TrekDetail() {
         {!loading && !error && trek && renderRelatedTreks()}
 
         {/* Mobile Fixed Footer - now using React Portal */}
-        {!loading && !error && trek && trek.batches && trek.batches.length > 0 && (
-          <MobileTrekFooter
-            price={formatCurrency(getMinimumPrice(trek))}
-            discountedPrice={discountedPrice ? formatCurrency(discountedPrice) : null}
-            onBookNow={handleFooterBookNowClick}
-            isTrekDisabled={isTrekDisabled}
-          />
-        )}
+        {!loading &&
+          !error &&
+          trek &&
+          trek.batches &&
+          trek.batches.length > 0 && (
+            <MobileTrekFooter
+              price={formatCurrency(getMinimumPrice(trek))}
+              discountedPrice={
+                discountedPrice ? formatCurrency(discountedPrice) : null
+              }
+              onBookNow={handleFooterBookNowClick}
+              isTrekDisabled={isTrekDisabled}
+            />
+          )}
       </div>
     </>
   );

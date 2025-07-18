@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaCalendarAlt, FaList } from 'react-icons/fa';
 
 function TrekSection({ region }) {
   // If no region is provided, return null
@@ -53,34 +52,7 @@ function TrekSection({ region }) {
               ))}
             </div>
             
-            {/* Download buttons */}
-            <div className="mt-10 flex flex-wrap gap-8">
-              <div className="flex flex-col items-center">
-                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-3">
-                  <FaCalendarAlt className="w-8 h-8 text-blue-500" />
-                </div>
-                <span className="text-gray-800 font-medium mb-3">Calendar</span>
-                <Link 
-                  to="#" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-full transition-colors"
-                >
-                  Download
-                </Link>
-              </div>
-              
-              <div className="flex flex-col items-center">
-                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-3">
-                  <FaList className="w-8 h-8 text-blue-500" />
-                </div>
-                <span className="text-gray-800 font-medium mb-3">Packing List</span>
-                <Link 
-                  to="#" 
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-full transition-colors"
-                >
-                  Download
-                </Link>
-              </div>
-            </div>
+
           </div>
           
           {/* Right side - Image grid matching the reference image layout */}

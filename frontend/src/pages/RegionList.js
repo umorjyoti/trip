@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getRegions } from '../services/api';
 import { FaMapMarkerAlt, FaCalendarAlt, FaMountain } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { formatLocation } from '../utils/formatters';
 
 function RegionList() {
   const [regions, setRegions] = useState([]);
@@ -83,7 +84,8 @@ function RegionList() {
             {regions.map((region) => (
               <Link
                 key={region._id}
-                to={`/regions/${region._id}`}
+                to={`/regions/${formatLocation(region.name)}`}
+                state={{ id: region?._id }}
                 className="group bg-white overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300"
               >
                 <div className="relative h-60">
