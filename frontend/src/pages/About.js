@@ -247,7 +247,7 @@ function About() {
             <p className="text-gray-700 leading-relaxed text-base sm:text-lg mb-6">
               Chandu MR and Varun H, co-founders of Bengaluru Trekkers, became friends in SJCE Engineering College through shared weekend trekking escapes. After graduation, while working in the same IT company in Bengaluru, their passion for trekking led Chandu to propose starting a trekking group to Varun, "not for business, just for people like us." Varun agreed, and they were later joined by college-mates Suresh and Karthik, forming a four-partner team built on trust, passion, and shared experience.
             </p>
-            <div className="text-gray-400 text-xs sm:text-sm italic">Founders</div>
+           
           </div>
           
           <div>
@@ -261,7 +261,6 @@ function About() {
               Without a marketing budget, Chandu discovered a Twitter page called "Bangalore Roomie" (a hub for professionals in Bengaluru). He posted about their trek, tagged the page, and gained over 100 followers in one day. Their first trek to Bandaje Falls included 11 strangers from Twitter who became friends. The project scaled rapidly from one trek a month to multiple batches every weekend. By 2024, they formalized operations as TrekTales Explorers (OPC) Pvt. Ltd. under MCA, aiming to provide safe, inclusive, and quality trekking.
             </p>
             <p className="text-emerald-600 font-semibold text-base sm:text-lg">And it all started with one tweet.</p>
-            <div className="text-gray-400 text-xs sm:text-sm italic mt-4">Twitter Post</div>
           </div>
         </div>
       </section>

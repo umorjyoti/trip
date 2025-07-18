@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
+import Modal from "../components/Modal";
 import { useAuth } from "../contexts/AuthContext";
 
 function BookingPage() {
@@ -14,6 +15,7 @@ function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [razorpayKey, setRazorpayKey] = useState(null);
   const [taxInfo, setTaxInfo] = useState({
@@ -221,6 +223,7 @@ function BookingPage() {
     }
 
     try {
+      setProcessingPayment(true);
       // Map selected add-on IDs to { name, price } objects
       const validAddOns = trek.addOns
         .map((addOn, idx) => ({ ...addOn, key: getAddOnKey(addOn, idx) }))
@@ -303,14 +306,20 @@ function BookingPage() {
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
       script.onload = () => {
+        setProcessingPayment(false);
         const razorpay = new window.Razorpay(options);
         razorpay.open();
+      };
+      script.onerror = () => {
+        setProcessingPayment(false);
+        toast.error('Failed to load payment system. Please try again.');
       };
       document.body.appendChild(script);
 
     } catch (error) {
       console.error("Error creating booking:", error);
       toast.error(error.message || "Failed to create booking");
+      setProcessingPayment(false);
     }
   };
 
@@ -349,6 +358,25 @@ function BookingPage() {
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
       </div>
+    );
+  }
+
+  // Payment processing modal
+  if (processingPayment) {
+    return (
+      <Modal
+        title="Preparing Payment"
+        isOpen={processingPayment}
+        onClose={() => {}} // No close functionality during payment processing
+        size="small"
+      >
+        <div className="flex flex-col items-center space-y-4 py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+          <p className="text-sm text-gray-600 text-center">
+            Please wait while we set up your payment gateway...
+          </p>
+        </div>
+      </Modal>
     );
   }
 
@@ -630,9 +658,19 @@ function BookingPage() {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  disabled={processingPayment}
+                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
+                    processingPayment ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
                 >
-                  Proceed to Payment
+                  {processingPayment ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Loading Payment...
+                    </>
+                  ) : (
+                    'Proceed to Payment'
+                  )}
                 </button>
               </div>
             </form>
