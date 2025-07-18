@@ -1262,10 +1262,10 @@ const exportBookings = async (req, res) => {
 const updateParticipantDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const { participants, pickupLocation, dropLocation, additionalRequests } = req.body;
+    const { participants, emergencyContact, pickupLocation, dropLocation, additionalRequests } = req.body;
 
     console.log('updateParticipantDetails called for booking:', id);
-    console.log('Request body:', { participants, pickupLocation, dropLocation, additionalRequests });
+    console.log('Request body:', { participants, pickupLocation, dropLocation, additionalRequests, emergencyContact });
 
     const booking = await Booking.findById(id)
       .populate('trek')
@@ -1298,6 +1298,13 @@ const updateParticipantDetails = async (req, res) => {
       });
     }
 
+    // Validate emergency contact
+    if (!emergencyContact || !emergencyContact.name || !emergencyContact.phone || !emergencyContact.relation) {
+      return res.status(400).json({ 
+        message: "Emergency contact information is required (name, phone, relation)" 
+      });
+    }
+
     // Validate and format participant data
     const formattedParticipants = participants.map((participant, index) => {
       // Validate required fields
@@ -1305,10 +1312,7 @@ const updateParticipantDetails = async (req, res) => {
         throw new Error(`Participant ${index + 1} is missing required fields (name, email, phone)`);
       }
 
-      // Validate emergency contact fields
-      if (!participant.emergencyContact?.name || !participant.emergencyContact?.phone || !participant.emergencyContact?.relation) {
-        throw new Error(`Participant ${index + 1} is missing required emergency contact fields (name, phone, relation)`);
-      }
+
 
       // Format the participant data
       return {
@@ -1319,19 +1323,20 @@ const updateParticipantDetails = async (req, res) => {
         gender: participant.gender,
         allergies: participant.allergies || '',
         extraComment: participant.extraComment || '',
-        emergencyContact: {
-          name: participant.emergencyContact.name,
-          phone: participant.emergencyContact.phone,
-          relation: participant.emergencyContact.relation
-        },
+
         customFields: participant.customFields || {},
         medicalConditions: participant.medicalConditions || '',
         specialRequests: participant.specialRequests || ''
       };
     });
 
-    // Update booking with participant details
+    // Update booking with participant details and emergency contact
     booking.participantDetails = formattedParticipants;
+    booking.emergencyContact = {
+      name: emergencyContact.name,
+      phone: emergencyContact.phone,
+      relation: emergencyContact.relation
+    };
     booking.pickupLocation = pickupLocation || 'To be confirmed';
     booking.dropLocation = dropLocation || 'To be confirmed';
     booking.additionalRequests = additionalRequests || '';

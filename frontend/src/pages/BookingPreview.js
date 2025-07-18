@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getBookingById } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PaymentButton from '../components/PaymentButton';
-import { FaCalendarAlt, FaUsers, FaMoneyBillWave, FaMapMarkerAlt, FaUserFriends, FaPhoneAlt } from 'react-icons/fa';
+import { FaCalendarAlt, FaUsers, FaMapMarkerAlt, FaUserFriends, FaPhoneAlt } from 'react-icons/fa';
 
 function BookingPreview() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -158,14 +157,6 @@ function BookingPreview() {
                         <p>Gender: {participant.gender}</p>
                         {participant.medicalConditions && (
                           <p>Medical Conditions: {participant.medicalConditions}</p>
-                        )}
-                        {participant.emergencyContact && (
-                          <div className="mt-2 p-2 bg-gray-50 rounded">
-                            <p className="font-medium text-gray-700">Emergency Contact:</p>
-                            <p>Name: {participant.emergencyContact.name}</p>
-                            <p>Phone: {participant.emergencyContact.phone}</p>
-                            <p>Relation: {participant.emergencyContact.relation}</p>
-                          </div>
                         )}
                       </div>
                     </div>

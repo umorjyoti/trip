@@ -223,11 +223,11 @@ function BookingViewPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.age}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.gender}</td>
                         <td className="px-6 py-4 text-sm text-gray-500">
-                          {participant.emergencyContact ? (
+                          {booking.emergencyContact ? (
                             <div>
-                              <div className="font-medium">{participant.emergencyContact.name}</div>
-                              <div className="text-xs text-gray-400">{participant.emergencyContact.phone}</div>
-                              <div className="text-xs text-gray-400">{participant.emergencyContact.relation}</div>
+                              <div className="font-medium">{booking.emergencyContact.name}</div>
+                              <div className="text-xs text-gray-400">{booking.emergencyContact.phone}</div>
+                              <div className="text-xs text-gray-400">{booking.emergencyContact.relation}</div>
                             </div>
                           ) : (
                             'Not provided'
