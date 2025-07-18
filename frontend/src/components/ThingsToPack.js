@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FaBox } from 'react-icons/fa';
 
 const ThingsToPack = ({ items }) => {
   const [showAll, setShowAll] = useState(false);
@@ -15,23 +16,38 @@ const ThingsToPack = ({ items }) => {
       <h2 className="text-2xl font-bold text-gray-800 mb-6">Things To Pack</h2>
       
       <div className="border-t border-gray-200 pt-6">
-        {displayItems.map((item, index) => (
-          <div key={index} className="mb-8 flex">
-            <div className="flex-shrink-0 mr-4">
-              <div className="bg-blue-50 rounded-full p-4 w-16 h-16 flex items-center justify-center">
-                <img 
-                  src={item.icon || `/icons/${item.title.toLowerCase().replace(/\s+/g, '-')}.svg`} 
-                  alt={item.title}
-                  className="w-8 h-8 text-blue-500"
-                />
+        {displayItems.map((item, index) => {
+          // Check if this is a single line item (only title, no description)
+          const isSingleLine = !item.description || item.description.trim() === '';
+          
+          return (
+            <div key={index} className="mb-8 flex">
+              <div className="flex-shrink-0 mr-4">
+                <div className="bg-blue-50 rounded-full p-4 w-16 h-16 flex items-center justify-center">
+                  {item.icon ? (
+                    <img 
+                      src={item.icon} 
+                      alt={item.title}
+                      className="w-8 h-8 text-blue-500"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'block';
+                      }}
+                    />
+                  ) : null}
+                  <FaBox 
+                    className={`w-8 h-8 text-blue-500 ${item.icon ? 'hidden' : 'block'}`}
+                    style={{ display: item.icon ? 'none' : 'block' }}
+                  />
+                </div>
+              </div>
+              <div className={isSingleLine ? 'text-center' : ''}>
+                <h3 className="text-lg font-semibold text-gray-800 mb-1">{item.title}:</h3>
+                {!isSingleLine && <p className="text-gray-700">{item.description}</p>}
               </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-1">{item.title}:</h3>
-              <p className="text-gray-700">{item.description}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         
         {items.length > 6 && (
           <div className="mt-4 text-center">
