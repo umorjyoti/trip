@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
+import Modal from "../components/Modal";
 import { useAuth } from "../contexts/AuthContext";
 
 function BookingPage() {
@@ -14,6 +15,7 @@ function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [razorpayKey, setRazorpayKey] = useState(null);
   const [taxInfo, setTaxInfo] = useState({
@@ -317,8 +319,13 @@ function BookingPage() {
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
       script.onload = () => {
+        setProcessingPayment(false);
         const razorpay = new window.Razorpay(options);
         razorpay.open();
+      };
+      script.onerror = () => {
+        setProcessingPayment(false);
+        toast.error('Failed to load payment system. Please try again.');
       };
       document.body.appendChild(script);
 
@@ -378,6 +385,25 @@ function BookingPage() {
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
       </div>
+    );
+  }
+
+  // Payment processing modal
+  if (processingPayment) {
+    return (
+      <Modal
+        title="Preparing Payment"
+        isOpen={processingPayment}
+        onClose={() => {}} // No close functionality during payment processing
+        size="small"
+      >
+        <div className="flex flex-col items-center space-y-4 py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+          <p className="text-sm text-gray-600 text-center">
+            Please wait while we set up your payment gateway...
+          </p>
+        </div>
+      </Modal>
     );
   }
 
