@@ -164,12 +164,12 @@ function BlogRegionPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
                 {blogs.map((blog) => (
                   <Link
                     key={blog._id}
                     to={`/blogs/${blog.slug}`}
-                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 w-full max-w-sm"
                   >
                     <div className="aspect-w-16 aspect-h-9">
                       <img

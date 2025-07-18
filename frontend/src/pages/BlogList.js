@@ -224,7 +224,7 @@ function BlogList() {
 
         {/* Regions View */}
         {viewMode === 'regions' && (
-          <div className="max-w-7xl px-4 sm:px-6 lg:px-8 py-4 pb-16">
+          <div className="w-fullpx-4 sm:px-6 lg:px-8 py-4 pb-16 justify-items-center">
             {blogRegions.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-gray-400 mb-4">
@@ -234,12 +234,12 @@ function BlogList() {
                 <p className="text-gray-500">Blog regions will appear here once they are created.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center">
                 {blogRegions.map((region) => (
                   <Link
                     key={region._id}
                     to={`/blogs/region/${region.slug}`}
-                    className="group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+                    className="group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 w-full max-w-sm"
                   >
                     <div className="relative h-48 overflow-hidden">
                       <img
@@ -276,7 +276,7 @@ function BlogList() {
 
         {/* Blogs View */}
         {viewMode === 'blogs' && (
-          <div className="max-w-7xl px-4 sm:px-6 lg:px-8 pb-16">
+          <div className="px-4 sm:px-6 lg:px-8 pb-16 justify-items-center w-full ">
             {/* Search and Sort Section */}
             <div className="flex flex-col md:flex-row md:items-center md:space-x-4 gap-3 mb-4">
               <div className="w-full md:w-80">
@@ -320,12 +320,13 @@ function BlogList() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {blogs.map((blog) => (
+                <div className="flex justify-center">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-items-center max-w-6xl">
+                    {blogs.map((blog) => (
                     <Link
                       key={blog._id}
                       to={`/blogs/${blog.slug}`}
-                      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                      className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 w-full max-w-sm"
                     >
                       <div className="aspect-w-16 aspect-h-9">
                         <img
@@ -358,6 +359,7 @@ function BlogList() {
                       </div>
                     </Link>
                   ))}
+                  </div>
                 </div>
 
                 {/* Pagination */}

@@ -37,18 +37,21 @@ function Footer() {
           </div>
           {/* Custom Trek Link and Other Section */}
           <div className="flex-1 flex flex-col items-start md:items-end justify-between min-w-[220px]">
-            <Link to="/custom-trek" className="text-base hover:text-white underline mb-4 md:mb-6">Custom Trek</Link>
+            <Link to="/coming-soon" className="text-base hover:text-white underline mb-4 md:mb-6">Custom Trek</Link>
             <div>
               <div className="font-semibold mb-2 md:text-right">Other</div>
               <ul className="space-y-1 md:text-right">
                 <li><Link to="/blogs" className="hover:text-white">Our Blogs</Link></li>
-                <li><Link to="/newsletter" className="hover:text-white">Newsletter</Link></li>
+                <li><Link to="/coming-soon" className="hover:text-white">Newsletter</Link></li>
               </ul>
             </div>
           </div>
         </div>
         <p className="mt-8 text-center text-sm text-gray-500">
           &copy; {new Date().getFullYear()} TREKTALES EXPLORERS (OPC) PRIVATE LIMITED. All rights reserved.
+        </p>
+        <p className="mt-2 text-center text-xs text-gray-600">
+          Developed by <a href="mailto:umorjyotichetia@gmail.com" className="hover:text-emerald-400 transition-colors">@umorjyotichetia@gmail.com</a>
         </p>
       </div>
     </footer>
