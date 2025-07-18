@@ -36,11 +36,6 @@ const ParticipantDetailSchema = new mongoose.Schema({
     enum: ['Male', 'Female', 'Other']
   },
   contactNumber: String,
-  emergencyContact: {
-    name: String,
-    relationship: String,
-    phone: String
-  },
   medicalConditions: String,
   specialRequests: String,
   customFieldResponses: [CustomFieldResponseSchema],
@@ -63,6 +58,15 @@ const ParticipantDetailSchema = new mongoose.Schema({
   },
   refundDate: {
     type: Date
+  },
+  cancellationReason: {
+    type: String,
+    default: ''
+  },
+  status: {
+    type: String,
+    enum: ['confirmed', 'bookingCancelled'],
+    default: 'confirmed'
   }
 }, { _id: false });
 
@@ -119,6 +123,21 @@ const BookingSchema = new mongoose.Schema({
     type: UserDetailsSchema,
     required: true
   },
+  // Single emergency contact for the entire booking (filled during participant details step)
+  emergencyContact: {
+    name: {
+      type: String,
+      required: false
+    },
+    phone: {
+      type: String,
+      required: false
+    },
+    relation: {
+      type: String,
+      required: false
+    }
+  },
   totalPrice: {
     type: Number,
     required: true,
@@ -171,7 +190,37 @@ const BookingSchema = new mongoose.Schema({
       fieldType: String,
       value: mongoose.Schema.Types.Mixed,
       options: [String]
-    }]
+    }],
+    status: {
+      type: String,
+      enum: ['confirmed', 'bookingCancelled'],
+      default: 'confirmed'
+    },
+    // Add cancellation fields
+    isCancelled: {
+      type: Boolean,
+      default: false
+    },
+    cancelledAt: {
+      type: Date
+    },
+    cancellationReason: {
+      type: String,
+      default: ''
+    },
+    // Add refund fields
+    refundStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'success', 'failed', 'not_applicable'],
+      default: 'not_applicable'
+    },
+    refundAmount: {
+      type: Number,
+      default: 0
+    },
+    refundDate: {
+      type: Date
+    }
   }],
   // Add pickup and drop location fields
   pickupLocation: {
@@ -185,6 +234,51 @@ const BookingSchema = new mongoose.Schema({
   additionalRequests: {
     type: String,
     trim: true
+  },
+  cancellationReason: {
+    type: String,
+    default: ''
+  },
+  // Admin remarks field
+  adminRemarks: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  // Cancellation/Reschedule request fields
+  cancellationRequest: {
+    type: {
+      type: String,
+      enum: ['cancellation', 'reschedule', null],
+      default: null
+    },
+    reason: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    preferredBatch: {
+      type: mongoose.Schema.Types.ObjectId, // For reschedule requests
+      default: null
+    },
+    requestedAt: {
+      type: Date,
+      default: null
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', null],
+      default: null
+    },
+    adminResponse: {
+      type: String,
+      trim: true,
+      default: ''
+    },
+    respondedAt: {
+      type: Date,
+      default: null
+    }
   }
 }, { 
   timestamps: true,
@@ -205,6 +299,11 @@ BookingSchema.virtual('formattedDates').get(function() {
   }
   
   return { startDate: 'N/A', endDate: 'N/A' };
+});
+
+// Add virtual for booking ID
+BookingSchema.virtual('bookingId').get(function() {
+  return `BT${this._id.toString().slice(-8).toUpperCase()}`;
 });
 
 // Add virtual for batch details

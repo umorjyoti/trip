@@ -23,6 +23,12 @@ function ParticipantDetailsPage() {
       customFields: {}
     }))
   );
+  // Single emergency contact for the entire booking
+  const [emergencyContact, setEmergencyContact] = useState({
+    name: "",
+    phone: "",
+    relation: ""
+  });
   const [loading, setLoading] = useState(false);
   const [trekFields, setTrekFields] = useState([]);
   const [batch, setBatch] = useState(null);
@@ -42,7 +48,10 @@ function ParticipantDetailsPage() {
             trek.participantFields.forEach(f => {
               newFields[f.name] = "";
             });
-            return { ...p, ...newFields };
+            return { 
+              ...p, 
+              ...newFields
+            };
           }));
         }
         if (Array.isArray(trek.customFields)) {
@@ -112,12 +121,20 @@ function ParticipantDetailsPage() {
     });
   };
 
+  const handleEmergencyContactChange = (field, value) => {
+    setEmergencyContact(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       await updateParticipantDetails(bookingId, { 
         participants: participants,
+        emergencyContact: emergencyContact, // Include single emergency contact
         pickupLocation: "To be confirmed", // Default value, can be updated later
         dropLocation: "To be confirmed", // Default value, can be updated later
         additionalRequests: "" // Default empty value
@@ -241,6 +258,51 @@ function ParticipantDetailsPage() {
             )}
           </div>
         ))}
+        
+        {/* Single Emergency Contact Section for All Participants */}
+        <div className="border p-6 rounded-lg mb-6 bg-white shadow-sm">
+          <h3 className="font-semibold mb-4 text-lg text-emerald-600">Emergency Contact (For All Participants)</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name *</label>
+              <input 
+                value={emergencyContact.name} 
+                onChange={e => handleEmergencyContactChange('name', e.target.value)} 
+                required 
+                placeholder="Emergency Contact Name" 
+                className="border p-2 rounded w-full" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Phone *</label>
+              <input 
+                value={emergencyContact.phone} 
+                onChange={e => handleEmergencyContactChange('phone', e.target.value)} 
+                required 
+                placeholder="Emergency Contact Phone" 
+                className="border p-2 rounded w-full" 
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Relation to Participants *</label>
+              <select 
+                value={emergencyContact.relation} 
+                onChange={e => handleEmergencyContactChange('relation', e.target.value)} 
+                required 
+                className="border p-2 rounded w-full"
+              >
+                <option value="">Select Relation</option>
+                <option value="Parent">Parent</option>
+                <option value="Spouse">Spouse</option>
+                <option value="Sibling">Sibling</option>
+                <option value="Friend">Friend</option>
+                <option value="Relative">Relative</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
         <button type="submit" disabled={loading} className="bg-emerald-600 text-white px-8 py-3 rounded shadow hover:bg-emerald-700 text-lg font-semibold">
           {loading ? "Saving..." : "Continue to Preview"}
         </button>

@@ -182,9 +182,10 @@ exports.deleteUserGroup = async (req, res) => {
 
 // Get all admins
 exports.getAdmins = async (req, res) => {
-  console.log("inside get admins")
   try {
-    const admins =""
+    const admins = await User.find({ role: 'admin' })
+      .select('-password')
+      .populate('group', 'name _id');
     
     res.json(admins);
   } catch (error) {

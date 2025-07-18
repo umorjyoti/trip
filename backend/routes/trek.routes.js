@@ -16,11 +16,22 @@ router.get('/stats', trekController.getTrekStats);
 router.get('/all', trekController.getAllTreks);
 router.get('/by-region/:regionId', trekController.getTreksByExactRegion);
 
+// Weekend getaway routes - MUST come before general :id route
+router.get('/weekend-getaways', (req, res, next) => {
+  console.log('Weekend getaways route matched!');
+  next();
+}, trekController.getWeekendGetaways);
+router.get('/weekend-getaways/galleries', trekController.getWeekendGetawayGalleries);
+router.get('/weekend-getaways/blogs', trekController.getWeekendGetawayBlogs);
+router.get('/weekend-getaways/activities', trekController.getWeekendGetawayActivities);
+router.get('/weekend-getaways/:id/details', trekController.getWeekendGetawayDetails);
+
 // Custom trek routes - must come before general ID route
 router.get('/custom/:token', trekController.getTrekByCustomToken);
 
 // Weekend getaway toggle route - keep this before the general ID route
 router.put('/weekend-getaway/:id', [protect, admin], trekController.toggleWeekendGetaway);
+router.put('/weekend-getaways/:id/gallery', protect, admin, trekController.updateWeekendGetawayGallery);
 
 // Toggle trek status route - accept both PUT and PATCH
 router.put('/:id/toggle-status', [protect, admin], trekController.toggleTrekStatus);
@@ -30,7 +41,7 @@ router.patch('/:id/toggle-status', [protect, admin], trekController.toggleTrekSt
 router.get('/:id/performance', [protect, admin], trekController.getTrekPerformance);
 
 // General routes - these should come AFTER more specific routes
-router.get('/:id', protect, (req, res, next) => {
+router.get('/:id', (req, res, next) => {
   console.log(`ID route matched with id: ${req.params.id}`);
   next();
 }, trekController.getTrekById);
@@ -74,6 +85,15 @@ router.put('/:id/batches/:batchId',
   trekController.updateBatch
 );
 
+router.patch('/:id/batches/:batchId', 
+  protect, 
+  checkMultiplePermissions([
+    { category: 'sections', name: 'treks' },
+    { category: 'quickActions', name: 'createBatch' }
+  ]), 
+  trekController.updateBatch
+);
+
 router.delete('/:id/batches/:batchId', 
   protect, 
   checkMultiplePermissions([
@@ -102,5 +122,12 @@ router.get('/:id/batches/:batchId/export-participants',
 );
 
 router.post('/:id/send-custom-link', protect, admin, sendCustomTrekLink);
+
+// Recalculate batch participant counts
+router.post('/:id/recalculate-participants', 
+  protect, 
+  admin, 
+  trekController.recalculateBatchParticipants
+);
 
 module.exports = router; 

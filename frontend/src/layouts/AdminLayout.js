@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaHome, FaMountain, FaMapMarkedAlt, FaCalendarAlt, FaUsers, FaTicketAlt, FaChartLine, FaLayerGroup, FaUserFriends } from 'react-icons/fa';
+import { FaHome, FaMountain, FaMapMarkedAlt, FaCalendarAlt, FaUsers, FaTicketAlt, FaChartLine, FaLayerGroup, FaUserFriends, FaBlog, FaGlobe } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 
 function AdminLayout({ children }) {
@@ -55,10 +55,12 @@ function AdminLayout({ children }) {
                 {renderNavItem('/admin/regions', <FaMapMarkedAlt className="mr-3 h-5 w-5 text-emerald-300" />, 'Regions', 'manageRegions')}
                 {renderNavItem('/admin/bookings', <FaCalendarAlt className="mr-3 h-5 w-5 text-emerald-300" />, 'Bookings', 'manageBookings')}
                 {renderNavItem('/admin/users', <FaUsers className="mr-3 h-5 w-5 text-emerald-300" />, 'Users', 'manageUsers')}
+                {renderNavItem('/admin/team', <FaUsers className="mr-3 h-5 w-5 text-emerald-300" />, 'Team', 'manageTeam')}
                 {renderNavItem('/admin/support', <FaTicketAlt className="mr-3 h-5 w-5 text-emerald-300" />, 'Support', 'supportTickets')}
                 {renderNavItem('/admin/sales', <FaChartLine className="mr-3 h-5 w-5 text-emerald-300" />, 'Sales', 'salesDashboard')}
                 {renderNavItem('/admin/trek-sections', <FaLayerGroup className="mr-3 h-5 w-5 text-emerald-300" />, 'Trek Sections', 'trekSections')}
                 {renderNavItem('/admin/user-groups', <FaUserFriends className="mr-3 h-5 w-5 text-emerald-300" />, 'User Groups', 'manageUserGroups')}
+                {renderNavItem('/admin/blogs', <FaBlog className="mr-3 h-5 w-5 text-emerald-300" />, 'Blogs', 'manageBlogs')}
               </nav>
             </div>
           </div>

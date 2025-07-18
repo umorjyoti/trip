@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { getTreks, deleteTrek, toggleTrekStatus, getAllTreksWithCustomToggle, sendCustomTrekLink } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { getTreks, deleteTrek, toggleTrekStatus, getAllTreksWithCustomToggle, sendCustomTrekLink, updateTrek, removeBatch, addBatch, updateBatch, getAllRegions } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import { FaEye, FaEyeSlash, FaEdit, FaTrash, FaChartLine } from 'react-icons/fa';
+import { FaEye, FaEyeSlash, FaEdit, FaTrash, FaChartLine, FaThList, FaThLarge, FaSearch } from 'react-icons/fa';
 
 function AdminTrekList() {
   const [treks, setTreks] = useState([]);
@@ -18,9 +18,30 @@ function AdminTrekList() {
   const [emailInputs, setEmailInputs] = useState({}); // { [trekId]: email }
   const [showEmailInput, setShowEmailInput] = useState({}); // { [trekId]: boolean }
   const [sending, setSending] = useState({}); // { [trekId]: boolean }
+  // 1. Add state for editing trek and batch
+  const [editingTrekId, setEditingTrekId] = useState(null);
+  const [trekEditData, setTrekEditData] = useState({});
+  const [editingBatchId, setEditingBatchId] = useState(null);
+  const [batchEditData, setBatchEditData] = useState({});
+  const [newBatchData, setNewBatchData] = useState({ startDate: '', endDate: '', price: '', maxParticipants: 10 });
+  const [batchLoading, setBatchLoading] = useState(false);
+  const DIFFICULTY_OPTIONS = ['Easy', 'Moderate', 'Difficult', 'Very Difficult'];
+  const [regions, setRegions] = useState([]);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
+  const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTreks();
+    // Fetch regions for dropdown
+    (async () => {
+      try {
+        const data = await getAllRegions();
+        setRegions(data);
+      } catch (err) {
+        setRegions([]);
+      }
+    })();
   }, [showCustomTreks]);
 
   const fetchTreks = async () => {
@@ -75,15 +96,23 @@ function AdminTrekList() {
     }
   };
 
+  // Helper to get region name from ID
+  const getRegionName = (regionId, trek) => {
+    // First try to use the regionName field from trek data
+    if (trek && trek.regionName) {
+      return trek.regionName;
+    }
+    // Fall back to regions lookup
+    const region = regions.find(r => r._id === regionId);
+    return region ? region.name : regionId;
+  };
+
+  // Filter and search treks
   const getFilteredAndSortedTreks = () => {
     let filteredTreks = [...treks];
-
-    // Hide custom treks unless showCustomTreks is true
     if (!showCustomTreks) {
       filteredTreks = filteredTreks.filter(trek => !trek.isCustom);
     }
-
-    // Apply filters
     switch (filterStatus) {
       case 'enabled':
         filteredTreks = filteredTreks.filter(trek => trek.isEnabled);
@@ -99,10 +128,17 @@ function AdminTrekList() {
           .sort((a, b) => (b.bookings?.length || 0) - (a.bookings?.length || 0));
         break;
       default:
-        // 'all' case - no filtering needed
         break;
     }
-
+    // Search filter
+    if (searchTerm.trim()) {
+      const lower = searchTerm.toLowerCase();
+      filteredTreks = filteredTreks.filter(trek =>
+        trek.name.toLowerCase().includes(lower) ||
+        getRegionName(trek.region, trek).toLowerCase().includes(lower) ||
+        (trek.difficulty || '').toLowerCase().includes(lower)
+      );
+    }
     return filteredTreks;
   };
 
@@ -122,6 +158,103 @@ function AdminTrekList() {
   const getCustomTrekLink = (trek) => {
     const frontendUrl = process.env.REACT_APP_FRONTEND_URL || window.location.origin;
     return `${frontendUrl}/custom-trek/${trek._id}`;
+  };
+
+  // 2. Add handlers for trek edit
+  const handleTrekEditChange = (e, trek) => {
+    const { name, value } = e.target;
+    setTrekEditData(prev => ({ ...prev, [name]: value }));
+  };
+  const startEditingTrek = (trek) => {
+    setEditingTrekId(trek._id);
+    setTrekEditData({
+      name: trek.name,
+      region: trek.region,
+      difficulty: trek.difficulty,
+      duration: trek.duration,
+    });
+  };
+  const cancelEditingTrek = () => {
+    setEditingTrekId(null);
+    setTrekEditData({});
+  };
+  const saveTrekEdit = async (trek) => {
+    try {
+      setLoading(true);
+      await updateTrek(trek._id, trekEditData);
+      toast.success('Trek updated successfully!');
+      fetchTreks();
+      setEditingTrekId(null);
+      setTrekEditData({});
+    } catch (err) {
+      toast.error('Failed to update trek');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Add handlers for batch edit
+  const startEditingBatch = (batch) => {
+    setEditingBatchId(batch._id);
+    setBatchEditData({
+      startDate: batch.startDate?.slice(0, 10),
+      endDate: batch.endDate?.slice(0, 10) || '',
+      price: batch.price,
+      maxParticipants: batch.maxParticipants,
+    });
+  };
+  const handleBatchEditChange = (e) => {
+    const { name, value } = e.target;
+    setBatchEditData(prev => ({ ...prev, [name]: value }));
+  };
+  const cancelEditingBatch = () => {
+    setEditingBatchId(null);
+    setBatchEditData({});
+  };
+  const saveBatchEdit = async (trekId, batchId) => {
+    try {
+      setBatchLoading(true);
+      await updateBatch(trekId, batchId, batchEditData);
+      toast.success('Batch updated successfully!');
+      fetchTreks();
+      setEditingBatchId(null);
+      setBatchEditData({});
+    } catch (err) {
+      toast.error('Failed to update batch');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+  const deleteBatch = async (trekId, batchId) => {
+    try {
+      setBatchLoading(true);
+      await removeBatch(trekId, batchId);
+      toast.success('Batch deleted successfully!');
+      fetchTreks();
+    } catch (err) {
+      toast.error('Failed to delete batch');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
+  // 4. Add handler for new batch creation
+  const handleNewBatchChange = (e) => {
+    const { name, value } = e.target;
+    setNewBatchData(prev => ({ ...prev, [name]: value }));
+  };
+  const addNewBatch = async (trekId) => {
+    try {
+      setBatchLoading(true);
+      await addBatch(trekId, newBatchData);
+      toast.success('Batch added successfully!');
+      fetchTreks();
+      setNewBatchData({ startDate: '', endDate: '', price: '', maxParticipants: 10 });
+    } catch (err) {
+      toast.error('Failed to add batch');
+    } finally {
+      setBatchLoading(false);
+    }
   };
 
   if (loading) {
@@ -155,10 +288,38 @@ function AdminTrekList() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
         <h1 className="text-3xl font-extrabold text-gray-900">Manage Treks</h1>
-        <div className="flex items-center space-x-4">
-          {/* Custom Trek Toggle */}
+        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 w-full md:w-auto">
+          {/* Search Bar */}
+          <div className="relative w-full md:w-64">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              className="pl-10 pr-3 py-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              placeholder="Search by name, region, difficulty..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1">
+            <button
+              className={`p-2 rounded ${viewMode === 'list' ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => setViewMode('list')}
+              title="List View"
+            >
+              <FaThList />
+            </button>
+            <button
+              className={`p-2 rounded ${viewMode === 'grid' ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              onClick={() => setViewMode('grid')}
+              title="Grid View"
+            >
+              <FaThLarge />
+            </button>
+          </div>
+          {/* Custom Trek Toggle and Filters */}
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Show:</label>
             <button
@@ -182,7 +343,6 @@ function AdminTrekList() {
               Custom Treks
             </button>
           </div>
-          
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -204,230 +364,307 @@ function AdminTrekList() {
         </div>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {getFilteredAndSortedTreks().length > 0 ? (
-            getFilteredAndSortedTreks().map((trek) => (
-              <li key={trek._id} className={`${!trek.isEnabled ? 'bg-gray-50' : ''}`}>
-                <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-12 w-12">
-                        <img 
-                          className={`h-12 w-12 rounded-md object-cover ${!trek.isEnabled ? 'opacity-50' : ''}`}
-                          src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'} 
-                          alt={trek.name} 
-                        />
+      {/* Trek List/Grid */}
+      {viewMode === 'list' ? (
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          <ul className="divide-y divide-gray-200">
+            {getFilteredAndSortedTreks().length > 0 ? (
+              getFilteredAndSortedTreks().map((trek) => (
+                <li key={trek._id} className={`${!trek.isEnabled ? 'bg-gray-50' : ''}`}>
+                  <div className="px-4 py-4 sm:px-6">
+                    <div className="flex items-center justify-between min-w-0">
+                      <div className="flex items-center min-w-0 flex-1">
+                        <div className="flex-shrink-0 h-12 w-12">
+                          <img 
+                            className={`h-12 w-12 rounded-md object-cover ${!trek.isEnabled ? 'opacity-50' : ''}`}
+                            src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'} 
+                            alt={trek.name} 
+                          />
+                        </div>
+                        <div className="ml-4 min-w-0 flex-1">
+                          <div className={`text-sm font-medium ${!trek.isEnabled ? 'text-gray-500' : 'text-gray-900'} truncate`}> 
+                            {trek.name}
+                            {trek.isCustom && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                Custom
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-500 truncate">
+                            {getRegionName(trek.region, trek)} • {trek.difficulty} • {trek.duration} days
+                            {trek.bookings && trek.bookings.length > 0 && (
+                              <span className="ml-2 text-emerald-600">
+                                • {trek.bookings.length} {trek.bookings.length === 1 ? 'booking' : 'bookings'}
+                              </span>
+                            )}
+                            {trek.isCustom && trek.customLinkExpiry && (
+                              <span className="ml-2 text-orange-600">
+                                • Expires {new Date(trek.customLinkExpiry).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="ml-4">
-                        <div className={`text-sm font-medium ${!trek.isEnabled ? 'text-gray-500' : 'text-gray-900'}`}>
-                          {trek.name}
-                          {trek.isCustom && (
-                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-                              Custom
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {trek.region} • {trek.difficulty} • {trek.duration} days
-                          {trek.bookings && trek.bookings.length > 0 && (
-                            <span className="ml-2 text-emerald-600">
-                              • {trek.bookings.length} {trek.bookings.length === 1 ? 'booking' : 'bookings'}
-                            </span>
-                          )}
-                          {trek.isCustom && trek.customLinkExpiry && (
-                            <span className="ml-2 text-orange-600">
-                              • Expires {new Date(trek.customLinkExpiry).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0 ml-4">
+                        <button
+                          onClick={() => toggleTrekExpansion(trek._id)}
+                          className="p-1.5 sm:p-2 rounded-full hover:bg-gray-100"
+                          title="Show Batches"
+                        >
+                          <ChevronDownIcon 
+                            className={`w-4 h-4 sm:w-5 sm:h-5 transform transition-transform ${expandedTreks.has(trek._id) ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                        <Link
+                          to={`/admin/treks/${trek._id}/performance`}
+                          className="p-1.5 sm:p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                          title="View Performance"
+                        >
+                          <FaChartLine className="w-3 h-3 sm:w-4 sm:h-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleToggleStatus(trek._id, trek.isEnabled)}
+                          className={`p-1.5 sm:p-2 rounded-full ${
+                            trek.isEnabled
+                              ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                              : 'bg-red-100 text-red-600 hover:bg-red-200'
+                          }`}
+                          title={trek.isEnabled ? 'Disable Trek' : 'Enable Trek'}
+                        >
+                          {trek.isEnabled ? <FaEye className="w-3 h-3 sm:w-4 sm:h-4" /> : <FaEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />}
+                        </button>
+                        {editingTrekId === trek._id ? (
+                          <Link
+                            to={`/admin/treks/edit/${trek._id}`}
+                            className="p-1.5 sm:p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                            title="Edit Trek"
+                          >
+                            <FaEdit className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => startEditingTrek(trek)}
+                            className="p-1.5 sm:p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                            title="Edit Trek"
+                          >
+                            <FaEdit className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openDeleteModal(trek)}
+                          className="p-1.5 sm:p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                        >
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => toggleTrekExpansion(trek._id)}
-                        className="p-2 rounded-full hover:bg-gray-100"
-                        title="Show Batches"
-                      >
-                        <ChevronDownIcon 
-                          className={`w-5 h-5 transform transition-transform ${expandedTreks.has(trek._id) ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-                      <Link
-                        to={`/admin/treks/${trek._id}/performance`}
-                        className="p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
-                        title="View Performance"
-                      >
-                        <FaChartLine className="w-4 h-4" />
-                      </Link>
-                      <button
-                        onClick={() => handleToggleStatus(trek._id, trek.isEnabled)}
-                        className={`p-2 rounded-full ${
-                          trek.isEnabled
-                            ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                            : 'bg-red-100 text-red-600 hover:bg-red-200'
-                        }`}
-                        title={trek.isEnabled ? 'Disable Trek' : 'Enable Trek'}
-                      >
-                        {trek.isEnabled ? <FaEye className="w-4 h-4" /> : <FaEyeSlash className="w-4 h-4" />}
-                      </button>
-                      <Link
-                        to={`/admin/treks/edit/${trek._id}`}
-                        className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
-                      >
-                        <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                        </svg>
-                      </Link>
-                      <button
-                        onClick={() => openDeleteModal(trek)}
-                        className="p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
-                      >
-                        <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
 
-                  {/* Expanded Batch Information */}
-                  {expandedTreks.has(trek._id) && (
-                    <div className="mt-4 border-t pt-4">
-                      <div className="space-y-4">
-                        {trek.batches && trek.batches.length > 0 ? (
-                          trek.batches.map((batch) => (
-                            <div 
-                              key={batch._id} 
-                              className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors duration-200"
+                    {/* Expanded Batch Information */}
+                    {expandedTreks.has(trek._id) && (
+                      <div className="mt-4 border-t pt-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {/* Add New Batch Card */}
+                          {editingBatchId === null && (
+                            <div className="bg-white border border-dashed border-emerald-400 rounded-lg p-4 flex flex-col items-center justify-center shadow min-h-[220px]">
+                              <h4 className="text-sm font-semibold mb-2">Add New Batch</h4>
+                              <input type="date" name="startDate" value={newBatchData.startDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                              <input type="date" name="endDate" value={newBatchData.endDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                              <input type="number" name="price" value={newBatchData.price} onChange={handleNewBatchChange} placeholder="Price" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                              <input type="number" name="maxParticipants" value={newBatchData.maxParticipants} onChange={handleNewBatchChange} placeholder="Max Slots" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                              <button onClick={() => addNewBatch(trek._id)} className="w-full py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium mt-2" disabled={batchLoading}>Add</button>
+                            </div>
+                          )}
+                          {/* Batch Cards */}
+                          {trek.batches && trek.batches.length > 0 && trek.batches.map((batch) => (
+                            <div
+                              key={batch._id}
+                              className="bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative cursor-pointer hover:border-emerald-500 border-2 border-transparent"
                               onClick={() => {
-                                window.location.href = `/admin/treks/${trek._id}/performance?batchId=${batch._id}`;
+                                if (editingBatchId !== batch._id) {
+                                  navigate(`/admin/treks/${trek._id}/performance?batchId=${batch._id}`);
+                                }
+                              }}
+                              style={{ pointerEvents: editingBatchId === batch._id ? 'none' : 'auto' }}
+                            >
+                              {/* Icon container with reserved space */}
+                              <div className="absolute top-2 right-2 z-10 flex space-x-1">
+                                <button onClick={e => { e.stopPropagation(); startEditingBatch(batch); }} className="p-1 rounded-full hover:bg-gray-200"><FaEdit className="w-4 h-4 text-blue-600" /></button>
+                                <button onClick={e => { e.stopPropagation(); deleteBatch(trek._id, batch._id); }} className="p-1 rounded-full hover:bg-gray-200"><FaTrash className="w-4 h-4 text-red-600" /></button>
+                              </div>
+                              <div className="pt-8"> {/* Add top padding to avoid overlap */}
+                                {editingBatchId === batch._id ? (
+                                  <>
+                                    <input type="date" name="startDate" value={batchEditData.startDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                    <input type="date" name="endDate" value={batchEditData.endDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                    <input type="number" name="price" value={batchEditData.price} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                    <input type="number" name="maxParticipants" value={batchEditData.maxParticipants} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                    <div className="flex space-x-2 mt-2">
+                                      <button onClick={() => saveBatchEdit(trek._id, batch._id)} className="flex-1 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium" disabled={batchLoading}>Save</button>
+                                      <button onClick={cancelEditingBatch} className="flex-1 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs font-medium">Cancel</button>
+                                      <button onClick={() => deleteBatch(trek._id, batch._id)} className="flex-1 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium" disabled={batchLoading}>Delete</button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{new Date(batch.startDate).toLocaleDateString('en-GB')} - {new Date(batch.endDate).toLocaleDateString('en-GB')}</h4>
+                                    <div className="text-xs text-gray-500 mb-2">Price: <span className="font-semibold">₹{batch.price}</span></div>
+                                    <div className="text-xs text-gray-500 mb-2">Slots: <span className="font-semibold">{batch.maxParticipants}</span></div>
+                                    <div className="text-xs text-gray-500 mb-2">Available: <span className="font-semibold">{batch.maxParticipants - (batch.currentParticipants || 0)}</span></div>
+                                    <div className="text-xs text-blue-700 font-semibold mt-auto">{batch.currentParticipants || 0} Bookings</div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Custom Trek Link and Email Buttons */}
+                    {trek.isCustom && (
+                      <div className="mt-2 flex flex-col md:flex-row md:items-center gap-2">
+                        {/* Copy Link Button */}
+                        <button
+                          className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 text-xs font-medium"
+                          onClick={() => {
+                            navigator.clipboard.writeText(getCustomTrekLink(trek));
+                            toast.success('Custom trek link copied!');
+                          }}
+                        >
+                          Copy Link
+                        </button>
+                        {/* Share via Email Button */}
+                        <button
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium"
+                          onClick={() => setShowEmailInput(prev => ({ ...prev, [trek._id]: !prev[trek._id] }))}
+                        >
+                          Share via Email
+                        </button>
+                        {/* Email Input and Send Button */}
+                        {showEmailInput[trek._id] && (
+                          <div className="flex flex-col md:flex-row md:items-center gap-2 mt-2">
+                            <input
+                              type="email"
+                              placeholder="Enter email address"
+                              className="border px-2 py-1 rounded text-sm"
+                              value={emailInputs[trek._id] || ''}
+                              onChange={e => setEmailInputs(prev => ({ ...prev, [trek._id]: e.target.value }))}
+                              disabled={sending[trek._id]}
+                              style={{ minWidth: 220 }}
+                            />
+                            <button
+                              className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium"
+                              disabled={sending[trek._id]}
+                              onClick={async () => {
+                                const email = emailInputs[trek._id];
+                                if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                                  toast.error('Please enter a valid email address.');
+                                  return;
+                                }
+                                setSending(prev => ({ ...prev, [trek._id]: true }));
+                                try {
+                                  await sendCustomTrekLink(trek._id, email);
+                                  toast.success('Custom trek link sent!');
+                                  setShowEmailInput(prev => ({ ...prev, [trek._id]: false }));
+                                  setEmailInputs(prev => ({ ...prev, [trek._id]: '' }));
+                                } catch (err) {
+                                  toast.error('Failed to send email.');
+                                } finally {
+                                  setSending(prev => ({ ...prev, [trek._id]: false }));
+                                }
                               }}
                             >
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <h4 className="text-sm font-medium text-gray-900">
-                                    Batch {new Date(batch.startDate).toLocaleDateString('en-GB', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric'
-                                    })} - {new Date(batch.endDate).toLocaleDateString('en-GB', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric'
-                                    })}
-                                  </h4>
-                                  <div className="mt-1 text-sm text-gray-500">
-                                    <p>Price: ₹{batch.price}</p>
-                                    <p>Total Slots: {batch.maxParticipants}</p>
-                                    <p>Available Slots: {batch.maxParticipants - (batch.currentParticipants || 0)}</p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {batch.currentParticipants || 0} Bookings
-                                  </span>
-                                </div>
-                              </div>
-                              {batch.bookings && batch.bookings.length > 0 && (
-                                <div className="mt-3">
-                                  <h5 className="text-sm font-medium text-gray-900 mb-2">Recent Bookings</h5>
-                                  <div className="space-y-2">
-                                    {batch.bookings.slice(0, 3).map((booking) => (
-                                      <div key={booking._id} className="flex justify-between text-sm">
-                                        <span>{booking.customerName}</span>
-                                        <span>{new Date(booking.bookingDate).toLocaleDateString('en-GB', {
-                                          day: '2-digit',
-                                          month: 'short',
-                                          year: 'numeric'
-                                        })}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center text-gray-500 py-4">
-                            No batches available for this trek
+                              {sending[trek._id] ? 'Sending...' : 'Send'}
+                            </button>
                           </div>
                         )}
                       </div>
+                    )}
+                  </div>
+                </li>
+              ))
+            ) : (
+              <li className="px-4 py-4 text-gray-500">No treks found.</li>
+            )}
+          </ul>
+        </div>
+      ) : (
+        // Grid View
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          {getFilteredAndSortedTreks().length > 0 ? (
+            getFilteredAndSortedTreks().map((trek) => (
+              <div key={trek._id} className={`bg-white shadow rounded-lg p-3 sm:p-4 flex flex-col min-w-0 ${!trek.isEnabled ? 'opacity-60' : ''}`}> 
+                <img
+                  className="h-32 sm:h-40 w-full object-cover rounded-md mb-3"
+                  src={trek.images && trek.images.length > 0 ? trek.images[0] : 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1050&q=80'}
+                  alt={trek.name}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-base sm:text-lg font-semibold text-gray-900 mb-1 flex items-center">
+                    <span className="truncate">{trek.name}</span>
+                    {trek.isCustom && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 flex-shrink-0">
+                        Custom
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-500 mb-2 truncate">
+                    {getRegionName(trek.region, trek)} • {trek.difficulty} • {trek.duration} days
+                  </div>
+                  {trek.bookings && trek.bookings.length > 0 && (
+                    <div className="text-xs text-emerald-600 mb-1">
+                      {trek.bookings.length} {trek.bookings.length === 1 ? 'booking' : 'bookings'}
                     </div>
                   )}
-
-                  {/* Custom Trek Link and Email Buttons */}
-                  {trek.isCustom && (
-                    <div className="mt-2 flex flex-col md:flex-row md:items-center gap-2">
-                      {/* Copy Link Button */}
-                      <button
-                        className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 text-xs font-medium"
-                        onClick={() => {
-                          navigator.clipboard.writeText(getCustomTrekLink(trek));
-                          toast.success('Custom trek link copied!');
-                        }}
-                      >
-                        Copy Link
-                      </button>
-                      {/* Share via Email Button */}
-                      <button
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs font-medium"
-                        onClick={() => setShowEmailInput(prev => ({ ...prev, [trek._id]: !prev[trek._id] }))}
-                      >
-                        Share via Email
-                      </button>
-                      {/* Email Input and Send Button */}
-                      {showEmailInput[trek._id] && (
-                        <div className="flex flex-col md:flex-row md:items-center gap-2 mt-2">
-                          <input
-                            type="email"
-                            placeholder="Enter email address"
-                            className="border px-2 py-1 rounded text-sm"
-                            value={emailInputs[trek._id] || ''}
-                            onChange={e => setEmailInputs(prev => ({ ...prev, [trek._id]: e.target.value }))}
-                            disabled={sending[trek._id]}
-                            style={{ minWidth: 220 }}
-                          />
-                          <button
-                            className="px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium"
-                            disabled={sending[trek._id]}
-                            onClick={async () => {
-                              const email = emailInputs[trek._id];
-                              if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-                                toast.error('Please enter a valid email address.');
-                                return;
-                              }
-                              setSending(prev => ({ ...prev, [trek._id]: true }));
-                              try {
-                                await sendCustomTrekLink(trek._id, email);
-                                toast.success('Custom trek link sent!');
-                                setShowEmailInput(prev => ({ ...prev, [trek._id]: false }));
-                                setEmailInputs(prev => ({ ...prev, [trek._id]: '' }));
-                              } catch (err) {
-                                toast.error('Failed to send email.');
-                              } finally {
-                                setSending(prev => ({ ...prev, [trek._id]: false }));
-                              }
-                            }}
-                          >
-                            {sending[trek._id] ? 'Sending...' : 'Send'}
-                          </button>
-                        </div>
-                      )}
+                  {trek.isCustom && trek.customLinkExpiry && (
+                    <div className="text-xs text-orange-600 mb-1">
+                      Expires {new Date(trek.customLinkExpiry).toLocaleDateString()}
                     </div>
                   )}
                 </div>
-              </li>
+                <div className="flex items-center justify-end gap-1 sm:gap-2 mt-3">
+                  <Link
+                    to={`/admin/treks/${trek._id}/performance`}
+                    className="p-1.5 sm:p-2 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                    title="View Performance"
+                  >
+                    <FaChartLine className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </Link>
+                  <button
+                    onClick={() => handleToggleStatus(trek._id, trek.isEnabled)}
+                    className={`p-1.5 sm:p-2 rounded-full ${
+                      trek.isEnabled
+                        ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                        : 'bg-red-100 text-red-600 hover:bg-red-200'
+                    }`}
+                    title={trek.isEnabled ? 'Disable Trek' : 'Enable Trek'}
+                  >
+                    {trek.isEnabled ? <FaEye className="w-3 h-3 sm:w-4 sm:h-4" /> : <FaEyeSlash className="w-3 h-3 sm:w-4 sm:h-4" />}
+                  </button>
+                  <Link
+                    to={`/admin/treks/edit/${trek._id}`}
+                    className="p-1.5 sm:p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200"
+                    title="Edit Trek"
+                  >
+                    <FaEdit className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </Link>
+                  <button
+                    onClick={() => openDeleteModal(trek)}
+                    className="p-1.5 sm:p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200"
+                    title="Delete Trek"
+                  >
+                    <FaTrash className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              </div>
             ))
           ) : (
-            <li className="px-4 py-5 sm:px-6">
-              <div className="text-center text-gray-500">
-                No treks found. Click "Add New Trek" to create one.
-              </div>
-            </li>
+            <div className="text-gray-500 col-span-full">No treks found.</div>
           )}
-        </ul>
-      </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModal && (

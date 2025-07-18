@@ -61,6 +61,11 @@ function BookingEditPage() {
     age: "",
     gender: "",
     medicalConditions: "",
+    emergencyContact: {
+      name: "",
+      phone: "",
+      relation: ""
+    },
     customFields: {},
   });
   const [refundType, setRefundType] = useState('auto');
@@ -164,6 +169,7 @@ function BookingEditPage() {
         bookingId: booking._id,
         refund: true,
         refundType,
+        reason: 'Admin cancelled booking',
       });
       toast.success('Booking cancelled and refund processed');
       setShowCancelModal(false);
@@ -228,6 +234,15 @@ function BookingEditPage() {
           [fieldName]: value
         }
       }));
+    } else if (name.startsWith('emergencyContact.')) {
+      const fieldName = name.split('.')[1];
+      setParticipantForm(prev => ({
+        ...prev,
+        emergencyContact: {
+          ...prev.emergencyContact,
+          [fieldName]: value
+        }
+      }));
     } else {
       setParticipantForm(prev => ({
         ...prev,
@@ -243,6 +258,11 @@ function BookingEditPage() {
       age: participant.age,
       gender: participant.gender,
       medicalConditions: participant.medicalConditions || "",
+      emergencyContact: participant.emergencyContact || {
+        name: "",
+        phone: "",
+        relation: ""
+      },
       customFields: participant.customFields || {},
     });
     setShowParticipantModal(true);
@@ -255,6 +275,11 @@ function BookingEditPage() {
       age: "",
       gender: "",
       medicalConditions: "",
+      emergencyContact: {
+        name: "",
+        phone: "",
+        relation: ""
+      },
       customFields: {},
     });
     setShowParticipantModal(true);
@@ -379,6 +404,59 @@ function BookingEditPage() {
                     {booking.batch?.endDate
                       ? formatDate(booking.batch.endDate)
                       : "N/A"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Information */}
+            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+              <h4 className="text-md font-medium text-gray-900 mb-4">
+                Payment Information
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Total Amount
+                  </label>
+                  <div className="mt-1 text-lg font-semibold text-emerald-600">
+                    ₹{booking.totalPrice}
+                  </div>
+                  {(() => {
+                    // Calculate total refunded amount (booking-level + participant-level)
+                    let refunded = 0;
+                    if (booking.refundStatus === 'success') {
+                      refunded += booking.refundAmount || 0;
+                    }
+                    if (Array.isArray(booking.participantDetails)) {
+                      refunded += booking.participantDetails.reduce((rSum, p) => {
+                        if (p.refundStatus === 'success') {
+                          return rSum + (p.refundAmount || 0);
+                        }
+                        return rSum;
+                      }, 0);
+                    }
+                    
+                    if (refunded > 0) {
+                      return (
+                        <div className="text-sm text-red-600 mt-1">
+                          Refunded: ₹{refunded}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Payment Status
+                  </label>
+                  <span className={`mt-1 px-2 py-1 text-xs font-medium rounded-full ${
+                    booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                    booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {booking.status}
                   </span>
                 </div>
               </div>
@@ -524,6 +602,7 @@ function BookingEditPage() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Gender</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Emergency Contact</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medical Conditions</th>
                       {booking?.trek?.customFields?.map(field => (
                         <th key={field.name} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -540,6 +619,17 @@ function BookingEditPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{participant.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.age}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.gender}</td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {participant.emergencyContact ? (
+                            <div>
+                              <div className="font-medium">{participant.emergencyContact.name}</div>
+                              <div className="text-xs text-gray-400">{participant.emergencyContact.phone}</div>
+                              <div className="text-xs text-gray-400">{participant.emergencyContact.relation}</div>
+                            </div>
+                          ) : (
+                            'Not provided'
+                          )}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{participant.medicalConditions || "None"}</td>
                         {booking?.trek?.customFields?.map(field => (
                           <td key={field.name} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -643,6 +733,54 @@ function BookingEditPage() {
                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
               />
             </div>
+            
+            {/* Emergency Contact Section */}
+            <div className="border-t pt-4">
+              <h4 className="text-lg font-medium text-gray-900 mb-3">Emergency Contact</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Emergency Contact Name *</label>
+                  <input
+                    type="text"
+                    name="emergencyContact.name"
+                    value={participantForm.emergencyContact.name}
+                    onChange={handleParticipantInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Emergency Contact Phone *</label>
+                  <input
+                    type="tel"
+                    name="emergencyContact.phone"
+                    value={participantForm.emergencyContact.phone}
+                    onChange={handleParticipantInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Relation to Participant *</label>
+                  <select
+                    name="emergencyContact.relation"
+                    value={participantForm.emergencyContact.relation}
+                    onChange={handleParticipantInputChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+                    required
+                  >
+                    <option value="">Select Relation</option>
+                    <option value="Parent">Parent</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Sibling">Sibling</option>
+                    <option value="Friend">Friend</option>
+                    <option value="Relative">Relative</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
             {booking?.trek?.customFields?.map(field => (
               <div key={field.name}>
                 <label className="block text-sm font-medium text-gray-700">{field.label}</label>

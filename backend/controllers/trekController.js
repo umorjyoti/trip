@@ -1,6 +1,7 @@
 const Trek = require('../models/Trek'); // Make sure this path is correct
 const mongoose = require('mongoose');
 const Booking = require('../models/Booking'); // Implied import for Booking model
+const Region = require('../models/Region'); // Add Region model import
 const crypto = require('crypto');
 
 // Get trek statistics
@@ -12,7 +13,7 @@ exports.getTrekStats = async (req, res) => {
     
     // Get region stats
     const regions = await Trek.aggregate([
-      { $group: { _id: "$region", count: { $sum: 1 } } },
+      { $group: { _id: "$regionName", count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
     
@@ -81,8 +82,8 @@ exports.getTrekById = async (req, res) => {
     const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0); // Set to start of day
 
-    // Fetch trek with populated batches
-    const trek = await Trek.findById(id).select('+gstPercent +gstType +gatewayPercent +gatewayType');
+    // Fetch trek with populated batches and include customFields
+    const trek = await Trek.findById(id).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
     
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
@@ -114,6 +115,7 @@ exports.getTrekById = async (req, res) => {
     
     console.log('Trek found:', trek.name);
     console.log('Available future batches:', trek.batches.length);
+    console.log('Custom fields:', trek.customFields);
     console.log('GST and Gateway details:', { gst: response.gstDetails, gateway: response.gatewayDetails });
     
     res.json(response);
@@ -135,7 +137,7 @@ exports.getTrekByCustomToken = async (req, res) => {
     const trek = await Trek.findOne({ 
       customAccessToken: token,
       isCustom: true 
-    }).select('+gstPercent +gstType +gatewayPercent +gatewayType');
+    }).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
     
     if (!trek) {
       return res.status(404).json({ message: 'Custom trek not found' });
@@ -171,6 +173,7 @@ exports.getTrekByCustomToken = async (req, res) => {
     
     console.log('Custom trek found:', trek.name);
     console.log('Available future batches:', trek.batches.length);
+    console.log('Custom fields:', trek.customFields);
     
     res.json(response);
   } catch (error) {
@@ -183,6 +186,19 @@ exports.createTrek = async (req, res) => {
   try {
     console.log('Creating trek with data:', req.body);
     
+    // Get region name if region ID is provided
+    let regionName = req.body.regionName || 'Unknown Region';
+    if (req.body.region && !req.body.regionName) {
+      try {
+        const region = await Region.findById(req.body.region);
+        if (region) {
+          regionName = region.name;
+        }
+      } catch (error) {
+        console.error('Error fetching region name:', error);
+      }
+    }
+    
     // Ensure required fields are included in the request body
     const trekData = {
       ...req.body,
@@ -193,7 +209,8 @@ exports.createTrek = async (req, res) => {
       gstPercent: Number(req.body.gstPercent) || 0,
       gstType: req.body.gstType || 'excluded',
       gatewayPercent: Number(req.body.gatewayPercent) || 0,
-      gatewayType: req.body.gatewayType || 'customer'
+      gatewayType: req.body.gatewayType || 'customer',
+      regionName: regionName // Use the fetched region name
     };
     
     // Handle custom trek creation
@@ -262,13 +279,27 @@ exports.updateTrek = async (req, res) => {
 
     // Extract fields from req.body
     const {
-      name, description, region, difficulty, duration, distance, maxAltitude,
+      name, description, region, regionName, difficulty, duration, distance, maxAltitude,
       displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns, highlights, batches, faqs, thingsToPack,
       gstPercent, gstType, gatewayPercent, gatewayType,
       tags, itineraryPdfUrl , customFields, isCustom
     } = req.body;
+
+    // Get region name if region ID is provided and regionName is not
+    let finalRegionName = regionName;
+    if (region && !regionName) {
+      try {
+        const regionDoc = await Region.findById(region);
+        if (regionDoc) {
+          finalRegionName = regionDoc.name;
+        }
+      } catch (error) {
+        console.error('Error fetching region name:', error);
+        finalRegionName = trek.regionName || 'Unknown Region';
+      }
+    }
 
     // Filter out empty highlights
     const filteredHighlights = highlights?.filter(h => h.trim()) || trek.highlights;
@@ -280,7 +311,8 @@ exports.updateTrek = async (req, res) => {
 
     // Prepare the update data object
     const updateData = {
-      name, description, region, difficulty, duration, distance, maxAltitude,
+      name, description, region, regionName: finalRegionName,
+      difficulty, duration, distance, maxAltitude,
       displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns,
@@ -603,7 +635,7 @@ exports.getTreks = async (req, res) => {
       ];
     }
 
-    if (region) filter.region = region;
+    if (region) filter.regionName = region;
     if (season) filter.season = season;
     if (duration) {
       // Parse duration range
@@ -675,9 +707,9 @@ exports.getTreksByRegion = async (req, res) => {
     }
     
     const treks = await Trek.find({ 
-      region, 
+      regionName: region, 
       isEnabled: true 
-    }).populate('region', 'name location coverImage');
+    }).select('name regionName location coverImage');
     
     console.log(`Found ${treks.length} treks for region ${region}`);
     res.json(treks);
@@ -697,11 +729,11 @@ exports.getTreksByExactRegion = async (req, res) => {
       return res.status(400).json({ message: 'Region ID is required' });
     }
     
-    // Use strict equality with the region ID
+    // Use strict equality with the region name
     const treks = await Trek.find({ 
-      region: regionId,
+      regionName: regionId,
       isEnabled: true 
-    }).populate('region', 'name location coverImage');
+    }).select('name regionName location coverImage');
     
     console.log(`Found ${treks.length} treks for exact region ${regionId}`);
     res.json(treks);
@@ -799,37 +831,22 @@ exports.toggleWeekendGetaway = async (req, res) => {
 // Add this method to your trekController.js file
 exports.updateBatch = async (req, res) => {
   try {
-    const { id, batchId } = req.params;
-    const { startDate, endDate, price, availableSlots, status } = req.body;
-    
-    console.log(`Updating batch ${batchId} for trek ${id}`);
-    
-    const trek = await Trek.findById(id);
-    
+    const { id: trekId, batchId } = req.params;
+    const updateData = req.body;
+    const trek = await Trek.findById(trekId);
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
     }
-    
-    // Find the batch to update
-    const batchIndex = trek.batches.findIndex(batch => batch._id.toString() === batchId);
-    
-    if (batchIndex === -1) {
+    const batch = trek.batches.id(batchId);
+    if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
     }
-    
-    // Update batch fields
-    if (startDate) trek.batches[batchIndex].startDate = startDate;
-    if (endDate) trek.batches[batchIndex].endDate = endDate;
-    if (price) trek.batches[batchIndex].price = price;
-    if (availableSlots !== undefined) trek.batches[batchIndex].availableSlots = availableSlots;
-    if (status) trek.batches[batchIndex].status = status;
-    
-    await trek.save();
-    
-    res.json({
-      message: 'Batch updated successfully',
-      batch: trek.batches[batchIndex]
+    // Update only provided fields
+    Object.keys(updateData).forEach(key => {
+      batch[key] = updateData[key];
     });
+    await trek.save();
+    res.json(batch);
   } catch (error) {
     console.error('Error updating batch:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -991,6 +1008,7 @@ exports.updateWeekendGetawayGallery = async (req, res) => {
 
 // Get batch performance data
 exports.getBatchPerformance = async (req, res) => {
+  console.log("meow meow meow meow meow meow meow meow meow meow");
   try {
     console.log('Batch performance - req.params:', req.params);
     
@@ -1028,7 +1046,7 @@ exports.getBatchPerformance = async (req, res) => {
     const bookings = await Booking.find({
       trek: trekId,
       batch: batchId
-    }).populate('user', 'name email');
+    }).populate('user', 'name email phone');
 
     // Safely filter bookings
     const safeBookings = bookings.filter(booking => booking != null);
@@ -1055,32 +1073,87 @@ exports.getBatchPerformance = async (req, res) => {
       },
       revenue: {
         total: safeBookings.reduce((sum, booking) => {
-          return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+          const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+          // Only subtract refunds if they were successfully processed
+          let refunded = 0;
+          if (booking && booking.refundStatus === 'success') {
+            refunded += booking.refundAmount || 0;
+          }
+          // Participant-level refunds (for partial cancellations) - only successful ones
+          if (booking && Array.isArray(booking.participantDetails)) {
+            refunded += booking.participantDetails.reduce((rSum, p) => {
+              if (p.refundStatus === 'success') {
+                return rSum + (p.refundAmount || 0);
+              }
+              return rSum;
+            }, 0);
+          }
+          return sum + (paid - refunded);
         }, 0),
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Only subtract refunds if they were successfully processed
+            let refunded = 0;
+            if (booking && booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            if (booking && Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            return sum + (paid - refunded);
           }, 0),
         cancelled: safeBookings
           .filter(b => b && b.status === 'cancelled')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Only subtract refunds if they were successfully processed
+            let refunded = 0;
+            if (booking && booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            if (booking && Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            return sum + (paid - refunded);
           }, 0)
       },
       participants: {
         total: safeBookings.reduce((sum, booking) => {
-          return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+          // Count only non-cancelled participants
+          const activeParticipants = booking && booking.participantDetails ? 
+            booking.participantDetails.filter(p => !p.isCancelled).length : 
+            (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+          return sum + activeParticipants;
         }, 0),
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            // Count only non-cancelled participants from confirmed bookings
+            const activeParticipants = booking && booking.participantDetails ? 
+              booking.participantDetails.filter(p => !p.isCancelled).length : 
+              (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            return sum + activeParticipants;
           }, 0),
         cancelled: safeBookings
           .filter(b => b && b.status === 'cancelled')
           .reduce((sum, booking) => {
-            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            // Count cancelled participants
+            const cancelledParticipants = booking && booking.participantDetails ? 
+              booking.participantDetails.filter(p => p.isCancelled).length : 
+              (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            return sum + cancelledParticipants;
           }, 0)
       },
       bookingDetails: safeBookings.map(booking => {
@@ -1093,9 +1166,14 @@ exports.getBatchPerformance = async (req, res) => {
             phone: booking.user?.phone || 'N/A'
           },
           participants: booking.numberOfParticipants || 0,
+          participantDetails: booking.participantDetails || [],
           totalPrice: booking.totalPrice || 0,
           status: booking.status || 'unknown',
-          bookingDate: booking.createdAt || null
+          bookingDate: booking.createdAt || null,
+          adminRemarks: booking.adminRemarks || '',
+          cancellationRequest: booking.cancellationRequest || null,
+          refundStatus: booking.refundStatus || null,
+          refundAmount: booking.refundAmount || 0
         };
       }).filter(detail => detail !== null),
       feedback: batch.feedback || []
@@ -1180,7 +1258,22 @@ exports.getTrekPerformance = async (req, res) => {
 
     // Calculate total revenue and bookings with null safety
     const totalRevenue = safeBookings.reduce((sum, booking) => {
-      return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+      const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+      // Only subtract refunds if they were successfully processed
+      let refunded = 0;
+      if (booking && booking.refundStatus === 'success') {
+        refunded += booking.refundAmount || 0;
+      }
+      // Participant-level refunds (for partial cancellations) - only successful ones
+      if (booking && Array.isArray(booking.participantDetails)) {
+        refunded += booking.participantDetails.reduce((rSum, p) => {
+          if (p.refundStatus === 'success') {
+            return rSum + (p.refundAmount || 0);
+          }
+          return rSum;
+        }, 0);
+      }
+      return sum + (paid - refunded);
     }, 0);
     const totalBookings = safeBookings.length;
 
@@ -1202,11 +1295,33 @@ exports.getTrekPerformance = async (req, res) => {
           });
           
           const revenue = batchBookings.reduce((sum, booking) => {
-            return sum + (booking && booking.totalPrice ? booking.totalPrice : 0);
+            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Only subtract refunds if they were successfully processed
+            let refunded = 0;
+            if (booking && booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            if (booking && Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            return sum + (paid - refunded);
           }, 0);
           
           const currentParticipants = batchBookings.reduce((sum, booking) => {
-            return sum + (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
+            // Only count participants from confirmed bookings
+            if (booking && booking.status === 'confirmed') {
+              // Count only non-cancelled participants
+              const activeParticipants = booking.participantDetails ? 
+                booking.participantDetails.filter(p => !p.isCancelled).length : 
+                booking.numberOfParticipants || 0;
+              return sum + activeParticipants;
+            }
+            return sum;
           }, 0);
 
           let status = 'upcoming';
@@ -1274,20 +1389,14 @@ exports.exportBatchParticipants = async (req, res) => {
     console.log('Export participants - req.params:', req.params);
     console.log('Export participants - req.query:', req.query);
     
-    // The route uses :id and :batchId, so we need to extract them correctly
-    const trekId = req.params.id; // Changed from req.params.trekId
+    const trekId = req.params.id;
     const batchId = req.params.batchId;
     const { fields } = req.query;
 
-    console.log('Extracted IDs - trekId:', trekId, 'batchId:', batchId);
-
-    // Validate MongoDB IDs
     if (!mongoose.Types.ObjectId.isValid(trekId) || !mongoose.Types.ObjectId.isValid(batchId)) {
-      console.log('Invalid IDs - trekId valid:', mongoose.Types.ObjectId.isValid(trekId), 'batchId valid:', mongoose.Types.ObjectId.isValid(batchId));
       return res.status(400).json({ message: 'Invalid trek or batch ID format' });
     }
 
-    // Find the trek and batch
     const trek = await Trek.findById(trekId);
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
@@ -1301,6 +1410,9 @@ exports.exportBatchParticipants = async (req, res) => {
     // Get all bookings for this batch
     const bookings = await Booking.find({ batch: batchId })
       .populate('user', 'name email phone');
+    
+    console.log('Found bookings:', bookings.length);
+    console.log('Sample booking:', bookings[0]);
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({ message: 'No participants found for this batch' });
@@ -1308,65 +1420,49 @@ exports.exportBatchParticipants = async (req, res) => {
 
     // Parse fields parameter
     const selectedFields = fields ? fields.split(',') : [];
-    
-    // Define available fields
-    const availableFields = {
-      // Participant Details
-      participantName: 'Participant Name',
-      participantAge: 'Age',
-      participantGender: 'Gender',
-      participantPhone: 'Contact Number',
-      
-      // Emergency Contact
-      emergencyContactName: 'Emergency Contact Name',
-      emergencyContactPhone: 'Emergency Contact Phone',
-      emergencyContactRelation: 'Emergency Contact Relation',
-      
-      // Health & Safety
-      medicalConditions: 'Medical Conditions',
-      specialRequests: 'Special Requests',
-      
-      // Booking Information
-      bookingUserName: 'Booking User Name',
-      bookingUserEmail: 'Booking User Email',
-      bookingUserPhone: 'Booking User Phone',
-      bookingDate: 'Booking Date',
-      bookingStatus: 'Booking Status',
-      totalPrice: 'Total Price',
-      
-      // Logistics
-      pickupLocation: 'Pickup Location',
-      dropLocation: 'Drop Location',
-      additionalRequests: 'Additional Requests'
-    };
 
-    // Add custom fields from trek
-    console.log('Processing custom fields in export:', trek.customFields);
-    if (trek.customFields && Array.isArray(trek.customFields)) {
-      trek.customFields.forEach(field => {
-        console.log('Adding custom field to available fields:', field.fieldName);
-        availableFields[`custom_${field.fieldName}`] = field.fieldName;
-      });
-    }
-    console.log('Available fields after adding custom fields:', availableFields);
+    // Build headers
+    const headers = selectedFields.map(field => {
+      switch (field) {
+        case 'participantName': return 'Participant Name';
+        case 'participantAge': return 'Age';
+        case 'participantGender': return 'Gender';
+        case 'contactNumber': return 'Contact Number';
+        case 'emergencyContactName': return 'Emergency Contact Name';
+        case 'emergencyContactPhone': return 'Emergency Contact Phone';
+        case 'emergencyContactRelation': return 'Emergency Contact Relation';
+        case 'medicalConditions': return 'Medical Conditions';
+        case 'specialRequests': return 'Special Requests';
+        case 'bookingUserName': return 'Booking User Name';
+        case 'bookingUserEmail': return 'Booking User Email';
+        case 'bookingUserPhone': return 'Booking User Phone';
+        case 'bookingDate': return 'Booking Date';
+        case 'status': return 'Booking Status';
+        case 'totalPrice': return 'Total Price';
+        case 'pickupLocation': return 'Pickup Location';
+        case 'dropLocation': return 'Drop Location';
+        case 'additionalRequests': return 'Additional Requests';
+        default:
+          // Custom fields - use the field name as header
+          if (field.startsWith('custom_')) {
+            const customFieldKey = field.replace('custom_', '');
+            const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
+            return customField?.fieldName || customFieldKey;
+          }
+          return field;
+      }
+    });
 
-    // Use selected fields or default to first 10 available
-    const fieldsToExport = selectedFields.length > 0 
-      ? selectedFields.slice(0, 10) 
-      : Object.keys(availableFields).slice(0, 10);
+    const tableData = [headers];
 
-    // Prepare data for PDF
-    const tableData = [];
-    
-    // Add header row
-    const headers = fieldsToExport.map(field => availableFields[field] || field);
-    tableData.push(headers);
-
-    // Add data rows
     bookings.forEach(booking => {
+      console.log('Processing booking:', booking._id);
+      console.log('Participant details:', booking.participantDetails);
+      
       if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
         booking.participantDetails.forEach(participant => {
-          const row = fieldsToExport.map(field => {
+          console.log('Processing participant:', participant);
+          const row = selectedFields.map(field => {
             switch (field) {
               case 'participantName':
                 return participant.name || 'N/A';
@@ -1375,17 +1471,24 @@ exports.exportBatchParticipants = async (req, res) => {
               case 'participantGender':
                 return participant.gender || 'N/A';
               case 'participantPhone':
-                return participant.contactNumber || 'N/A';
+                // Check multiple possible field names for phone
+                console.log('Looking for phone in participant:', {
+                  contactNumber: participant.contactNumber,
+                  phone: participant.phone,
+                  contactPhone: participant.contactPhone,
+                  allKeys: Object.keys(participant)
+                });
+                return participant.phone || participant.contactNumber || 'N/A';
               case 'emergencyContactName':
-                return participant.emergencyContact?.name || 'N/A';
+                return booking.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
-                return participant.emergencyContact?.phone || 'N/A';
+                return booking.emergencyContact?.phone || 'N/A';
               case 'emergencyContactRelation':
-                return participant.emergencyContact?.relationship || 'N/A';
+                return booking.emergencyContact?.relation || 'N/A';
               case 'medicalConditions':
-                return participant.medicalConditions || 'N/A';
+                return participant.allergies || participant.medicalConditions || 'N/A';
               case 'specialRequests':
-                return participant.specialRequests || 'N/A';
+                return participant.extraComment || participant.specialRequests || 'N/A';
               case 'bookingUserName':
                 return booking.user?.name || 'N/A';
               case 'bookingUserEmail':
@@ -1394,10 +1497,10 @@ exports.exportBatchParticipants = async (req, res) => {
                 return booking.user?.phone || 'N/A';
               case 'bookingDate':
                 return booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A';
-              case 'bookingStatus':
+              case 'status':
                 return booking.status || 'N/A';
               case 'totalPrice':
-                return booking.totalPrice ? `₹${booking.totalPrice}` : 'N/A';
+                return booking.totalPrice || 'N/A';
               case 'pickupLocation':
                 return booking.pickupLocation || 'N/A';
               case 'dropLocation':
@@ -1410,14 +1513,36 @@ exports.exportBatchParticipants = async (req, res) => {
                   const customFieldKey = field.replace('custom_', '');
                   const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
                   console.log('Processing custom field:', customFieldKey, 'Found field:', customField);
+                  
                   if (customField) {
-                    // Look for the response using fieldId which should match the fieldName
-                    const customFieldResponse = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey);
-                    console.log('Found custom field response:', customFieldResponse);
-                    const value = customFieldResponse?.value;
+                    let value = null;
+                    
+                    // First try to get from customFields Map
+                    if (participant.customFields && participant.customFields instanceof Map) {
+                      value = participant.customFields.get(customFieldKey);
+                      console.log('Found custom field value from Map:', value);
+                    }
+                    
+                    // If not found in Map, try customFields object
+                    if (!value && participant.customFields && typeof participant.customFields === 'object') {
+                      value = participant.customFields[customFieldKey];
+                      console.log('Found custom field value from object:', value);
+                    }
+                    
+                    // Fallback to customFieldResponses array
+                    if (!value && participant.customFieldResponses) {
+                      const customFieldResponse = participant.customFieldResponses.find(f => 
+                        f.fieldId === customFieldKey || f.fieldName === customFieldKey
+                      );
+                      console.log('Found custom field response:', customFieldResponse);
+                      value = customFieldResponse?.value;
+                    }
+                    
+                    // Handle array values (for checkbox fields)
                     if (Array.isArray(value)) {
                       return value.join(', ') || 'N/A';
                     }
+                    
                     return value || 'N/A';
                   }
                 }
@@ -1426,6 +1551,33 @@ exports.exportBatchParticipants = async (req, res) => {
           });
           tableData.push(row);
         });
+      } else {
+        // No participants, export booking-level info
+        const row = selectedFields.map(field => {
+          switch (field) {
+            case 'bookingUserName':
+              return booking.user?.name || 'N/A';
+            case 'bookingUserEmail':
+              return booking.user?.email || 'N/A';
+            case 'bookingUserPhone':
+              return booking.user?.phone || 'N/A';
+            case 'bookingDate':
+              return booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A';
+            case 'status':
+              return booking.status || 'N/A';
+            case 'totalPrice':
+              return booking.totalPrice || 'N/A';
+            case 'pickupLocation':
+              return booking.pickupLocation || 'N/A';
+            case 'dropLocation':
+              return booking.dropLocation || 'N/A';
+            case 'additionalRequests':
+              return booking.additionalRequests || 'N/A';
+            default:
+              return 'N/A';
+          }
+        });
+        tableData.push(row);
       }
     });
 
@@ -1534,5 +1686,68 @@ exports.sendCustomTrekLink = async (req, res) => {
   } catch (error) {
     console.error('Error sending custom trek link:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+}; 
+
+// Recalculate batch participant counts for a trek
+exports.recalculateBatchParticipants = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate MongoDB ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid trek ID format' });
+    }
+    
+    const trek = await Trek.findById(id);
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+    
+    if (!trek.batches || trek.batches.length === 0) {
+      return res.status(400).json({ message: 'No batches found for this trek' });
+    }
+    
+    const { updateBatchParticipantCount } = require('../utils/batchUtils');
+    const results = [];
+    
+    // Recalculate participant counts for all batches
+    for (const batch of trek.batches) {
+      try {
+        const newCount = await updateBatchParticipantCount(trek._id, batch._id);
+        results.push({
+          batchId: batch._id,
+          batchName: `${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`,
+          oldCount: batch.currentParticipants,
+          newCount: newCount,
+          status: 'success'
+        });
+      } catch (error) {
+        console.error(`Error updating batch ${batch._id}:`, error);
+        results.push({
+          batchId: batch._id,
+          batchName: `${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`,
+          oldCount: batch.currentParticipants,
+          newCount: null,
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      message: 'Batch participant counts recalculated',
+      trek: {
+        _id: trek._id,
+        name: trek.name
+      },
+      results: results
+    });
+  } catch (error) {
+    console.error('Error recalculating batch participants:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message 
+    });
   }
 }; 

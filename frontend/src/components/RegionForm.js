@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { FaPlus, FaTrash, FaYoutube } from 'react-icons/fa';
 import LoadingSpinner from './LoadingSpinner';
 import ImageUploader from './ImageUploader';
+import SingleImageUploader from './SingleImageUploader';
 
 function RegionForm({ region, onSave, isEditing = false }) {
   const navigate = useNavigate();
@@ -66,10 +67,14 @@ function RegionForm({ region, onSave, isEditing = false }) {
 
   const validate = () => {
     const newErrors = {};
+    
     if (!formData.name.trim()) newErrors.name = 'Name is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.location.trim()) newErrors.location = 'Location is required';
-    if (!formData.coverImage.trim()) newErrors.coverImage = 'Cover image URL is required';
+    // Make cover image optional for now to test form submission
+    // if (!formData.coverImage || !formData.coverImage.trim()) {
+    //   newErrors.coverImage = 'Cover image is required';
+    // }
     if (!formData.bestSeason.trim()) newErrors.bestSeason = 'Best season is required';
     if (!formData.avgTrekDuration || formData.avgTrekDuration <= 0) {
       newErrors.avgTrekDuration = 'Average trek duration must be greater than 0';
@@ -77,9 +82,10 @@ function RegionForm({ region, onSave, isEditing = false }) {
     
     // Filter out empty image and video URLs
     const filteredImages = formData.images.filter(img => img.trim());
-    if (filteredImages.length === 0) {
-      newErrors.images = 'At least one image is required';
-    }
+    // Make images optional since we now have coverImage
+    // if (filteredImages.length === 0) {
+    //   newErrors.images = 'At least one image is required';
+    // }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -174,6 +180,12 @@ function RegionForm({ region, onSave, isEditing = false }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent double submission
+    if (loading) {
+      return;
+    }
     
     // Validate form
     if (!validate()) {
@@ -188,7 +200,7 @@ function RegionForm({ region, onSave, isEditing = false }) {
         name: formData.name.trim(),
         description: formData.description.trim(),
         location: formData.location.trim(),
-        coverImage: formData.coverImage.trim(),
+        coverImage: formData.coverImage ? formData.coverImage.trim() : '',
         bestSeason: formData.bestSeason.trim(),
         avgTrekDuration: Number(formData.avgTrekDuration),
         
@@ -205,22 +217,18 @@ function RegionForm({ region, onSave, isEditing = false }) {
         detailedDescription: formData.detailedDescription?.trim() || ''
       };
       
-      console.log('Submitting region data:', cleanedData);
-      
-      let response;
-      if (isEditing) {
-        response = await updateRegion(region._id, cleanedData);
-        toast.success('Region updated successfully');
-      } else {
-        response = await createRegion(cleanedData);
-        toast.success('Region created successfully');
-      }
-      
-      console.log('API response:', response);
-      
       if (onSave) {
-        onSave();
+        onSave(cleanedData);
       } else {
+        // Fallback if no onSave callback provided
+        let response;
+        if (isEditing) {
+          response = await updateRegion(region._id, cleanedData);
+          toast.success('Region updated successfully');
+        } else {
+          response = await createRegion(cleanedData);
+          toast.success('Region created successfully');
+        }
         navigate('/admin/regions');
       }
     } catch (error) {
@@ -232,7 +240,7 @@ function RegionForm({ region, onSave, isEditing = false }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       <div className="bg-white shadow-md rounded-lg p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">
           {isEditing ? 'Edit Region' : 'Add New Region'}
@@ -256,6 +264,24 @@ function RegionForm({ region, onSave, isEditing = false }) {
                 }`}
               />
               {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+            </div>
+            
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                Description*
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows="3"
+                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm ${
+                  errors.description ? 'border-red-300' : ''
+                }`}
+                placeholder="Enter a brief description of the region..."
+              />
+              {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
             </div>
             
             <div>
@@ -330,34 +356,13 @@ function RegionForm({ region, onSave, isEditing = false }) {
           {/* Images and Related Regions */}
           <div className="space-y-4">
             <div>
-              <label htmlFor="coverImage" className="block text-sm font-medium text-gray-700">
-                Cover Image URL*
-              </label>
-              <input
-                type="text"
-                id="coverImage"
-                name="coverImage"
-                value={formData.coverImage}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm ${
-                  errors.coverImage ? 'border-red-300' : ''
-                }`}
-                placeholder="https://example.com/image.jpg"
+              <SingleImageUploader
+                imageUrl={formData.coverImage}
+                onChange={(url) => setFormData(prev => ({ ...prev, coverImage: url }))}
+                label="Cover Image"
+                maxSize={5}
               />
               {errors.coverImage && <p className="mt-1 text-sm text-red-600">{errors.coverImage}</p>}
-              {formData.coverImage && (
-                <div className="mt-2 h-24 w-full overflow-hidden rounded-md">
-                  <img 
-                    src={formData.coverImage} 
-                    alt="Cover preview" 
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://via.placeholder.com/400x200?text=Invalid+Image+URL';
-                    }}
-                  />
-                </div>
-              )}
             </div>
             
             <div>
@@ -521,7 +526,7 @@ function RegionForm({ region, onSave, isEditing = false }) {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <>

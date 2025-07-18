@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getBookingById } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PaymentButton from '../components/PaymentButton';
-import { FaCalendarAlt, FaUsers, FaMoneyBillWave, FaMapMarkerAlt, FaUserFriends, FaPhoneAlt } from 'react-icons/fa';
+import { FaCalendarAlt, FaUsers, FaMapMarkerAlt, FaUserFriends, FaPhoneAlt } from 'react-icons/fa';
 
 function BookingPreview() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

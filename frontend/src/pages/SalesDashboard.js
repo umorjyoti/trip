@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSalesStats } from '../services/api';
+import { getSalesStats, getSalesTreks, getSalesBatches } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement } from 'chart.js';
@@ -24,20 +24,48 @@ function SalesDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [timeRange, setTimeRange] = useState('month'); // month, quarter, year
-  const [chartType, setChartType] = useState('revenue'); // revenue, bookings, regions
+  const [timeRange, setTimeRange] = useState('month'); // month, quarter, year, custom
+  const [chartType, setChartType] = useState('revenue'); // revenue, bookings, regions, treks, batches
   const [activeTab, setActiveTab] = useState('overview'); // overview, promos, offers
+  
+  // New filter states
+  const [filters, setFilters] = useState({
+    trekId: '',
+    batchId: '',
+    startDate: '',
+    endDate: ''
+  });
+  
+  // Data for filter dropdowns
+  const [treks, setTreks] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [loadingFilters, setLoadingFilters] = useState(false);
 
   useEffect(() => {
     if (activeTab === 'overview') {
       fetchSalesStats();
+      fetchFilterData();
     }
-  }, [timeRange, activeTab]);
+  }, [timeRange, activeTab, filters]);
 
   const fetchSalesStats = async () => {
     try {
       setLoading(true);
-      const data = await getSalesStats(timeRange);
+      
+      // Build params object
+      const params = { timeRange };
+      
+      // Add custom date range if selected
+      if (timeRange === 'custom' && filters.startDate && filters.endDate) {
+        params.startDate = filters.startDate;
+        params.endDate = filters.endDate;
+      }
+      
+      // Add trek and batch filters
+      if (filters.trekId) params.trekId = filters.trekId;
+      if (filters.batchId) params.batchId = filters.batchId;
+      
+      const data = await getSalesStats(params);
       setStats(data);
       setError(null);
     } catch (error) {
@@ -47,6 +75,63 @@ function SalesDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchFilterData = async () => {
+    try {
+      setLoadingFilters(true);
+      const [treksData, batchesData] = await Promise.all([
+        getSalesTreks(),
+        getSalesBatches(filters.trekId || null)
+      ]);
+      setTreks(treksData);
+      setBatches(batchesData);
+    } catch (error) {
+      console.error('Error fetching filter data:', error);
+      toast.error('Failed to load filter options');
+    } finally {
+      setLoadingFilters(false);
+    }
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // If trek changes, reset batch selection
+    if (name === 'trekId') {
+      setFilters(prev => ({
+        ...prev,
+        batchId: ''
+      }));
+    }
+  };
+
+  const handleTimeRangeChange = (e) => {
+    const value = e.target.value;
+    setTimeRange(value);
+    
+    // Clear custom dates if not using custom range
+    if (value !== 'custom') {
+      setFilters(prev => ({
+        ...prev,
+        startDate: '',
+        endDate: ''
+      }));
+    }
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      trekId: '',
+      batchId: '',
+      startDate: '',
+      endDate: ''
+    });
+    setTimeRange('month');
   };
 
   const formatCurrency = (amount) => {
@@ -110,21 +195,114 @@ function SalesDashboard() {
         <OfferManager />
       ) : (
         <>
-          {/* Time Range Selector */}
-          <div className="mb-6">
-            <label htmlFor="time-range" className="block text-sm font-medium text-gray-700 mb-1">
-              Time Range
-            </label>
-            <select
-              id="time-range"
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
-            >
-              <option value="month">Last Month</option>
-              <option value="quarter">Last Quarter</option>
-              <option value="year">Last Year</option>
-            </select>
+          {/* Filters Section */}
+          <div className="bg-white shadow rounded-lg p-6 mb-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Filters</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Time Range */}
+              <div>
+                <label htmlFor="time-range" className="block text-sm font-medium text-gray-700 mb-1">
+                  Time Range
+                </label>
+                <select
+                  id="time-range"
+                  value={timeRange}
+                  onChange={handleTimeRangeChange}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                >
+                  <option value="month">Last Month</option>
+                  <option value="quarter">Last Quarter</option>
+                  <option value="year">Last Year</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+
+              {/* Trek Filter */}
+              <div>
+                <label htmlFor="trek-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                  Trek
+                </label>
+                <select
+                  id="trek-filter"
+                  name="trekId"
+                  value={filters.trekId}
+                  onChange={handleFilterChange}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                >
+                  <option value="">All Treks</option>
+                  {treks.map(trek => (
+                    <option key={trek._id} value={trek._id}>
+                      {trek.name} ({trek.region})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Batch Filter */}
+              <div>
+                <label htmlFor="batch-filter" className="block text-sm font-medium text-gray-700 mb-1">
+                  Batch
+                </label>
+                <select
+                  id="batch-filter"
+                  name="batchId"
+                  value={filters.batchId}
+                  onChange={handleFilterChange}
+                  disabled={!filters.trekId}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md disabled:bg-gray-100"
+                >
+                  <option value="">All Batches</option>
+                  {batches.map(batch => (
+                    <option key={batch.id} value={batch.id}>
+                      {batch.displayName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Clear Filters Button */}
+              <div className="flex items-end">
+                <button
+                  onClick={clearFilters}
+                  className="w-full bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Date Range */}
+            {timeRange === 'custom' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label htmlFor="start-date" className="block text-sm font-medium text-gray-700 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    id="start-date"
+                    name="startDate"
+                    value={filters.startDate}
+                    onChange={handleFilterChange}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="end-date" className="block text-sm font-medium text-gray-700 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    id="end-date"
+                    name="endDate"
+                    value={filters.endDate}
+                    onChange={handleFilterChange}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           
           {loading ? (
@@ -154,7 +332,7 @@ function SalesDashboard() {
                       Total Revenue
                     </dt>
                     <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {formatCurrency((stats.totalRevenue || 0).toLocaleString('en-IN'))}
+                      {formatCurrency(stats.totalRevenue || 0)}
                     </dd>
                   </div>
                 </div>
@@ -176,7 +354,7 @@ function SalesDashboard() {
                       Average Booking Value
                     </dt>
                     <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {formatCurrency((stats.avgBookingValue || 0).toLocaleString('en-IN'))}
+                      {formatCurrency(stats.avgBookingValue || 0)}
                     </dd>
                   </div>
                 </div>
@@ -195,7 +373,7 @@ function SalesDashboard() {
               
               {/* Chart Type Selector */}
               <div className="mb-6">
-                <div className="flex space-x-4">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setChartType('revenue')}
                     className={`px-4 py-2 text-sm font-medium rounded-md ${
@@ -225,6 +403,26 @@ function SalesDashboard() {
                     }`}
                   >
                     Revenue by Region
+                  </button>
+                  <button
+                    onClick={() => setChartType('treks')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      chartType === 'treks'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Revenue by Trek
+                  </button>
+                  <button
+                    onClick={() => setChartType('batches')}
+                    className={`px-4 py-2 text-sm font-medium rounded-md ${
+                      chartType === 'batches'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Revenue by Batch
                   </button>
                 </div>
               </div>
@@ -364,6 +562,115 @@ function SalesDashboard() {
                     </div>
                   </div>
                 )}
+
+                {chartType === 'treks' && (
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue by Trek</h3>
+                    <div className="h-80">
+                      <Bar
+                        data={{
+                          labels: (stats.revenueByTrek || []).map(item => item.name),
+                          datasets: [
+                            {
+                              label: 'Revenue (INR)',
+                              data: (stats.revenueByTrek || []).map(item => item.revenue),
+                              backgroundColor: 'rgba(14, 165, 233, 0.5)',
+                              borderColor: 'rgb(14, 165, 233)',
+                              borderWidth: 1
+                            }
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                callback: function(value) {
+                                  return formatCurrency(value);
+                                }
+                              }
+                            }
+                          },
+                          plugins: {
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  return formatCurrency(context.raw);
+                                }
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {chartType === 'batches' && (
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Revenue by Batch</h3>
+                    <div className="h-80">
+                      <Bar
+                        data={{
+                          labels: (stats.revenueByBatch || []).map(item => [item.formattedDate, item.trekName]),
+                          datasets: [
+                            {
+                              label: 'Revenue (INR)',
+                              data: (stats.revenueByBatch || []).map(item => item.revenue),
+                              backgroundColor: 'rgba(168, 85, 247, 0.5)',
+                              borderColor: 'rgb(168, 85, 247)',
+                              borderWidth: 1
+                            }
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          scales: {
+                            x: {
+                              ticks: {
+                                callback: function(value, index) {
+                                  const labels = this.getLabelForValue(value);
+                                  if (Array.isArray(labels)) {
+                                    return labels;
+                                  }
+                                  return labels;
+                                }
+                              }
+                            },
+                            y: {
+                              beginAtZero: true,
+                              ticks: {
+                                callback: function(value) {
+                                  return formatCurrency(value);
+                                }
+                              }
+                            }
+                          },
+                          plugins: {
+                            tooltip: {
+                              callbacks: {
+                                title: function(context) {
+                                  const dataIndex = context[0].dataIndex;
+                                  const batch = stats.revenueByBatch[dataIndex];
+                                  return [
+                                    `Date: ${batch.formattedDate}`,
+                                    `Trek: ${batch.trekName}`
+                                  ];
+                                },
+                                label: function(context) {
+                                  return formatCurrency(context.raw);
+                                }
+                              }
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Top Performing Treks */}
@@ -404,7 +711,7 @@ function SalesDashboard() {
                             {trek.bookings}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            ₹{formatCurrency((trek.revenue || 0).toLocaleString('en-IN'))}
+                            {formatCurrency(trek.revenue || 0)}
                           </td>
                         </tr>
                       ))}

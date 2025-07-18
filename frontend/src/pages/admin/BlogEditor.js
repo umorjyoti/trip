@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import RichTextEditor from '../../components/RichTextEditor';
 import { debounce } from 'lodash';
 import api from '../../services/api';
+import { getBlogRegions } from '../../services/api';
+import Modal from '../../components/Modal';
 
 function BlogEditor() {
   const navigate = useNavigate();
@@ -16,11 +18,13 @@ function BlogEditor() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [errors, setErrors] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [blogRegions, setBlogRegions] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     excerpt: '',
     bannerImage: '',
+    region: '',
     metaTitle: '',
     metaDescription: '',
     keywords: '',
@@ -41,6 +45,7 @@ function BlogEditor() {
     if (id) {
       fetchBlog();
     }
+    fetchBlogRegions();
   }, [id]);
 
   // Prevent background scrolling when modal is open
@@ -62,7 +67,7 @@ function BlogEditor() {
     debounce(async (data) => {
       if (id && data.status === 'draft') {
         try {
-          await axios.put(`/blogs/${id}`, {
+          await api.put(`/blogs/${id}`, {
             ...data,
             keywords: data.keywords.split(',').map(k => k.trim()).filter(k => k)
           });
@@ -82,16 +87,26 @@ function BlogEditor() {
     return () => autoSave.cancel();
   }, [formData, id, autoSave]);
 
+  const fetchBlogRegions = async () => {
+    try {
+      const regions = await getBlogRegions();
+      setBlogRegions(regions);
+    } catch (error) {
+      console.error('Error fetching blog regions:', error);
+      toast.error('Failed to fetch blog regions');
+    }
+  };
+
   const fetchBlog = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/blogs/admin/${id}`);
-      const blog = response.data;
+      const blog = await api.get(`/blogs/admin/${id}`);
       setFormData({
         title: blog.title,
         content: blog.content,
         excerpt: blog.excerpt,
         bannerImage: blog.bannerImage,
+        region: blog.region || '',
         metaTitle: blog.metaTitle,
         metaDescription: blog.metaDescription,
         keywords: blog.keywords.join(', '),
@@ -123,6 +138,9 @@ function BlogEditor() {
     } else if (formData.excerpt.trim().length < 50) {
       newErrors.excerpt = 'Excerpt must be at least 50 characters long';
     }
+    if (!formData.region) {
+      newErrors.region = 'Please select a region';
+    }
     if (!formData.metaTitle.trim()) {
       newErrors.metaTitle = 'Meta title is required';
     } else if (formData.metaTitle.trim().length < 10) {
@@ -143,7 +161,7 @@ function BlogEditor() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageUpload = async (file) => {
+  const handleImageUpload = useCallback(async (file) => {
     try {
       setUploadingImage(true);
       
@@ -179,7 +197,12 @@ function BlogEditor() {
     } finally {
       setUploadingImage(false);
     }
-  };
+  }, []);
+
+  const handleContentChange = useCallback((content) => {
+    setFormData(prev => ({ ...prev, content }));
+    setErrors(prev => ({ ...prev, content: '' }));
+  }, []);
 
   const handleBannerImageChange = async (e) => {
     const file = e.target.files[0];
@@ -254,10 +277,10 @@ function BlogEditor() {
       };
 
       if (id) {
-        await axios.put(`/blogs/${id}`, blogData);
+        await api.put(`/blogs/${id}`, blogData);
         toast.success('Blog updated successfully');
       } else {
-        await axios.post('/blogs', blogData);
+        await api.post('/blogs', blogData);
         toast.success('Blog created successfully');
       }
       navigate('/admin/blogs');
@@ -496,7 +519,7 @@ function BlogEditor() {
                 type="text"
                 value={formData.title}
                 onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value });
+                  setFormData(prev => ({ ...prev, title: e.target.value }));
                   setErrors(prev => ({ ...prev, title: '' }));
                 }}
                 className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.title ? 'border-red-300' : 'border-gray-300'}`}
@@ -516,7 +539,7 @@ function BlogEditor() {
               <textarea
                 value={formData.excerpt}
                 onChange={(e) => {
-                  setFormData({ ...formData, excerpt: e.target.value });
+                  setFormData(prev => ({ ...prev, excerpt: e.target.value }));
                   setErrors(prev => ({ ...prev, excerpt: '' }));
                 }}
                 rows={3}
@@ -534,16 +557,75 @@ function BlogEditor() {
               )}
             </div>
 
+            {/* Region */}
+            <div>
+              <label className="block text-base font-medium text-gray-800 mb-2">
+                Region <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={formData.region}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, region: e.target.value }));
+                    setErrors(prev => ({ ...prev, region: '' }));
+                  }}
+                  className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base transition-all duration-200 ${
+                    errors.region 
+                      ? 'border-red-300 bg-red-50' 
+                      : formData.region 
+                        ? 'border-emerald-300 bg-emerald-50' 
+                        : 'border-gray-300 bg-gray-50 hover:border-gray-400'
+                  }`}
+                  required
+                >
+                  <option value="">Select a region for your blog</option>
+                  {blogRegions.map((region) => (
+                    <option key={region._id} value={region._id}>
+                      {region.name}
+                    </option>
+                  ))}
+                </select>
+                {formData.region && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                  </div>
+                )}
+              </div>
+              {errors.region && (
+                <div className="mt-2 flex items-center text-sm text-red-600">
+                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {errors.region}
+                </div>
+              )}
+              {blogRegions.length === 0 && (
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center">
+                    <svg className="w-4 h-4 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm text-yellow-800">
+                      No blog regions available. Please create blog regions first in the Blog Management page.
+                    </span>
+                  </div>
+                </div>
+              )}
+              {blogRegions.length > 0 && !formData.region && (
+                <p className="mt-2 text-sm text-gray-600">
+                  Choose a region to categorize your blog content for better organization.
+                </p>
+              )}
+            </div>
+
             {/* Content */}
             <div>
               <label className="block text-base font-medium text-gray-800 mb-1">Content</label>
               <div className={`rounded-lg border bg-gray-50 ${errors.content ? 'border-red-300' : 'border-gray-300'}`}> 
                 <RichTextEditor
+                  key="blog-content-editor"
                   value={formData.content}
-                  onChange={(content) => {
-                    setFormData({ ...formData, content });
-                    setErrors(prev => ({ ...prev, content: '' }));
-                  }}
+                  onChange={handleContentChange}
                   onImageUpload={handleImageUpload}
                 />
               </div>
@@ -598,7 +680,7 @@ function BlogEditor() {
                 type="text"
                 value={formData.metaTitle}
                 onChange={(e) => {
-                  setFormData({ ...formData, metaTitle: e.target.value });
+                  setFormData(prev => ({ ...prev, metaTitle: e.target.value }));
                   setErrors(prev => ({ ...prev, metaTitle: '' }));
                 }}
                 className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.metaTitle ? 'border-red-300' : 'border-gray-300'}`}
@@ -623,7 +705,7 @@ function BlogEditor() {
               <textarea
                 value={formData.metaDescription}
                 onChange={(e) => {
-                  setFormData({ ...formData, metaDescription: e.target.value });
+                  setFormData(prev => ({ ...prev, metaDescription: e.target.value }));
                   setErrors(prev => ({ ...prev, metaDescription: '' }));
                 }}
                 rows={3}
@@ -648,7 +730,7 @@ function BlogEditor() {
                 type="text"
                 value={formData.keywords}
                 onChange={(e) => {
-                  setFormData({ ...formData, keywords: e.target.value });
+                  setFormData(prev => ({ ...prev, keywords: e.target.value }));
                   setErrors(prev => ({ ...prev, keywords: '' }));
                 }}
                 className={`w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50 ${errors.keywords ? 'border-red-300' : 'border-gray-300'}`}
@@ -665,7 +747,7 @@ function BlogEditor() {
               <label className="block text-base font-medium text-gray-800 mb-1">Status</label>
               <select
                 value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-base bg-gray-50"
                 disabled={submitting}
               >
@@ -696,110 +778,103 @@ function BlogEditor() {
       </div>
 
       {/* Confirmation Modal */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{backgroundColor: 'rgba(0, 0, 0, 0.75)'}}>
-          <div className="mt-[550px] bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {id ? 'Update Blog Post' : 'Create Blog Post'}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {formData.status === 'published' ? 'This will be published immediately' : 'This will be saved as a draft'}
-                  </p>
-                </div>
+      <Modal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        title={id ? 'Update Blog Post' : 'Create Blog Post'}
+        size="small"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
               </div>
             </div>
-
-            {/* Modal Body */}
-            <div className="px-6 py-4">
-              <div className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2"></div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Title</p>
-                    <p className="text-sm text-gray-600 truncate">{formData.title}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Status</p>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      formData.status === 'published' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {formData.status === 'published' ? 'Published' : 'Draft'}
-                    </span>
-                  </div>
-                </div>
-
-                {formData.status === 'published' && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-green-700">
-                          This blog post will be published and visible to all visitors immediately.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end space-x-3">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmSave}
-                className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    {id ? 'Updating...' : 'Creating...'}
-                  </div>
-                ) : (
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    {id ? 'Update Blog' : 'Create Blog'}
-                  </div>
-                )}
-              </button>
+            <div className="ml-4">
+              <p className="text-sm text-gray-500">
+                {formData.status === 'published' ? 'This will be published immediately' : 'This will be saved as a draft'}
+              </p>
             </div>
           </div>
+
+          <div className="space-y-3">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2"></div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Title</p>
+                <p className="text-sm text-gray-600 truncate">{formData.title}</p>
+              </div>
+            </div>
+            
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Status</p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  formData.status === 'published' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {formData.status === 'published' ? 'Published' : 'Draft'}
+                </span>
+              </div>
+            </div>
+
+            {formData.status === 'published' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-green-700">
+                      This blog post will be published and visible to all visitors immediately.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              onClick={() => setShowConfirmModal(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  {id ? 'Updating...' : 'Creating...'}
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  {id ? 'Update Blog' : 'Create Blog'}
+                </div>
+              )}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

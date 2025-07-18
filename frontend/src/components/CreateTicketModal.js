@@ -1,152 +1,339 @@
-import React, { useState } from 'react';
-import { createTicket } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { createTicket, createCancellationRequest, getBookingById, getTrekById } from '../services/api';
 import { toast } from 'react-toastify';
+import Modal from './Modal';
+import { FaTag, FaFlag, FaAlignLeft, FaListAlt, FaCalendarAlt } from 'react-icons/fa';
 
 function CreateTicketModal({ bookingId, onClose, onSuccess }) {
+  const [ticketType, setTicketType] = useState('general');
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [preferredBatch, setPreferredBatch] = useState('');
+  const [availableBatches, setAvailableBatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [fetchingBatches, setFetchingBatches] = useState(false);
+
+  // Fetch available batches when reschedule is selected
+  useEffect(() => {
+    if (ticketType === 'reschedule' && bookingId) {
+      fetchAvailableBatches();
+    }
+  }, [ticketType, bookingId]);
+
+  const fetchAvailableBatches = async () => {
+    try {
+      setFetchingBatches(true);
+      const booking = await getBookingById(bookingId);
+      
+      if (booking.trek && booking.trek._id) {
+        // Fetch the trek with full batch details
+        const trek = await getTrekById(booking.trek._id);
+        
+        if (trek && trek.batches) {
+          // Filter out the current batch and full batches
+          const currentBatchId = booking.batch?._id || booking.batch;
+          const available = trek.batches.filter(batch => {
+            const isNotCurrentBatch = batch._id.toString() !== currentBatchId?.toString();
+            const hasAvailableSpots = batch.currentParticipants < batch.maxParticipants;
+            const isFutureBatch = new Date(batch.startDate) > new Date();
+            
+            return isNotCurrentBatch && hasAvailableSpots && isFutureBatch;
+          });
+          
+          setAvailableBatches(available);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching available batches:', error);
+      toast.error('Failed to fetch available batches');
+    } finally {
+      setFetchingBatches(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!subject.trim() || !description.trim()) {
-      setError('Please fill in all required fields');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      setError(null);
+    if (ticketType === 'general') {
+      // Handle regular support ticket
+      if (!subject.trim() || !description.trim()) {
+        setError('Please fill in all required fields');
+        return;
+      }
       
-      await createTicket({
-        bookingId,
-        subject,
-        description,
-        priority
-      });
+      try {
+        setLoading(true);
+        setError(null);
+        await createTicket({ bookingId, subject, description, priority });
+        toast.success('Support ticket created successfully');
+        if (onSuccess) onSuccess();
+        onClose();
+      } catch (err) {
+        setError('Failed to create ticket. Please try again later.');
+        toast.error('Failed to create ticket');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      // Handle cancellation/reschedule request
+      if (!description.trim()) {
+        setError('Please provide a reason for your request');
+        return;
+      }
+
+      if (ticketType === 'reschedule' && !preferredBatch) {
+        setError('Please select a preferred batch for rescheduling');
+        return;
+      }
       
-      toast.success('Support ticket created successfully');
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (err) {
-      console.error('Error creating ticket:', err);
-      setError('Failed to create ticket. Please try again later.');
-      toast.error('Failed to create ticket');
-    } finally {
-      setLoading(false);
+      try {
+        setLoading(true);
+        setError(null);
+        await createCancellationRequest(bookingId, {
+          requestType: ticketType,
+          reason: description,
+          preferredBatch: ticketType === 'reschedule' ? preferredBatch : null
+        });
+        toast.success(`${ticketType === 'cancellation' ? 'Cancellation' : 'Reschedule'} request submitted successfully`);
+        if (onSuccess) onSuccess();
+        onClose();
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to submit request. Please try again later.');
+        toast.error(err.response?.data?.message || 'Failed to submit request');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
+  const getModalTitle = () => {
+    switch (ticketType) {
+      case 'cancellation':
+        return 'Request Cancellation';
+      case 'reschedule':
+        return 'Request Reschedule';
+      default:
+        return 'Create Support Ticket';
+    }
+  };
+
+  const getDescriptionPlaceholder = () => {
+    switch (ticketType) {
+      case 'cancellation':
+        return 'Please provide a detailed reason for your cancellation request...';
+      case 'reschedule':
+        return 'Please provide a detailed reason for your reschedule request...';
+      default:
+        return 'Describe your issue in detail';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR'
+    }).format(amount);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-      <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={onClose}></div>
-
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="sm:flex sm:items-start">
-              <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                  Create Support Ticket
-                </h3>
-                <div className="mt-2">
-                  <p className="text-sm text-gray-500">
-                    Please provide details about your issue and our support team will assist you.
-                  </p>
-                </div>
-
-                {error && (
-                  <div className="mt-2 bg-red-50 border-l-4 border-red-400 p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-red-700">{error}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="mt-4">
-                  <div className="mb-4">
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700">
-                      Subject <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="subject"
-                      name="subject"
-                      className="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
-                      Priority
-                    </label>
-                    <select
-                      id="priority"
-                      name="priority"
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
-                      value={priority}
-                      onChange={(e) => setPriority(e.target.value)}
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                  </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                      Description <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      id="description"
-                      name="description"
-                      rows={4}
-                      className="mt-1 focus:ring-emerald-500 focus:border-emerald-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      required
-                    />
-                  </div>
-                </form>
-              </div>
+    <Modal
+      title={getModalTitle()}
+      isOpen={true}
+      onClose={onClose}
+      size="large"
+    >
+      <p className="text-gray-600 mb-6">
+        {ticketType === 'general' 
+          ? 'Please provide details about your issue and our support team will assist you.'
+          : `Please provide details about your ${ticketType} request. Our team will review and respond within 24-48 hours.`
+        }
+      </p>
+      {error && (
+        <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-3 rounded">
+          <p className="text-sm text-red-700">{error}</p>
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="ticketType" className="block text-sm font-medium text-gray-700 mb-1">
+            Request Type <span className="text-red-500">*</span>
+          </label>
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FaListAlt className="text-gray-400" />
             </div>
-          </div>
-          <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button
-              type="button"
-              className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-emerald-600 text-base font-medium text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:ml-3 sm:w-auto sm:text-sm"
-              onClick={handleSubmit}
-              disabled={loading}
+            <select
+              id="ticketType"
+              name="ticketType"
+              value={ticketType}
+              onChange={e => setTicketType(e.target.value)}
+              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              required
             >
-              {loading ? 'Creating...' : 'Create Ticket'}
-            </button>
-            <button
-              type="button"
-              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
+              <option value="general">General Support Ticket</option>
+              <option value="cancellation">Cancellation Request</option>
+              <option value="reschedule">Reschedule Request</option>
+            </select>
           </div>
         </div>
+        
+        {ticketType === 'reschedule' && (
+          <div>
+            <label htmlFor="preferredBatch" className="block text-sm font-medium text-gray-700 mb-1">
+              Preferred Batch <span className="text-red-500">*</span>
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaCalendarAlt className="text-gray-400" />
+              </div>
+              {fetchingBatches ? (
+                <div className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                  <div className="flex items-center">
+                    <svg className="animate-spin h-4 w-4 text-gray-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading available batches...
+                  </div>
+                </div>
+              ) : (
+                <select
+                  id="preferredBatch"
+                  name="preferredBatch"
+                  value={preferredBatch}
+                  onChange={e => setPreferredBatch(e.target.value)}
+                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                >
+                  <option value="">Select a preferred batch</option>
+                  {availableBatches.map((batch) => (
+                    <option key={batch._id} value={batch._id}>
+                      {formatDate(batch.startDate)} - {formatDate(batch.endDate)} 
+                      ({formatCurrency(batch.price)}) - 
+                      {batch.currentParticipants}/{batch.maxParticipants} spots available
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            {availableBatches.length === 0 && !fetchingBatches && (
+              <p className="mt-1 text-sm text-red-600">
+                No available batches found for rescheduling. Please contact support directly.
+              </p>
+            )}
+          </div>
+        )}
+        
+        {ticketType === 'general' && (
+          <div>
+            <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+              Subject <span className="text-red-500">*</span>
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaTag className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                id="subject"
+                name="subject"
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                placeholder="Subject of your issue"
+                required
+              />
+            </div>
+          </div>
+        )}
+        
+        {ticketType === 'general' && (
+          <div>
+            <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
+              Priority
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaFlag className="text-gray-400" />
+              </div>
+              <select
+                id="priority"
+                name="priority"
+                value={priority}
+                onChange={e => setPriority(e.target.value)}
+                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+        )}
+        
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+            {ticketType === 'general' ? 'Description' : 'Reason'} <span className="text-red-500">*</span>
+          </label>
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute top-3 left-3 flex items-start pointer-events-none">
+              <FaAlignLeft className="text-gray-400" />
+            </div>
+            <textarea
+              id="description"
+              name="description"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={4}
+              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder={getDescriptionPlaceholder()}
+              required
+            />
+          </div>
+        </div>
+        
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading || (ticketType === 'reschedule' && availableBatches.length === 0)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 flex items-center disabled:opacity-50"
+          >
+            {loading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {ticketType === 'general' ? 'Creating...' : 'Submitting...'}
+              </>
+            ) : (
+              ticketType === 'general' ? 'Create Ticket' : 'Submit Request'
+            )}
+          </button>
+        </div>
+      </form>
+      <div className="mt-4 text-xs text-gray-500">
+        <p>By submitting this form, you agree to our privacy policy and terms of service.</p>
       </div>
-    </div>
+    </Modal>
   );
 }
 

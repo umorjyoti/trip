@@ -8,7 +8,7 @@ const blogController = require('../controllers/blogController');
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 50 * 1024 * 1024, // 50MB limit
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -49,6 +49,8 @@ router.post('/upload-image', protect, admin, upload.single('image'), handleMulte
 
 // Public routes (must come after admin routes to prevent conflicts)
 router.get('/', blogController.getAllBlogs);
+router.get('/region/:regionId', blogController.getBlogsByRegion);
+router.get('/related/:blogId/:regionId', blogController.getRelatedBlogs);
 router.get('/:slug', blogController.getBlogBySlug);
 
 module.exports = router; 

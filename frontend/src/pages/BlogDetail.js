@@ -3,6 +3,9 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { Helmet } from 'react-helmet-async';
+import api from '../services/api';
+import { getRelatedBlogs } from '../services/api';
+import RelatedBlogs from '../components/RelatedBlogs';
 
 function BlogDetail() {
   const { slug } = useParams();
@@ -10,6 +13,8 @@ function BlogDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [imageLoading, setImageLoading] = useState(true);
+  const [relatedBlogs, setRelatedBlogs] = useState([]);
+  const [relatedBlogsLoading, setRelatedBlogsLoading] = useState(false);
 
   useEffect(() => {
     fetchBlog();
@@ -18,14 +23,32 @@ function BlogDetail() {
   const fetchBlog = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/blogs/${slug}`);
+      const response = await api.get(`/blogs/${slug}`);
       setBlog(response.data);
       setError(null);
+      
+      // Fetch related blogs if the blog has a region
+      if (response.data.region) {
+        fetchRelatedBlogs(response.data._id, response.data.region._id);
+      }
     } catch (err) {
       setError('Failed to fetch blog. Please try again later.');
       console.error('Error fetching blog:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRelatedBlogs = async (blogId, regionId) => {
+    try {
+      setRelatedBlogsLoading(true);
+      const relatedBlogsData = await getRelatedBlogs(blogId, regionId, 3);
+      setRelatedBlogs(relatedBlogsData);
+    } catch (err) {
+      console.error('Error fetching related blogs:', err);
+      // Don't show error to user for related blogs, just log it
+    } finally {
+      setRelatedBlogsLoading(false);
     }
   };
 
@@ -138,6 +161,18 @@ function BlogDetail() {
               <li>
                 <a href="/blogs" className="hover:text-emerald-600">Blog</a>
               </li>
+              {blog.region && (
+                <>
+                  <li>
+                    <span className="mx-2">/</span>
+                  </li>
+                  <li>
+                    <a href={`/blogs/region/${blog.region.slug}`} className="hover:text-emerald-600">
+                      {blog.region.name}
+                    </a>
+                  </li>
+                </>
+              )}
               <li>
                 <span className="mx-2">/</span>
               </li>
@@ -165,6 +200,21 @@ function BlogDetail() {
           <div className="absolute inset-0 bg-black opacity-50"></div>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center text-white max-w-4xl px-4">
+              {blog.region && (
+                <div className="mb-4">
+                  <a
+                    href={`/blogs/region/${blog.region.slug}`}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                  >
+                    <img
+                      src={blog.region.image}
+                      alt={blog.region.name}
+                      className="w-4 h-4 rounded-full mr-2"
+                    />
+                    {blog.region.name}
+                  </a>
+                </div>
+              )}
               <h1 className="text-4xl md:text-5xl font-bold mb-4">{blog.title}</h1>
               <div className="flex items-center justify-center space-x-4 text-lg">
                 <span>{blog.author ? blog.author.name : ''}</span>
@@ -182,7 +232,7 @@ function BlogDetail() {
         </div>
 
         {/* Content Section */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-16">
           <style>
             {`
               .blog-content img {
@@ -267,6 +317,22 @@ function BlogDetail() {
 
           {/* Meta Information */}
           <div className="mt-12 pt-8 border-t border-gray-200">
+            {blog.region && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Region</h3>
+                <a
+                  href={`/blogs/region/${blog.region.slug}`}
+                  className="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                >
+                  <img
+                    src={blog.region.image}
+                    alt={blog.region.name}
+                    className="w-5 h-5 rounded-full mr-2"
+                  />
+                  {blog.region.name}
+                </a>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2">
               {(blog.keywords || []).map((keyword, index) => (
                 <span
@@ -280,6 +346,15 @@ function BlogDetail() {
           </div>
         </div>
       </div>
+
+      {/* Related Blogs Section */}
+      {blog.region && (
+        <RelatedBlogs
+          blogs={relatedBlogs}
+          regionName={blog.region.name}
+          regionSlug={blog.region.slug}
+        />
+      )}
     </>
   );
 }
