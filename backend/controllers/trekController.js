@@ -82,8 +82,8 @@ exports.getTrekById = async (req, res) => {
     const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0); // Set to start of day
 
-    // Fetch trek with populated batches
-    const trek = await Trek.findById(id).select('+gstPercent +gstType +gatewayPercent +gatewayType');
+    // Fetch trek with populated batches and include customFields
+    const trek = await Trek.findById(id).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
     
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
@@ -115,6 +115,7 @@ exports.getTrekById = async (req, res) => {
     
     console.log('Trek found:', trek.name);
     console.log('Available future batches:', trek.batches.length);
+    console.log('Custom fields:', trek.customFields);
     console.log('GST and Gateway details:', { gst: response.gstDetails, gateway: response.gatewayDetails });
     
     res.json(response);
@@ -136,7 +137,7 @@ exports.getTrekByCustomToken = async (req, res) => {
     const trek = await Trek.findOne({ 
       customAccessToken: token,
       isCustom: true 
-    }).select('+gstPercent +gstType +gatewayPercent +gatewayType');
+    }).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
     
     if (!trek) {
       return res.status(404).json({ message: 'Custom trek not found' });
@@ -172,6 +173,7 @@ exports.getTrekByCustomToken = async (req, res) => {
     
     console.log('Custom trek found:', trek.name);
     console.log('Available future batches:', trek.batches.length);
+    console.log('Custom fields:', trek.customFields);
     
     res.json(response);
   } catch (error) {
@@ -1441,9 +1443,11 @@ exports.exportBatchParticipants = async (req, res) => {
         case 'dropLocation': return 'Drop Location';
         case 'additionalRequests': return 'Additional Requests';
         default:
-          // Custom fields
+          // Custom fields - use the field name as header
           if (field.startsWith('custom_')) {
-            return field.replace('custom_', '');
+            const customFieldKey = field.replace('custom_', '');
+            const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
+            return customField?.fieldName || customFieldKey;
           }
           return field;
       }
@@ -1474,7 +1478,7 @@ exports.exportBatchParticipants = async (req, res) => {
                   contactPhone: participant.contactPhone,
                   allKeys: Object.keys(participant)
                 });
-                return participant.phone || 'N/A';
+                return participant.phone || participant.contactNumber || 'N/A';
               case 'emergencyContactName':
                 return participant.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
@@ -1482,9 +1486,9 @@ exports.exportBatchParticipants = async (req, res) => {
               case 'emergencyContactRelation':
                 return participant.emergencyContact?.relationship || participant.emergencyContact?.relation || 'N/A';
               case 'medicalConditions':
-                return participant.allergies || 'N/A';
+                return participant.allergies || participant.medicalConditions || 'N/A';
               case 'specialRequests':
-                return participant.extraComment || 'N/A';
+                return participant.extraComment || participant.specialRequests || 'N/A';
               case 'bookingUserName':
                 return booking.user?.name || 'N/A';
               case 'bookingUserEmail':
@@ -1509,23 +1513,36 @@ exports.exportBatchParticipants = async (req, res) => {
                   const customFieldKey = field.replace('custom_', '');
                   const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
                   console.log('Processing custom field:', customFieldKey, 'Found field:', customField);
+                  
                   if (customField) {
+                    let value = null;
+                    
                     // First try to get from customFields Map
                     if (participant.customFields && participant.customFields instanceof Map) {
-                      const value = participant.customFields.get(customFieldKey);
+                      value = participant.customFields.get(customFieldKey);
                       console.log('Found custom field value from Map:', value);
-                      if (value) {
-                        return value;
-                      }
+                    }
+                    
+                    // If not found in Map, try customFields object
+                    if (!value && participant.customFields && typeof participant.customFields === 'object') {
+                      value = participant.customFields[customFieldKey];
+                      console.log('Found custom field value from object:', value);
                     }
                     
                     // Fallback to customFieldResponses array
-                    const customFieldResponse = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey);
-                    console.log('Found custom field response:', customFieldResponse);
-                    const value = customFieldResponse?.value;
+                    if (!value && participant.customFieldResponses) {
+                      const customFieldResponse = participant.customFieldResponses.find(f => 
+                        f.fieldId === customFieldKey || f.fieldName === customFieldKey
+                      );
+                      console.log('Found custom field response:', customFieldResponse);
+                      value = customFieldResponse?.value;
+                    }
+                    
+                    // Handle array values (for checkbox fields)
                     if (Array.isArray(value)) {
                       return value.join(', ') || 'N/A';
                     }
+                    
                     return value || 'N/A';
                   }
                 }
