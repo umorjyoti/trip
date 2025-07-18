@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 import { toast } from 'react-toastify';
 import { FaHeart, FaUser, FaSignOutAlt, FaCog, FaClipboardList, FaTicketAlt, FaBars, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getRegions } from '../services/api';
 import { FaHome, FaHiking, FaMapMarkedAlt, FaBlog, FaInfoCircle, FaPhone, FaGlobe } from 'react-icons/fa';
+import NotificationBell from './NotificationBell';
 
 const MobileNavLink = ({ to, icon: Icon, children, onClick }) => (
   <Link
@@ -20,6 +22,7 @@ const MobileNavLink = ({ to, icon: Icon, children, onClick }) => (
 
 function Header() {
   const { currentUser, logout } = useAuth();
+  const { notifications, unreadCount } = useNotifications();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [regions, setRegions] = useState([]);
@@ -209,6 +212,13 @@ function Header() {
             </nav>
           </div>
           <div className="flex items-center">
+            {/* Notification Bell - only show for admins */}
+            {currentUser && (currentUser.isAdmin || currentUser.role === 'admin') && (
+              <div className="mr-3 sm:flex hidden">
+                <NotificationBell />
+              </div>
+            )}
+            
             {/* Desktop user menu (profile icon) - only show on desktop */}
             {currentUser ? (
               <div className="relative ml-3 sm:flex hidden" ref={dropdownRef}>
@@ -405,6 +415,13 @@ function Header() {
                   <MobileNavLink to="/tickets" icon={FaTicketAlt} onClick={() => setMobileMenuOpen(false)}>Support Tickets</MobileNavLink>
                   {currentUser.isAdmin && (
                     <MobileNavLink to="/admin" icon={FaCog} onClick={() => setMobileMenuOpen(false)}>Admin Dashboard</MobileNavLink>
+                  )}
+                  
+                  {/* Notification Bell for Admin Users - Mobile */}
+                  {currentUser && (currentUser.isAdmin || currentUser.role === 'admin') && (
+                    <div className="px-4 py-2">
+                      <NotificationBell />
+                    </div>
                   )}
                 </div>
               )}

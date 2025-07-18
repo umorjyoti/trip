@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FaHome, FaMountain, FaMapMarkedAlt, FaCalendarAlt, FaUsers, FaTicketAlt, FaChartLine, FaLayerGroup, FaUserFriends, FaBlog, FaGlobe } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
+import NotificationBell from '../components/NotificationBell';
 
 function AdminLayout({ children }) {
   const location = useLocation();
@@ -69,6 +70,12 @@ function AdminLayout({ children }) {
       
       {/* Main content */}
       <div className="flex flex-col w-0 flex-1 overflow-hidden">
+        {/* Header with notification bell */}
+        <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center justify-end">
+            <NotificationBell />
+          </div>
+        </header>
         <main className="flex-1 relative overflow-y-auto focus:outline-none">
           {children}
         </main>

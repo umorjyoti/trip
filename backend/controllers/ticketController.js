@@ -2,6 +2,7 @@ const Ticket = require('../models/Ticket');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
 const { sendEmail } = require('../utils/email');
+const { createSupportTicketNotification } = require('../utils/notificationUtils');
 
 // Create a new support ticket
 exports.createTicket = async (req, res) => {
@@ -32,6 +33,29 @@ exports.createTicket = async (req, res) => {
       priority: priority || 'medium',
       status: 'open'
     });
+
+    // Create admin notification for new support ticket
+    try {
+      const populatedTicket = await Ticket.findById(ticket._id)
+        .populate('user', 'name email')
+        .populate({
+          path: 'booking',
+          populate: {
+            path: 'trek',
+            select: 'name'
+          }
+        });
+      
+      await createSupportTicketNotification(
+        populatedTicket, 
+        populatedTicket.user, 
+        populatedTicket.booking, 
+        populatedTicket.booking?.trek
+      );
+    } catch (notificationError) {
+      console.error('Error creating support ticket notification:', notificationError);
+      // Don't fail the ticket creation if notification fails
+    }
     
     res.status(201).json(ticket);
   } catch (error) {

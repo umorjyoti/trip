@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const { sendEmail, sendPaymentReceivedEmail, sendEmailWithAttachment } = require('../utils/email');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
+const { createBookingConfirmedNotification } = require('../utils/notificationUtils');
 
 // Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -105,6 +106,14 @@ exports.verifyPayment = async (req, res) => {
           status: payment.status
         };
         await booking.save();
+
+        // Create admin notification for booking confirmation
+        try {
+          await createBookingConfirmedNotification(booking, booking.trek, booking.user);
+        } catch (notificationError) {
+          console.error('Error creating booking confirmation notification:', notificationError);
+          // Don't fail the payment verification if notification fails
+        }
 
         // Send payment confirmation email with invoice
         try {

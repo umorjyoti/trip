@@ -5,6 +5,7 @@ const LeadHistory = require("../models/LeadHistory");
 const User = require("../models/User");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit-table');
+const { createLeadCreatedNotification } = require("../utils/notificationUtils");
 
 // Helper function to get user info
 const getUserInfo = async (userId) => {
@@ -86,6 +87,14 @@ exports.createLead = async (req, res) => {
       req.user?._id || null,
       "Lead created"
     );
+
+    // Create admin notification for new lead
+    try {
+      await createLeadCreatedNotification(savedLead);
+    } catch (notificationError) {
+      console.error('Error creating lead notification:', notificationError);
+      // Don't fail the lead creation if notification fails
+    }
 
     // Commenting out email sending for now
     /*

@@ -6,6 +6,7 @@ const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
 const { refundPayment } = require('../utils/razorpayUtils');
+const { createCancellationRequestNotification, createRescheduleRequestNotification } = require('../utils/notificationUtils');
 const mongoose = require('mongoose');
 
 // Create a custom trek booking (simplified flow)
@@ -1699,6 +1700,22 @@ const createCancellationRequest = async (req, res) => {
     };
 
     await booking.save();
+
+    // Create admin notification for cancellation/reschedule request
+    try {
+      const populatedBooking = await Booking.findById(booking._id)
+        .populate('user', 'name email')
+        .populate('trek', 'name');
+      
+      if (requestType === 'cancellation') {
+        await createCancellationRequestNotification(populatedBooking, populatedBooking.user, populatedBooking.trek);
+      } else if (requestType === 'reschedule') {
+        await createRescheduleRequestNotification(populatedBooking, populatedBooking.user, populatedBooking.trek);
+      }
+    } catch (notificationError) {
+      console.error('Error creating cancellation/reschedule request notification:', notificationError);
+      // Don't fail the request creation if notification fails
+    }
 
     res.json({ 
       message: `${requestType} request created successfully`, 

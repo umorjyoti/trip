@@ -81,6 +81,7 @@ import ComingSoon from './pages/ComingSoon';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import LeadsManagement from "./pages/admin/LeadsManagement";
 import WeekendGetawayManager from "./components/admin/WeekendGetawayManager";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
@@ -119,20 +120,21 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      <ScrollToTop />
-      <Header />
-      <main className="flex-grow">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial="initial"
-            animate="in"
-            exit="out"
-            variants={pageVariants}
-            transition={pageTransition}
-          >
-            <Routes location={location}>
+    <NotificationProvider>
+      <div className="flex flex-col min-h-screen bg-gray-50">
+        <ScrollToTop />
+        <Header />
+        <main className="flex-grow">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial="initial"
+              animate="in"
+              exit="out"
+              variants={pageVariants}
+              transition={pageTransition}
+            >
+              <Routes location={location}>
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route
@@ -628,6 +630,7 @@ function App() {
         theme="light"
       />
     </div>
+    </NotificationProvider>
   );
 }
 

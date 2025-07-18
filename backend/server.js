@@ -27,6 +27,7 @@ const passport = require('./config/passport');
 const session = require('express-session');
 const googleReviewsRoutes = require('./routes/googleReviewsRoutes');
 const blogRegionRoutes = require('./routes/blogRegionRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Swagger documentation
 const swaggerUi = require('swagger-ui-express');
@@ -152,6 +153,7 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/blog-regions', blogRegionRoutes);
 app.use('/api/careers', careerRoutes);
 app.use('/api/google', googleReviewsRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
