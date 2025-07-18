@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FaMountain, FaWater, FaUmbrellaBeach, FaHiking, FaGlassCheers, FaTheaterMasks, FaMusic, FaGlobe } from 'react-icons/fa';
 
 function About() {
   const navigate = useNavigate();
@@ -40,6 +41,58 @@ function About() {
       logo: "🏢",
       description: "Corporate expedition to Mullayanagiri",
       details: "45+ team members, peak climbing"
+    }
+  ];
+
+  // Trek categories data
+  const trekCategories = [
+    {
+      name: "All Treks",
+      icon: FaGlobe,
+      color: "from-blue-500 to-emerald-500",
+      description: "Explore all our trekking adventures"
+    },
+    {
+      name: "Mountains",
+      icon: FaMountain,
+      color: "from-gray-600 to-gray-700",
+      description: "High-altitude mountain expeditions"
+    },
+    {
+      name: "Coastal",
+      icon: FaWater,
+      color: "from-blue-400 to-blue-600",
+      description: "Scenic coastal and beach treks"
+    },
+    {
+      name: "Desert",
+      icon: FaUmbrellaBeach,
+      color: "from-yellow-500 to-orange-500",
+      description: "Desert and arid landscape adventures"
+    },
+    {
+      name: "Adventure",
+      icon: FaHiking,
+      color: "from-red-500 to-red-600",
+      description: "Thrilling adventure activities"
+    },
+    {
+      name: "Relaxing",
+      icon: FaGlassCheers,
+      color: "from-purple-400 to-purple-600",
+      description: "Peaceful and rejuvenating treks"
+    },
+    {
+      name: "Cultural",
+      icon: FaTheaterMasks,
+      color: "from-indigo-500 to-indigo-600",
+      description: "Cultural and heritage experiences"
+    },
+    {
+      name: "Party",
+      icon: FaMusic,
+      color: "from-pink-500 to-pink-600",
+      description: "Fun and social trekking events"
     }
   ];
 
@@ -132,6 +185,51 @@ function About() {
               <div className="absolute -top-4 -right-4 w-16 h-16 sm:w-24 sm:h-24 bg-emerald-500 rounded-full opacity-20"></div>
               <div className="absolute -bottom-4 -left-4 w-12 h-12 sm:w-16 sm:h-16 bg-blue-500 rounded-full opacity-20"></div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Trek Categories Section */}
+      <section className="py-12 sm:py-20 bg-gradient-to-r from-gray-50 to-emerald-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">Explore Our Trek Categories</h2>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto px-4">
+              Discover diverse trekking experiences tailored to every adventurer's preference
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {trekCategories.map((category, index) => {
+              const IconComponent = category.icon;
+              return (
+                <button
+                  key={index}
+                  onClick={() => navigate(`/treks?category=${category.name.toLowerCase()}`)}
+                  className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 p-4 sm:p-6 text-center border border-gray-100"
+                >
+                  <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r ${category.color} rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>
+                    <IconComponent className="text-white text-lg sm:text-xl" />
+                  </div>
+                  <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-1 group-hover:text-emerald-600 transition-colors">
+                    {category.name}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600 leading-tight">
+                    {category.description}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          
+          <div className="text-center mt-8 sm:mt-12">
+            <button
+              onClick={() => navigate('/treks')}
+              className="inline-flex items-center px-6 sm:px-8 py-3 sm:py-4 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-colors duration-300 text-sm sm:text-base"
+            >
+              <FaGlobe className="mr-2 h-4 w-4" />
+              View All Treks
+            </button>
           </div>
         </div>
       </section>
