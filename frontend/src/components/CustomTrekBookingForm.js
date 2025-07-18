@@ -120,21 +120,8 @@ function CustomTrekBookingForm({ trek, onClose, onSuccess }) {
       onClose();
     } catch (error) {
       console.error('Error creating custom trek booking:', error);
-      
-      // Handle specific error cases
-      if (error.response?.status === 409) {
-        // Duplicate custom trek booking error
-        const errorMessage = error.response?.data?.message || "You already have a confirmed booking for this custom trek.";
-        toast.error(errorMessage);
-        
-        // If there's an existing booking ID, redirect to it
-        if (error.response?.data?.existingBooking) {
-          window.location.href = `/booking-detail/${error.response.data.existingBooking}`;
-        }
-      } else {
-        const errorMessage = error.response?.data?.message || 'Failed to create booking. Please try again.';
-        toast.error(errorMessage);
-      }
+      const errorMessage = error.response?.data?.message || 'Failed to create booking. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

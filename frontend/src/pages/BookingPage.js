@@ -37,9 +37,6 @@ function BookingPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState(null);
 
-  // Add new state for booking processing
-  const [processingBooking, setProcessingBooking] = useState(false);
-
   useEffect(() => {
     const fetchRazorpayKey = async () => {
       try {
@@ -225,15 +222,8 @@ function BookingPage() {
       return;
     }
 
-    // Prevent multiple submissions
-    if (processingBooking) {
-      toast.info("Booking is being processed. Please wait...");
-      return;
-    }
-
     try {
-      setProcessingBooking(true);
-      
+      setProcessingPayment(true);
       // Map selected add-on IDs to { name, price } objects
       const validAddOns = trek.addOns
         .map((addOn, idx) => ({ ...addOn, key: getAddOnKey(addOn, idx) }))
@@ -252,9 +242,7 @@ function BookingPage() {
         originalPrice: calculateBasePrice()
       };
 
-      console.log('Creating booking with data:', bookingData);
       const booking = await createBooking(bookingData);
-      console.log('New booking created:', booking._id);
       
       // Create Razorpay order using the API service
       const { order } = await createPaymentOrder(Math.round(booking.totalPrice), booking._id);
@@ -300,7 +288,6 @@ function BookingPage() {
         modal: {
           ondismiss: function() {
             toast.info('Payment cancelled. You can try again.');
-            setProcessingBooking(false);
           },
           escape: false,
         },
@@ -331,22 +318,8 @@ function BookingPage() {
 
     } catch (error) {
       console.error("Error creating booking:", error);
-      
-      // Handle specific error cases
-      if (error.response?.status === 409) {
-        // Duplicate pending booking error
-        const errorMessage = error.response?.data?.message || "You already have a pending booking for this trek.";
-        toast.error(errorMessage);
-        
-        // If there's an existing booking ID, redirect to it
-        if (error.response?.data?.existingBooking) {
-          navigate(`/booking-detail/${error.response.data.existingBooking}`);
-        }
-      } else {
-        toast.error(error.response?.data?.message || error.message || "Failed to create booking");
-      }
-      
-      setProcessingBooking(false);
+      toast.error(error.message || "Failed to create booking");
+      setProcessingPayment(false);
     }
   };
 
@@ -685,17 +658,15 @@ function BookingPage() {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={processingBooking}
-                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
-                    processingBooking 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  disabled={processingPayment}
+                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
+                    processingPayment ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
-                  {processingBooking ? (
+                  {processingPayment ? (
                     <>
-                      <LoadingSpinner />
-                      <span className="ml-2">Processing...</span>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Loading Payment...
                     </>
                   ) : (
                     'Proceed to Payment'

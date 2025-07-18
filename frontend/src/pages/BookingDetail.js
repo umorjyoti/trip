@@ -4,8 +4,7 @@ import { getBookingById, downloadInvoice } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CreateTicketModal from '../components/CreateTicketModal';
-import PaymentButton from '../components/PaymentButton';
-import { FaDownload, FaHistory, FaClock, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaCreditCard } from 'react-icons/fa';
+import { FaDownload, FaHistory, FaClock, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from 'react-icons/fa';
 
 function BookingDetail() {
   const { id } = useParams();
@@ -72,14 +71,6 @@ function BookingDetail() {
         return 'bg-red-100 text-red-800';
       case 'completed':
         return 'bg-blue-100 text-blue-800';
-      case 'pending_payment':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'pending':
-        return 'bg-orange-100 text-orange-800';
-      case 'payment_completed':
-        return 'bg-green-100 text-green-800';
-      case 'trek_completed':
-        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -307,65 +298,6 @@ function BookingDetail() {
           </div>
         </div>
       )}
-
-      {/* Payment Section for Pending Payment Status */}
-      {booking && booking.status === 'pending_payment' && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex items-start space-x-4">
-            <div className="flex-shrink-0">
-              <FaCreditCard className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-medium text-blue-900 mb-2">
-                Complete Your Payment
-              </h3>
-              <p className="text-blue-700 mb-4">
-                Your booking is pending payment. Please complete the payment to confirm your reservation.
-              </p>
-              <div className="bg-white rounded-lg p-4 mb-4 border border-blue-200">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-600">Amount to Pay:</span>
-                  <span className="text-lg font-bold text-gray-900">₹{booking.totalPrice?.toFixed(2) || '0.00'}</span>
-                </div>
-                <div className="text-xs text-gray-500">
-                  Secure payment powered by Razorpay
-                </div>
-              </div>
-              <PaymentButton
-                amount={booking.totalPrice}
-                bookingId={booking._id}
-                onSuccess={() => {
-                  // Refresh the booking data to show updated status
-                  const fetchBooking = async () => {
-                    try {
-                      const data = await getBookingById(id);
-                      if (data) {
-                        const bookingData = {
-                          ...data,
-                          trek: data.trek || {},
-                          batch: data.batch || {},
-                          participants: data.participants || 0,
-                          totalPrice: data.totalPrice || 0,
-                          status: data.status || 'unknown',
-                          createdAt: data.createdAt || new Date(),
-                          cancelledAt: data.cancelledAt || null,
-                          participantDetails: Array.isArray(data.participantDetails) ? data.participantDetails : [],
-                          cancellationRequest: data.cancellationRequest || null
-                        };
-                        setBooking(bookingData);
-                        toast.success('Payment completed successfully! Your booking is now confirmed.');
-                      }
-                    } catch (err) {
-                      console.error('Error refreshing booking:', err);
-                    }
-                  };
-                  fetchBooking();
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
       <div className="mb-8">
         <nav className="flex" aria-label="Breadcrumb">
           <ol className="flex items-center space-x-4">
@@ -518,43 +450,6 @@ function BookingDetail() {
       <div className="mt-8">
         <hr className="mb-4 border-gray-200" />
         <div className="flex flex-col md:flex-row gap-3 md:gap-4">
-          {/* Payment Button for Pending Payment Status */}
-          {booking.status === 'pending_payment' && (
-            <div className="w-full md:w-auto">
-              <PaymentButton
-                amount={booking.totalPrice}
-                bookingId={booking._id}
-                onSuccess={() => {
-                  // Refresh the booking data to show updated status
-                  const fetchBooking = async () => {
-                    try {
-                      const data = await getBookingById(id);
-                      if (data) {
-                        const bookingData = {
-                          ...data,
-                          trek: data.trek || {},
-                          batch: data.batch || {},
-                          participants: data.participants || 0,
-                          totalPrice: data.totalPrice || 0,
-                          status: data.status || 'unknown',
-                          createdAt: data.createdAt || new Date(),
-                          cancelledAt: data.cancelledAt || null,
-                          participantDetails: Array.isArray(data.participantDetails) ? data.participantDetails : [],
-                          cancellationRequest: data.cancellationRequest || null
-                        };
-                        setBooking(bookingData);
-                        toast.success('Payment completed successfully! Your booking is now confirmed.');
-                      }
-                    } catch (err) {
-                      console.error('Error refreshing booking:', err);
-                    }
-                  };
-                  fetchBooking();
-                }}
-              />
-            </div>
-          )}
-
           {/* Download Invoice Button */}
           <button
             type="button"
