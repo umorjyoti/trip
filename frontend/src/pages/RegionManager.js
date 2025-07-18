@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getRegions, deleteRegion } from '../services/api';
 import { toast } from 'react-toastify';
-import { FaPlus, FaEdit, FaTrash, FaEye, FaEyeSlash, FaMapMarkerAlt, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaEye,  FaMapMarkerAlt, FaCalendarAlt, FaClock } from 'react-icons/fa';
 import AdminLayout from '../layouts/AdminLayout';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
