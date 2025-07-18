@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getUserBookings } from '../services/api';
+import { getUserBookings, downloadInvoice } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { FaDownload, FaEye, FaCalendarAlt, FaUsers, FaRupeeSign, FaTicketAlt } from 'react-icons/fa';
 
 function MyBookings() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showIncompleteOnly, setShowIncompleteOnly] = useState(false);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState(null);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -102,7 +104,7 @@ function MyBookings() {
     if (!isIncomplete) return null;
     
     return (
-      <div className="mt-2">
+      <div className="mt-3">
         <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
           <span>Step {progress.step} of {progress.total}</span>
           <span>{progress.label}</span>
@@ -122,6 +124,19 @@ function MyBookings() {
     ? bookings.filter(booking => isIncompleteBooking(booking.status))
     : bookings;
 
+  const handleDownloadInvoice = async (bookingId) => {
+    try {
+      setDownloadingInvoiceId(bookingId);
+      await downloadInvoice(bookingId);
+      toast.success('Invoice downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      toast.error('Failed to download invoice. Please try again.');
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -132,7 +147,7 @@ function MyBookings() {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
         <div className="bg-red-50 border-l-4 border-red-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -150,12 +165,12 @@ function MyBookings() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
       {/* Incomplete Bookings Notification Banner */}
       {incompleteBookings.length > 0 && (
         <div className="mb-6 bg-gradient-to-r from-yellow-400 to-orange-400 border-l-4 border-yellow-600 p-4 rounded-md shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-start sm:items-center">
               <div className="flex-shrink-0">
                 <svg className="h-6 w-6 text-yellow-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -174,10 +189,10 @@ function MyBookings() {
                 </div>
               </div>
             </div>
-            <div className="ml-4 flex-shrink-0">
+            <div className="flex-shrink-0">
               <button
                 onClick={() => setShowIncompleteOnly(true)}
-                className="bg-yellow-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-yellow-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                className="w-full sm:w-auto bg-yellow-800 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-yellow-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
               >
                 View Incomplete
               </button>
@@ -188,7 +203,7 @@ function MyBookings() {
 
       {/* Quick Actions for Incomplete Bookings */}
       {incompleteBookings.length > 0 && (
-        <div className="mb-6 bg-white shadow rounded-lg p-6">
+        <div className="mb-6 bg-white shadow rounded-lg p-4 sm:p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {incompleteBookings.slice(0, 3).map((booking) => {
@@ -253,47 +268,47 @@ function MyBookings() {
         </div>
       )}
 
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-        <Link
-          to="/tickets"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700"
-        >
-          <svg className="mr-2 -ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          View Support Tickets
-        </Link>
-      </div>
-
-      <div className="sm:flex sm:items-center">
-        <div className="sm:flex-auto">
-          <p className="mt-2 text-sm text-gray-700">
-            View and manage all your trek bookings.
-          </p>
-          {incompleteBookings.length > 0 && (
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <span className="text-yellow-800 font-medium">
-                    ⏳ You have {incompleteBookings.length} incomplete booking{incompleteBookings.length > 1 ? 's' : ''} that need attention
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowIncompleteOnly(!showIncompleteOnly)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md ${
-                    showIncompleteOnly 
-                      ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
-                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                  }`}
-                >
-                  {showIncompleteOnly ? 'Show All' : 'Show Incomplete Only'}
-                </button>
-              </div>
-            </div>
-          )}
+      {/* Header Section - Mobile Responsive */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Bookings</h1>
+            <p className="mt-1 sm:mt-2 text-sm text-gray-600">
+              View and manage all your trek bookings.
+            </p>
+          </div>
+          <Link
+            to="/tickets"
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
+          >
+            <FaTicketAlt className="mr-2 h-4 w-4" />
+            View Support Tickets
+          </Link>
         </div>
       </div>
+
+      {/* Filter Toggle for Incomplete Bookings */}
+      {incompleteBookings.length > 0 && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center">
+              <span className="text-yellow-800 font-medium">
+                ⏳ You have {incompleteBookings.length} incomplete booking{incompleteBookings.length > 1 ? 's' : ''} that need attention
+              </span>
+            </div>
+            <button
+              onClick={() => setShowIncompleteOnly(!showIncompleteOnly)}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                showIncompleteOnly 
+                  ? 'bg-yellow-600 text-white hover:bg-yellow-700' 
+                  : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+              }`}
+            >
+              {showIncompleteOnly ? 'Show All' : 'Show Incomplete Only'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {bookings.length === 0 ? (
         <div className="bg-white shadow overflow-hidden sm:rounded-md p-6 text-center">
@@ -306,104 +321,117 @@ function MyBookings() {
           </Link>
         </div>
       ) : (
-        <div className="mt-8 flex flex-col">
-          <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-              <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                <table className="min-w-full divide-y divide-gray-300">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                        Trek
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Booking Date
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Participants
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Total Amount (INR)
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Status
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Next Action
-                      </th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                        Created At
-                      </th>
-                      <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {filteredBookings.map((booking) => {
-                      const resumeAction = getResumeAction(booking);
-                      const isIncomplete = isIncompleteBooking(booking.status);
-                      
-                      return (
-                        <tr key={booking._id} className={isIncomplete ? 'bg-yellow-50' : ''}>
-                          <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                            <div className="flex items-center">
-                              {booking.trek ? booking.trek.name : 'N/A'}
-                              {isIncomplete && (
-                                <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                  ⏳ Incomplete
-                                </span>
-                              )}
-                            </div>
-                            <ProgressIndicator booking={booking} />
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {booking.batch && booking.batch.startDate ? formatDate(booking.batch.startDate) : 'N/A'}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {booking.participants || 0}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            ₹{booking.totalPrice ? booking.totalPrice.toFixed(2) : '0.00'}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(booking.status)}`}>
-                              {booking.status}
-                            </span>
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {resumeAction ? resumeAction.text : 'N/A'}
-                          </td>
-                          <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                            {formatDate(booking.createdAt)}
-                          </td>
-                          <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                            <div className="flex items-center justify-end space-x-2">
-                              {resumeAction && (
-                                <Link
-                                  to={resumeAction.link}
-                                  className={`inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white ${resumeAction.color} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
-                                >
-                                  <span className="mr-1">{resumeAction.icon}</span>
-                                  {resumeAction.text}
-                                </Link>
-                              )}
-                              <Link
-                                to={`/booking-detail/${booking._id}`}
-                                className="text-emerald-600 hover:text-emerald-900"
-                              >
-                                View
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+        <div className="space-y-4">
+          {filteredBookings.map((booking) => {
+            const resumeAction = getResumeAction(booking);
+            const isIncomplete = isIncompleteBooking(booking.status);
+            
+            return (
+              <div 
+                key={booking._id} 
+                className={`bg-white shadow rounded-lg overflow-hidden border-l-4 ${
+                  isIncomplete ? 'border-l-yellow-400 bg-yellow-50' : 'border-l-emerald-400'
+                }`}
+              >
+                <div className="p-4 sm:p-6">
+                  {/* Header with Trek Name and Status */}
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
+                        {booking.trek?.name || 'Unknown Trek'}
+                      </h3>
+                      {isIncomplete && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mt-2">
+                          ⏳ Incomplete
+                        </span>
+                      )}
+                    </div>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>
+                      {booking.status}
+                    </span>
+                  </div>
+
+                  {/* Progress Indicator for Incomplete Bookings */}
+                  <ProgressIndicator booking={booking} />
+
+                  {/* Booking Details Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaCalendarAlt className="mr-2 h-4 w-4 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">Trek Date</p>
+                        <p>{booking.batch && booking.batch.startDate ? formatDate(booking.batch.startDate) : 'N/A'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaUsers className="mr-2 h-4 w-4 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">Participants</p>
+                        <p>{booking.numberOfParticipants || 0}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaRupeeSign className="mr-2 h-4 w-4 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">Total Amount</p>
+                        <p>₹{booking.totalPrice ? booking.totalPrice.toFixed(2) : '0.00'}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-gray-600">
+                      <FaCalendarAlt className="mr-2 h-4 w-4 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-900">Booked On</p>
+                        <p>{formatDate(booking.createdAt)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
+                    {resumeAction && (
+                      <Link
+                        to={resumeAction.link}
+                        className={`inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${resumeAction.color} hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 flex-1 sm:flex-none`}
+                      >
+                        <span className="mr-2">{resumeAction.icon}</span>
+                        {resumeAction.text}
+                      </Link>
+                    )}
+                    
+                    <Link
+                      to={`/booking-detail/${booking._id}`}
+                      className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 flex-1 sm:flex-none"
+                    >
+                      <FaEye className="mr-2 h-4 w-4" />
+                      View Details
+                    </Link>
+                    
+                    <button
+                      onClick={() => handleDownloadInvoice(booking._id)}
+                      disabled={downloadingInvoiceId === booking._id}
+                      className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 flex-1 sm:flex-none"
+                      title="Download Invoice"
+                    >
+                      {downloadingInvoiceId === booking._id ? (
+                        <svg className="animate-spin h-4 w-4 text-gray-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <>
+                          <FaDownload className="mr-2 h-4 w-4" />
+                          Invoice
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       )}
     </div>

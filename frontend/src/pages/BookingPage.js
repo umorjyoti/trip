@@ -3,16 +3,19 @@ import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
+import Modal from "../components/Modal";
 import { useAuth } from "../contexts/AuthContext";
 
 function BookingPage() {
-  const { id } = useParams();
+  const { name } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
   const [trek, setTrek] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [razorpayKey, setRazorpayKey] = useState(null);
   const [taxInfo, setTaxInfo] = useState({
@@ -34,6 +37,9 @@ function BookingPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState(null);
 
+  // Add new state for booking processing
+  const [processingBooking, setProcessingBooking] = useState(false);
+
   useEffect(() => {
     const fetchRazorpayKey = async () => {
       try {
@@ -42,7 +48,7 @@ function BookingPage() {
       } catch (error) {
         console.error('Error fetching Razorpay key:', error);
         if (error.message === 'Please log in to proceed with booking') {
-          navigate('/login', { state: { from: `/treks/${id}/book` } });
+          navigate('/login', { state: { from: `/treks/${name}/book` } });
         } else {
           toast.error(error.message || 'Failed to initialize payment. Please try again.');
         }
@@ -50,13 +56,24 @@ function BookingPage() {
     };
 
     fetchRazorpayKey();
-  }, [currentUser, id, navigate]);
+  }, [currentUser, name, navigate]);
 
   useEffect(() => {
     const fetchTrek = async () => {
       try {
         setLoading(true);
-        const data = await getTrekById(id);
+        // Get trek ID from location state or fetch by slug
+        const trekId = location?.state?.trekId;
+        let data;
+        
+        if (trekId) {
+          data = await getTrekById(trekId);
+        } else {
+          // Import getTrekBySlug and use it
+          const { getTrekBySlug } = await import('../services/api');
+          data = await getTrekBySlug(name);
+        }
+        
         setTrek(data);
         
         // Set tax information from API response
@@ -85,7 +102,7 @@ function BookingPage() {
     };
 
     fetchTrek();
-  }, [id, location.state]);
+  }, [name, location.state]);
 
   const handleBatchSelect = (batch) => {
     setSelectedBatch(batch);
@@ -142,7 +159,7 @@ function BookingPage() {
   const handleApplyCoupon = async () => {
     if (!currentUser) {
       toast.info("Please log in to apply coupon");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
@@ -156,7 +173,8 @@ function BookingPage() {
       const basePrice = calculateBasePrice();
       
       // Validate coupon with order value
-      const response = await validateCoupon(couponCode, id, basePrice);
+      const trekId = location?.state?.trekId || trek?._id;
+      const response = await validateCoupon(couponCode, trekId, basePrice);
       setAppliedCoupon(response);
       setCouponError(null);
     } catch (error) {
@@ -199,7 +217,7 @@ function BookingPage() {
 
     if (!currentUser) {
       toast.info("Please log in to book this trek");
-      navigate("/login", { state: { from: `/treks/${id}/book` } });
+      navigate("/login", { state: { from: `/treks/${name}/book` } });
       return;
     }
 
@@ -207,7 +225,15 @@ function BookingPage() {
       return;
     }
 
+    // Prevent multiple submissions
+    if (processingBooking) {
+      toast.info("Booking is being processed. Please wait...");
+      return;
+    }
+
     try {
+      setProcessingBooking(true);
+      
       // Map selected add-on IDs to { name, price } objects
       const validAddOns = trek.addOns
         .map((addOn, idx) => ({ ...addOn, key: getAddOnKey(addOn, idx) }))
@@ -215,7 +241,7 @@ function BookingPage() {
         .map(({ _id, name, price }) => ({ _id, name, price }));
 
       const bookingData = {
-        trekId: id,
+        trekId: location?.state?.trekId || trek?._id,
         batchId: selectedBatch._id,
         numberOfParticipants: formData.numberOfParticipants,
         addOns: validAddOns,
@@ -226,7 +252,9 @@ function BookingPage() {
         originalPrice: calculateBasePrice()
       };
 
+      console.log('Creating booking with data:', bookingData);
       const booking = await createBooking(bookingData);
+      console.log('New booking created:', booking._id);
       
       // Create Razorpay order using the API service
       const { order } = await createPaymentOrder(Math.round(booking.totalPrice), booking._id);
@@ -241,6 +269,7 @@ function BookingPage() {
         order_id: order.id,
         handler: async function (response) {
           try {
+            setVerifyingPayment(true);
             // Razorpay closes the modal automatically; no need to call this.modal.hide()
             // Verify payment using the API service
             await verifyPayment({
@@ -249,20 +278,20 @@ function BookingPage() {
               razorpay_signature: response.razorpay_signature,
               bookingId: booking._id,
             });
-
             toast.success('Payment successful! Please fill in participant details.');
-            
+            setVerifyingPayment(false);
             // Redirect to participant details page with necessary information
             navigate(`/booking/${booking._id}/participant-details`, { 
               state: { 
                 paymentStatus: 'success',
                 numberOfParticipants: formData.numberOfParticipants,
                 addOns: formData.addOns,
-                trekId: id,
+                trekId: location?.state?.trekId || trek?._id,
                 batchId: selectedBatch._id
               } 
             });
           } catch (error) {
+            setVerifyingPayment(false);
             console.error('Payment verification error:', error);
             toast.error(error.message || 'Payment verification failed. Please contact support.');
             navigate(`/booking-detail/${booking._id}`, { state: { paymentStatus: 'failure' } });
@@ -271,6 +300,7 @@ function BookingPage() {
         modal: {
           ondismiss: function() {
             toast.info('Payment cancelled. You can try again.');
+            setProcessingBooking(false);
           },
           escape: false,
         },
@@ -289,14 +319,34 @@ function BookingPage() {
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
       script.onload = () => {
+        setProcessingPayment(false);
         const razorpay = new window.Razorpay(options);
         razorpay.open();
+      };
+      script.onerror = () => {
+        setProcessingPayment(false);
+        toast.error('Failed to load payment system. Please try again.');
       };
       document.body.appendChild(script);
 
     } catch (error) {
       console.error("Error creating booking:", error);
-      toast.error(error.message || "Failed to create booking");
+      
+      // Handle specific error cases
+      if (error.response?.status === 409) {
+        // Duplicate pending booking error
+        const errorMessage = error.response?.data?.message || "You already have a pending booking for this trek.";
+        toast.error(errorMessage);
+        
+        // If there's an existing booking ID, redirect to it
+        if (error.response?.data?.existingBooking) {
+          navigate(`/booking-detail/${error.response.data.existingBooking}`);
+        }
+      } else {
+        toast.error(error.response?.data?.message || error.message || "Failed to create booking");
+      }
+      
+      setProcessingBooking(false);
     }
   };
 
@@ -335,6 +385,25 @@ function BookingPage() {
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
       </div>
+    );
+  }
+
+  // Payment processing modal
+  if (processingPayment) {
+    return (
+      <Modal
+        title="Preparing Payment"
+        isOpen={processingPayment}
+        onClose={() => {}} // No close functionality during payment processing
+        size="small"
+      >
+        <div className="flex flex-col items-center space-y-4 py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+          <p className="text-sm text-gray-600 text-center">
+            Please wait while we set up your payment gateway...
+          </p>
+        </div>
+      </Modal>
     );
   }
 
@@ -398,7 +467,8 @@ function BookingPage() {
                   <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
                 </svg>
                 <Link
-                  to={`/treks/${id}`}
+                  to={`/treks/${name}`}
+                  state={{ trekId: trek._id, trekName: trek.name }}
                   className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700"
                 >
                   {trek.name}
@@ -615,9 +685,21 @@ function BookingPage() {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                  disabled={processingBooking}
+                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
+                    processingBooking 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
                 >
-                  Proceed to Payment
+                  {processingBooking ? (
+                    <>
+                      <LoadingSpinner />
+                      <span className="ml-2">Processing...</span>
+                    </>
+                  ) : (
+                    'Proceed to Payment'
+                  )}
                 </button>
               </div>
             </form>
@@ -762,6 +844,15 @@ function BookingPage() {
           </div>
         </div>
       </div>
+      {verifyingPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4">
+            <LoadingSpinner />
+            <p className="text-lg font-medium text-gray-900">Verifying Payment...</p>
+            <p className="text-sm text-gray-600">Please wait while we verify your payment</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

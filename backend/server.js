@@ -25,6 +25,8 @@ const blogRoutes = require('./src/routes/blogRoutes');
 const careerRoutes = require('./routes/careerRoutes');
 const passport = require('./config/passport');
 const session = require('express-session');
+const googleReviewsRoutes = require('./routes/googleReviewsRoutes');
+const blogRegionRoutes = require('./routes/blogRegionRoutes');
 
 // Swagger documentation
 const swaggerUi = require('swagger-ui-express');
@@ -147,7 +149,9 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminBookingRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/blog-regions', blogRegionRoutes);
 app.use('/api/careers', careerRoutes);
+app.use('/api/google', googleReviewsRoutes);
 
 // Swagger API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
@@ -190,6 +194,7 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/trekking-
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Serve blog routes (including sitemap.xml, rss.xml, robots.txt) before static React app
+// Note: This is for public blog access, admin routes are handled via /api/blogs
 app.use('/blogs', blogRoutes);
 
 // Serve static assets in production

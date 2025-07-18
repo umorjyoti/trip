@@ -20,6 +20,7 @@ function AdminLayout({ children }) {
   const menuPermissionsMap = {
     'Dashboard': null,
     'Users': 'manageUsers',
+    'Team': 'manageTeam',
     'Bookings': 'manageBookings',
     'Treks': 'manageTreks',
     'Support Tickets': 'supportTickets',
@@ -44,6 +45,11 @@ function AdminLayout({ children }) {
     {
       name: 'Users',
       path: '/admin/users',
+      icon: FaUsers
+    },
+    {
+      name: 'Team',
+      path: '/admin/team',
       icon: FaUsers
     },
     {

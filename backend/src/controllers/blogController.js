@@ -31,6 +31,7 @@ const validateBlogData = (data) => {
   if (!data.metaTitle?.trim()) errors.push('Meta title is required');
   if (!data.metaDescription?.trim()) errors.push('Meta description is required');
   if (!data.keywords?.length) errors.push('At least one keyword is required');
+  if (!data.region) errors.push('Region is required');
   if (data.status === 'published' && !data.bannerImage) {
     errors.push('Banner image is required for published blogs');
   }
@@ -263,9 +264,10 @@ exports.getAllBlogs = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const sort = req.query.sort || '-publishedAt';
+    const region = req.query.region || '';
 
     // Check cache
-    const cacheKey = `blogs_${page}_${limit}_${search}_${sort}`;
+    const cacheKey = `blogs_${page}_${limit}_${search}_${sort}_${region}`;
     const cachedData = cache.get(cacheKey);
     if (cachedData) {
       return res.json(cachedData);
@@ -279,12 +281,18 @@ exports.getAllBlogs = async (req, res) => {
         { keywords: { $in: [new RegExp(search, 'i')] } }
       ];
     }
+    
+    // Add region filter if provided
+    if (region) {
+      query.region = region;
+    }
 
     const blogs = await Blog.find(query)
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .populate('author', 'name');
+      .populate('author', 'name')
+      .populate('region', 'name slug image');
 
     const total = await Blog.countDocuments(query);
 
@@ -316,7 +324,8 @@ exports.getBlogBySlug = async (req, res) => {
     const blog = await Blog.findOne({ 
       slug: req.params.slug,
       status: 'published'
-    }).populate('author', 'name');
+    }).populate('author', 'name')
+      .populate('region', 'name slug image description');
 
     if (!blog) {
       return res.status(404).json({ message: 'Blog not found' });
@@ -356,11 +365,6 @@ exports.createBlog = async (req, res) => {
 // Update blog
 exports.updateBlog = async (req, res) => {
   try {
-    const errors = validateBlogData(req.body);
-    if (errors.length > 0) {
-      return res.status(400).json({ message: errors.join(', ') });
-    }
-
     const blog = await Blog.findById(req.params.id);
     
     if (!blog) {
@@ -370,6 +374,40 @@ exports.updateBlog = async (req, res) => {
     // Admin can update any blog
     if (req.user.role !== 'admin' && blog.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // If this is a full update (not just status change), validate all required fields
+    const isFullUpdate = Object.keys(req.body).length > 1 || !req.body.hasOwnProperty('status');
+    if (isFullUpdate) {
+      const errors = validateBlogData(req.body);
+      if (errors.length > 0) {
+        return res.status(400).json({ message: errors.join(', ') });
+      }
+    } else {
+      // For status-only updates, validate only the status-specific requirements
+      if (req.body.status === 'published') {
+        if (!blog.bannerImage) {
+          return res.status(400).json({ message: 'Banner image is required for published blogs' });
+        }
+        if (!blog.title?.trim()) {
+          return res.status(400).json({ message: 'Title is required for published blogs' });
+        }
+        if (!blog.content?.trim()) {
+          return res.status(400).json({ message: 'Content is required for published blogs' });
+        }
+        if (!blog.excerpt?.trim()) {
+          return res.status(400).json({ message: 'Excerpt is required for published blogs' });
+        }
+        if (!blog.metaTitle?.trim()) {
+          return res.status(400).json({ message: 'Meta title is required for published blogs' });
+        }
+        if (!blog.metaDescription?.trim()) {
+          return res.status(400).json({ message: 'Meta description is required for published blogs' });
+        }
+        if (!blog.keywords?.length) {
+          return res.status(400).json({ message: 'At least one keyword is required for published blogs' });
+        }
+      }
     }
 
     // If banner image is being updated, delete the old one
@@ -466,6 +504,83 @@ exports.getAdminBlog = async (req, res) => {
     }
 
     res.json(blog);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get blogs by region
+exports.getBlogsByRegion = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+    const sort = req.query.sort || '-publishedAt';
+
+    // Check cache
+    const cacheKey = `blogs_region_${req.params.regionId}_${page}_${limit}_${sort}`;
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    const query = { 
+      status: 'published',
+      region: req.params.regionId
+    };
+
+    const blogs = await Blog.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .populate('author', 'name')
+      .populate('region', 'name slug image description');
+
+    const total = await Blog.countDocuments(query);
+
+    const response = {
+      blogs,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalBlogs: total
+    };
+
+    // Cache the response
+    cache.set(cacheKey, response);
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get related blogs by region (excluding current blog)
+exports.getRelatedBlogs = async (req, res) => {
+  try {
+    const { blogId, regionId } = req.params;
+    const limit = parseInt(req.query.limit) || 3;
+
+    // Check cache
+    const cacheKey = `related_blogs_${blogId}_${regionId}_${limit}`;
+    const cachedData = cache.get(cacheKey);
+    if (cachedData) {
+      return res.json(cachedData);
+    }
+
+    const query = { 
+      status: 'published',
+      region: regionId,
+      _id: { $ne: blogId } // Exclude current blog
+    };
+
+    const relatedBlogs = await Blog.find(query)
+      .sort('-publishedAt')
+      .limit(limit)
+      .populate('author', 'name')
+      .populate('region', 'name slug image description');
+
+    // Cache the response
+    cache.set(cacheKey, relatedBlogs);
+    res.json(relatedBlogs);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

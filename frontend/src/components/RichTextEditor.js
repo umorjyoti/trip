@@ -6,6 +6,14 @@ const RichTextEditor = ({ value, onChange, onImageUpload }) => {
   const editorRef = useRef(null);
   const quillRef = useRef(null);
   const toolbarRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  const onImageUploadRef = useRef(onImageUpload);
+
+  // Update refs when props change
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onImageUploadRef.current = onImageUpload;
+  }, [onChange, onImageUpload]);
 
   useEffect(() => {
     if (editorRef.current && !quillRef.current) {
@@ -35,9 +43,9 @@ const RichTextEditor = ({ value, onChange, onImageUpload }) => {
 
                 input.onchange = async () => {
                   const file = input.files[0];
-                  if (file && onImageUpload) {
+                  if (file && onImageUploadRef.current) {
                     try {
-                      const imageUrl = await onImageUpload(file);
+                      const imageUrl = await onImageUploadRef.current(file);
                       // Get current selection or use end of document
                       const range = quill.getSelection() || { index: quill.getLength() };
                       quill.insertEmbed(range.index, 'image', imageUrl);
@@ -60,7 +68,7 @@ const RichTextEditor = ({ value, onChange, onImageUpload }) => {
       // Handle text changes
       quill.on('text-change', () => {
         const content = quill.root.innerHTML;
-        onChange(content);
+        onChangeRef.current(content);
       });
 
       quillRef.current = quill;
@@ -129,10 +137,21 @@ const RichTextEditor = ({ value, onChange, onImageUpload }) => {
     };
   }, []);
 
-  // Update content when value prop changes
+  // Update content when value prop changes (only if it's different and not from user input)
   useEffect(() => {
-    if (quillRef.current && value !== quillRef.current.root.innerHTML) {
-      quillRef.current.root.innerHTML = value || '';
+    if (quillRef.current) {
+      const currentContent = quillRef.current.root.innerHTML;
+      // Only update if the value is actually different and not just whitespace differences
+      if (value !== currentContent && value !== undefined) {
+        // Temporarily remove the text-change listener to prevent loops
+        quillRef.current.off('text-change');
+        quillRef.current.root.innerHTML = value || '';
+        // Re-add the text-change listener
+        quillRef.current.on('text-change', () => {
+          const content = quillRef.current.root.innerHTML;
+          onChangeRef.current(content);
+        });
+      }
     }
   }, [value]);
 

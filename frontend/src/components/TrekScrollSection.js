@@ -1,8 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { FaChevronLeft, FaChevronRight, FaMapMarkerAlt, FaCalendarAlt, FaClock, FaArrowRight, FaMountain } from 'react-icons/fa';
-import { formatCurrency, getRegionById } from '../services/api';
+import { formatCurrency, createTrekSlug } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FaMapMarkerAlt, 
+  FaClock, 
+  FaMountain, 
+  FaArrowRight, 
+  FaCalendarAlt,
+  FaChevronLeft,
+  FaChevronRight
+} from 'react-icons/fa';
 
 // --- Add Helper Functions Here ---
 // Helper function for safe formatting
@@ -47,17 +55,12 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
       setLoading(true);
       const updatedTreks = await Promise.all(
         treks.map(async (trek) => {
+          // Get region name from trek data
           let regionName = 'N/A';
-          if (trek.region && typeof trek.region === 'object' && trek.region.name) {
+          if (trek.regionName) {
+            regionName = trek.regionName;
+          } else if (trek.region && typeof trek.region === 'object' && trek.region.name) {
             regionName = trek.region.name;
-          } else if (trek.region && typeof trek.region === 'string' && trek.region.match(/^[0-9a-fA-F]{24}$/)) {
-            try {
-              const regionData = await getRegionById(trek.region);
-              regionName = regionData?.name || 'Unknown Region';
-            } catch (error) {
-              console.error(`Error fetching region ${trek.region} for trek ${trek.name}:`, error);
-              regionName = 'Unknown Region';
-            }
           }
 
           const basePrice = trek.basePrice || (trek.batches && trek.batches.length > 0 ? trek.batches[0].price : 0);
@@ -182,14 +185,18 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
             <motion.div
               key={trek._id}
               variants={cardVariants}
-              className="flex-shrink-0 w-72"
+              className="flex-shrink-0 w-64 sm:w-72 md:w-80"
             >
               <motion.div
                  whileHover={{ y: -5, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)" }}
                  className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 ease-in-out h-full flex flex-col"
               >
-                <Link to={`/treks/${trek._id}`} className="group flex flex-col h-full">
-                  <div className="relative h-40 w-full overflow-hidden">
+                <Link 
+                  to={`/treks/${createTrekSlug(trek.name)}`} 
+                  state={{ trekId: trek._id, trekName: trek.name }}
+                  className="group flex flex-col h-full"
+                >
+                  <div className="relative h-32 sm:h-40 w-full overflow-hidden">
                     {trek.images && trek.images.length > 0 ? (
                       <img src={trek.images[0]} alt={trek.name} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy"/>
                     ) : (
@@ -197,7 +204,7 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
                     )}
                   </div>
                   <div className="p-3 flex flex-col flex-grow">
-                    <h4 className="text-base font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors mb-1 truncate">{trek.name}</h4>
+                    <h4 className="text-sm sm:text-base font-semibold text-gray-800 group-hover:text-emerald-600 transition-colors mb-1 truncate">{trek.name}</h4>
                     <div className="flex items-center text-xs text-gray-500 mb-2 truncate">
                       <FaMapMarkerAlt className="mr-1 flex-shrink-0 text-emerald-500" />
                       <span className="truncate">{trek.regionName}</span>

@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const { sendEmail } = require('../utils/email');
+const { getFrontendUrl } = require('../utils/config');
 const crypto = require('crypto');
 
 // Temporary storage for pending registrations (in production, use Redis)
@@ -1383,13 +1384,13 @@ exports.googleCallback = async (req, res) => {
 
     if (!req.user) {
       console.error('No user data received from Google');
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_user`);
+      return res.redirect(`${getFrontendUrl()}/login?error=google_auth_failed&reason=no_user`);
     }
 
     // Check if email exists
     if (!req.user.email) {
       console.error('No email provided by Google');
-      return res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=no_email`);
+      return res.redirect(`${getFrontendUrl()}/login?error=google_auth_failed&reason=no_email`);
     }
 
     // Check if this is a new user (recently created)
@@ -1448,7 +1449,7 @@ exports.googleCallback = async (req, res) => {
     }));
 
     // Redirect to frontend success page with authentication data
-    return res.redirect(`${process.env.FRONTEND_URL}/login/success?data=${encodedData}`);
+    return res.redirect(`${getFrontendUrl()}/login/success?data=${encodedData}`);
   } catch (error) {
     console.error('Google callback error:', error);
     let errorReason = 'unknown';
@@ -1459,7 +1460,7 @@ exports.googleCallback = async (req, res) => {
     } else if (error.code === 11000) {
       errorReason = 'duplicate_email';
     }
-    res.redirect(`${process.env.FRONTEND_URL}/login?error=google_auth_failed&reason=${errorReason}`);
+    res.redirect(`${getFrontendUrl()}/login?error=google_auth_failed&reason=${errorReason}`);
   }
 };
 
@@ -1530,4 +1531,278 @@ exports.resendOtp = async (req, res) => {
 };
 
 // Get current user profile
-exports.getMe = exports.getCurrentUser; 
+exports.getMe = exports.getCurrentUser;
+
+// Forgot password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'No user found with that email address' });
+    }
+    
+    // Get reset token
+    const resetToken = user.getResetPasswordToken();
+    await user.save({ validateBeforeSave: false });
+    
+    // Create reset url with fallback
+    const resetUrl = `${getFrontendUrl()}/reset-password/${resetToken}`;
+    
+    // Send email
+    await sendPasswordResetEmail(user, resetUrl);
+    
+    res.json({ message: 'Password reset email sent' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    
+    // Reset user fields if email fails
+    if (error.message.includes('email')) {
+      const user = await User.findOne({ email: req.body.email });
+      if (user) {
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save({ validateBeforeSave: false });
+      }
+    }
+    
+    res.status(500).json({ message: 'Email could not be sent' });
+  }
+};
+
+// Reset password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    
+    // Get hashed token
+    const resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+    
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+    
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+    
+    // Set new password
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+    
+    // Generate JWT token
+    const jwtToken = generateToken(user._id);
+    sendTokenCookie(res, jwtToken);
+    
+    const userObj = user.toObject();
+    const isAdmin = userObj.role === 'admin' ? true : !!userObj.isAdmin;
+    
+    res.json({
+      token: jwtToken,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: isAdmin,
+        role: userObj.role,
+        group: user.group || null,
+        username: user.username,
+        phone: user.phone,
+        address: user.address,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+        country: user.country,
+        profileImage: user.profileImage,
+        isVerified: user.isVerified
+      }
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Send password reset email
+async function sendPasswordResetEmail(user, resetUrl) {
+  const emailSubject = '🔐 Password Reset Request - Trek Adventures';
+  const emailContent = `Hi ${user.name || user.username},
+
+You requested a password reset for your Trek Adventures account.
+
+Please click the link below to reset your password:
+${resetUrl}
+
+This link will expire in 10 minutes.
+
+If you did not request this password reset, please ignore this email and your password will remain unchanged.
+
+Best regards,
+The Trek Adventures Team`;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset - Trek Adventures</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 18px;
+        }
+        .reset-banner {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #059669;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Trek Adventures</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+
+        <div class="reset-banner">
+            <h1 style="margin: 0; font-size: 28px;">🔐 Password Reset Request</h1>
+            <p style="margin: 10px 0 0 0; font-size: 18px;">We received a request to reset your password</p>
+        </div>
+
+        <h2>Hi ${user.name || user.username},</h2>
+        
+        <p>You requested a password reset for your Trek Adventures account. Click the button below to reset your password:</p>
+
+        <div style="text-align: center;">
+            <a href="${resetUrl}" class="btn">Reset Password</a>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Important:</strong> This link will expire in 10 minutes for security reasons.
+        </div>
+
+        <div class="section">
+            <div class="section-title">🔒 Security Notice</div>
+            <p>If you did not request this password reset, please ignore this email. Your password will remain unchanged and your account is secure.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">💡 Need Help?</div>
+            <p>If you're having trouble with the reset link or have any questions, please contact our support team. We're here to help!</p>
+        </div>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Trek Adventures Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+  await sendEmail({
+    to: user.email,
+    subject: emailSubject,
+    text: emailContent,
+    html: htmlContent
+  });
+} 

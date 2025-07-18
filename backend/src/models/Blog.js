@@ -27,13 +27,23 @@ const blogSchema = new mongoose.Schema({
   },
   bannerImage: {
     type: String,
-    required: [true, 'Banner image is required'],
+    required: function() {
+      return this.status === 'published';
+    },
     validate: {
       validator: function(v) {
-        return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(v);
+        if (this.status === 'published') {
+          return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(v);
+        }
+        return true;
       },
-      message: 'Banner image must be a valid image URL'
+      message: 'Banner image must be a valid image URL for published blogs'
     }
+  },
+  region: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'BlogRegion',
+    required: [true, 'Region is required']
   },
   metaTitle: {
     type: String,
@@ -96,6 +106,7 @@ blogSchema.index({ title: 'text', content: 'text', keywords: 'text' });
 blogSchema.index({ status: 1, publishedAt: -1 });
 blogSchema.index({ author: 1, createdAt: -1 });
 blogSchema.index({ slug: 1 }, { unique: true });
+blogSchema.index({ region: 1, status: 1, publishedAt: -1 });
 
 // Create slug from title before saving
 blogSchema.pre('save', function(next) {

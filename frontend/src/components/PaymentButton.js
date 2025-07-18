@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import LoadingSpinner from './LoadingSpinner';
 
 function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = false }) {
   const [loading, setLoading] = useState(false);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [razorpayKey, setRazorpayKey] = useState(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
 
@@ -112,6 +114,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         order_id: order.id,
         handler: async function (response) {
           try {
+            setVerifyingPayment(true);
             // Verify payment on backend
             const verifyResponse = await fetch('/payments/verify', {
               method: 'POST',
@@ -143,6 +146,8 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
           } catch (error) {
             console.error('Payment verification error:', error);
             toast.error(error.message || 'Payment verification failed. Please contact support.');
+          } finally {
+            setVerifyingPayment(false);
           }
         },
         prefill: {
@@ -176,13 +181,26 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
   };
 
   return (
-    <button
-      onClick={handlePayment}
-      disabled={loading || !razorpayKey || !scriptLoaded}
-      className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${loading || !razorpayKey || !scriptLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-      {loading ? 'Processing...' : !scriptLoaded ? 'Loading Payment System...' : !razorpayKey ? 'Initializing...' : 'Proceed to Payment'}
-    </button>
+    <>
+      <button
+        onClick={handlePayment}
+        disabled={loading || !razorpayKey || !scriptLoaded}
+        className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${loading || !razorpayKey || !scriptLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        {loading ? 'Processing...' : !scriptLoaded ? 'Loading Payment System...' : !razorpayKey ? 'Initializing...' : 'Proceed to Payment'}
+      </button>
+
+      {/* Payment Verification Loading Overlay */}
+      {verifyingPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4">
+            <LoadingSpinner />
+            <p className="text-lg font-medium text-gray-900">Verifying Payment...</p>
+            <p className="text-sm text-gray-600">Please wait while we verify your payment</p>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

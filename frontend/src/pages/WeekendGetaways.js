@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import WeekendGetawayCard from "../components/WeekendGetawayCard";
-import { FaFilter, FaSearch, FaTimes } from "react-icons/fa";
+import { getWeekendGetaways } from "../services/api";
+import { FaFilter, FaSearch, FaTimes, FaUmbrellaBeach } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-import { weekendGetawaysData, sampleCategories } from '../data/weekendGetawaysData';
+import LoadingSpinner from "../components/LoadingSpinner";
 
 // Animation variants
 const containerVariants = {
@@ -22,46 +23,117 @@ const itemVariants = {
 };
 
 function WeekendGetaways() {
-  // Use hardcoded data directly
-  const [allGetaways] = useState(weekendGetawaysData);
-  const [filteredGetaways, setFilteredGetaways] = useState(allGetaways);
+  const [weekendGetaways, setWeekendGetaways] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filteredGetaways, setFilteredGetaways] = useState([]);
 
   const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Fetch weekend getaways from API
+  useEffect(() => {
+    const fetchWeekendGetaways = async () => {
+      try {
+        setLoading(true);
+        const response = await getWeekendGetaways();
+        if (response && response.weekendGetaways) {
+          setWeekendGetaways(response.weekendGetaways);
+        } else {
+          setWeekendGetaways([]);
+        }
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching weekend getaways:', err);
+        setError('Failed to load weekend getaways');
+        setWeekendGetaways([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeekendGetaways();
+  }, []);
+
   // Filter logic based on category and search query
   useMemo(() => {
-    let result = allGetaways;
+    let result = weekendGetaways;
 
     // Filter by active category
     if (activeCategory !== 'all') {
-      // Check against category or tags for broader filtering
-      result = result.filter(getaway =>
-        getaway.category === activeCategory ||
-        (getaway.tags && getaway.tags.includes(activeCategory))
+      result = result.filter(trek =>
+        trek.category === activeCategory ||
+        (trek.tags && trek.tags.includes(activeCategory))
       );
     }
 
     // Filter by search query (name, region, description)
     if (searchQuery) {
       const lowerCaseQuery = searchQuery.toLowerCase();
-      result = result.filter(getaway =>
-        getaway.name.toLowerCase().includes(lowerCaseQuery) ||
-        getaway.region.toLowerCase().includes(lowerCaseQuery) ||
-        getaway.description.toLowerCase().includes(lowerCaseQuery) ||
-        (getaway.tags && getaway.tags.some(tag => tag.toLowerCase().includes(lowerCaseQuery)))
+      result = result.filter(trek =>
+        trek.name.toLowerCase().includes(lowerCaseQuery) ||
+        (trek.region && trek.region.name && trek.region.name.toLowerCase().includes(lowerCaseQuery)) ||
+        (trek.description && trek.description.toLowerCase().includes(lowerCaseQuery)) ||
+        (trek.tags && trek.tags.some(tag => tag.toLowerCase().includes(lowerCaseQuery)))
       );
     }
 
     setFilteredGetaways(result);
-  }, [activeCategory, searchQuery, allGetaways]);
+  }, [activeCategory, searchQuery, weekendGetaways]);
 
   const clearFilters = () => {
     setActiveCategory("all");
     setSearchQuery("");
-    // Reset other filters if they were added back
   };
+
+  // Helper function to get category icons
+  const getCategoryIcon = (category) => {
+    const iconMap = {
+      mountains: '🏔️',
+      coastal: '🌊',
+      desert: '🏜️',
+      adventure: '🧗',
+      relaxing: '🍹',
+      cultural: '🎭',
+      party: '🎉'
+    };
+    return iconMap[category] || '🏕️';
+  };
+
+  // Get unique categories from the data
+  const categories = useMemo(() => {
+    const uniqueCategories = [...new Set(weekendGetaways.map(trek => trek.category).filter(Boolean))];
+    return uniqueCategories.map(category => ({
+      id: category,
+      name: category.charAt(0).toUpperCase() + category.slice(1),
+      icon: getCategoryIcon(category)
+    }));
+  }, [weekendGetaways]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-200 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-200 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 text-lg mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-200">
@@ -127,30 +199,44 @@ function WeekendGetaways() {
           </button>
         </motion.div>
 
-
         {/* Category Filter Buttons */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.6 }}
-          className="flex overflow-x-auto gap-3 pb-4 mb-8 hide-scrollbar" // Added mb-8
-        >
-          {/* Add a check to ensure sampleCategories is an array before mapping */}
-          {Array.isArray(sampleCategories) && sampleCategories.map((category) => (
+        {categories.length > 0 && (
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.6 }}
+            className="flex overflow-x-auto gap-3 pb-4 mb-8 hide-scrollbar" // Added mb-8
+          >
+            {/* All category button */}
             <motion.button
-              key={category.id}
-              onClick={() => setActiveCategory(category.id)}
+              onClick={() => setActiveCategory('all')}
               className={`flex items-center px-5 py-2 rounded-full transition-all duration-300 ease-out transform whitespace-nowrap shadow-sm border
-                ${activeCategory === category.id
+                ${activeCategory === 'all'
                   ? 'bg-emerald-600 text-white border-emerald-600 scale-105 shadow-lg'
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:scale-105'}`}
               whileTap={{ scale: 0.95 }}
             >
-              <span className="mr-2 text-lg">{category.icon}</span>
-              <span className="font-medium text-sm">{category.name}</span>
+              <FaUmbrellaBeach className="mr-2 text-lg" />
+              <span className="font-medium text-sm">All</span>
             </motion.button>
-          ))}
-        </motion.div>
+            
+            {/* Dynamic category buttons */}
+            {categories.map((category) => (
+              <motion.button
+                key={category.id}
+                onClick={() => setActiveCategory(category.id)}
+                className={`flex items-center px-5 py-2 rounded-full transition-all duration-300 ease-out transform whitespace-nowrap shadow-sm border
+                  ${activeCategory === category.id
+                    ? 'bg-emerald-600 text-white border-emerald-600 scale-105 shadow-lg'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-emerald-50 hover:border-emerald-300 hover:scale-105'}`}
+                whileTap={{ scale: 0.95 }}
+              >
+                <span className="mr-2 text-lg">{category.icon}</span>
+                <span className="font-medium text-sm">{category.name}</span>
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
 
         {/* Getaways Grid */}
         <motion.div
@@ -162,16 +248,15 @@ function WeekendGetaways() {
         >
           <AnimatePresence>
             {filteredGetaways.length > 0 ? (
-              filteredGetaways.map((getaway) => (
+              filteredGetaways.map((trek) => (
                 <motion.div
-                  key={getaway._id}
+                  key={trek._id}
                   layout // Animate position changes
                   variants={itemVariants} // Use item variants for entrance animation
                   exit={{ opacity: 0, scale: 0.8 }} // Exit animation
                   transition={{ duration: 0.3 }}
                 >
-                  {/* Pass the getaway object to the card */}
-                  <WeekendGetawayCard getaway={getaway} />
+                  <WeekendGetawayCard trek={trek} />
                 </motion.div>
               ))
             ) : (
@@ -180,7 +265,7 @@ function WeekendGetaways() {
                 animate={{ opacity: 1 }}
                 className="col-span-full text-center py-16 text-gray-500"
               >
-                <p className="text-xl mb-2">No getaways match your current filters.</p>
+                <p className="text-xl mb-2">No weekend getaways match your current filters.</p>
                 <p>Try adjusting your search or category selection.</p>
               </motion.div>
             )}

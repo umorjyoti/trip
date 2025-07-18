@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getLeads, updateLead, deleteLead, getAdmins, createLead, exportLeads } from '../services/api';
 import { toast } from 'react-toastify';
-import { FaEdit, FaTrash, FaFilter, FaSearch, FaUser, FaCalendarAlt, FaPhone, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaFilter, FaSearch, FaUser, FaCalendarAlt, FaPhone, FaSort, FaSortUp, FaSortDown, FaEnvelope, FaQuestionCircle } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import AdminLayout from '../components/AdminLayout';
 import { useAuth } from '../contexts/AuthContext';
@@ -50,7 +50,7 @@ function AdminLeads() {
     contacted: 0,
     qualified: 0,
     converted: 0,
-    closed: 0
+    lost: 0
   });
   const [sortConfig, setSortConfig] = useState({
     key: 'createdAt',
@@ -83,11 +83,11 @@ function AdminLeads() {
         // Calculate stats
         const statsCounts = {
           total: leadsData.length,
-          new: leadsData.filter(lead => lead.status === 'new').length,
-          contacted: leadsData.filter(lead => lead.status === 'contacted').length,
-          qualified: leadsData.filter(lead => lead.status === 'qualified').length,
-          converted: leadsData.filter(lead => lead.status === 'converted').length,
-          closed: leadsData.filter(lead => lead.status === 'closed').length
+          new: leadsData.filter(lead => lead.status === 'New').length,
+          contacted: leadsData.filter(lead => lead.status === 'Contacted').length,
+          qualified: leadsData.filter(lead => lead.status === 'Qualified').length,
+          converted: leadsData.filter(lead => lead.status === 'Converted').length,
+          lost: leadsData.filter(lead => lead.status === 'Lost').length
         };
         setStats(statsCounts);
         
@@ -140,11 +140,14 @@ function AdminLeads() {
       toast.success('Lead status updated successfully');
       
       // Update stats
-      setStats(prev => ({
-        ...prev,
-        [newStatus]: prev[newStatus] + 1,
-        [leads.find(l => l._id === leadId).status]: prev[leads.find(l => l._id === leadId).status] - 1
-      }));
+      const updatedLead = leads.find(l => l._id === leadId);
+      if (updatedLead) {
+        setStats(prev => ({
+          ...prev,
+          [newStatus.toLowerCase()]: prev[newStatus.toLowerCase()] + 1,
+          [updatedLead.status.toLowerCase()]: prev[updatedLead.status.toLowerCase()] - 1
+        }));
+      }
     } catch (error) {
       console.error('Error updating lead status:', error);
       toast.error('Failed to update lead status');
@@ -180,11 +183,14 @@ function AdminLeads() {
       toast.success('Lead deleted successfully');
       
       // Update stats
-      setStats(prev => ({
-        ...prev,
-        total: prev.total - 1,
-        [leads.find(l => l._id === leadId).status]: prev[leads.find(l => l._id === leadId).status] - 1
-      }));
+      const deletedLead = leads.find(l => l._id === leadId);
+      if (deletedLead) {
+        setStats(prev => ({
+          ...prev,
+          total: prev.total - 1,
+          [deletedLead.status.toLowerCase()]: prev[deletedLead.status.toLowerCase()] - 1
+        }));
+      }
     } catch (error) {
       console.error('Error deleting lead:', error);
       toast.error('Failed to delete lead');
@@ -341,8 +347,8 @@ function AdminLeads() {
       selectedLeads.forEach(leadId => {
         const lead = leads.find(l => l._id === leadId);
         if (lead) {
-          updatedStats[lead.status]--;
-          updatedStats[bulkUpdateStatus]++;
+          updatedStats[lead.status.toLowerCase()]--;
+          updatedStats[bulkUpdateStatus.toLowerCase()]++;
         }
       });
       setStats(updatedStats);
@@ -678,8 +684,8 @@ function AdminLeads() {
                 <FaUser className="h-6 w-6 text-gray-500" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Closed</p>
-                <p className="text-lg font-semibold text-gray-900">{stats.closed}</p>
+                <p className="text-sm font-medium text-gray-500">Lost</p>
+                <p className="text-lg font-semibold text-gray-900">{stats.lost}</p>
               </div>
             </div>
           </div>
@@ -928,263 +934,316 @@ function AdminLeads() {
       </div>
 
       {/* Edit Lead Modal */}
-      {showEditModal && editingLead && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 p-6 overflow-y-auto max-h-[90vh]">
-            <h2 className="text-xl font-semibold mb-4">Edit Lead</h2>
-            <form onSubmit={handleEditSubmit}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={editingLead.name || ''}
-                    onChange={handleEditChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  />
+      <Modal
+        isOpen={showEditModal}
+        onClose={closeEditModal}
+        title="Edit Lead"
+        size="large"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600 mb-6">
+            Update the lead information below. All changes will be saved immediately.
+          </p>
+          
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="edit-name" className="block text-sm font-medium text-gray-700 mb-1">
+                Name
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaUser className="text-gray-400" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={editingLead.email || ''}
-                    onChange={handleEditChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={editingLead.phone || ''}
-                    onChange={handleEditChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    name="status"
-                    value={editingLead.status || 'New'}
-                    onChange={handleEditChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Qualified">Qualified</option>
-                    <option value="Converted">Converted</option>
-                    <option value="Lost">Lost</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Assigned To</label>
-                  <select
-                    name="assignedTo"
-                    value={editingLead.assignedTo?._id || ''}
-                    onChange={handleEditChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="">Unassigned</option>
-                    {salesTeam.map(user => (
-                      <option key={user._id} value={user._id}>
-                        {user.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Request Callback</label>
-                  <select
-                    name="requestCallback"
-                    value={editingLead.requestCallback ? 'true' : 'false'}
-                    onChange={(e) => handleEditChange({
-                      target: {
-                        name: 'requestCallback',
-                        value: e.target.value === 'true'
-                      }
-                    })}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="true">Requested</option>
-                    <option value="false">Not Requested</option>
-                  </select>
-                </div>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Notes</label>
-                <textarea
-                  name="notes"
-                  value={editingLead.notes || ''}
+                <input
+                  type="text"
+                  id="edit-name"
+                  name="name"
+                  value={editingLead?.name || ''}
                   onChange={handleEditChange}
-                  rows={3}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="John Doe"
                 />
               </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={closeEditModal}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
-                >
-                  Save Changes
-                </button>
+            </div>
+            
+            <div>
+              <label htmlFor="edit-email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address *
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaEnvelope className="text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  id="edit-email"
+                  name="email"
+                  value={editingLead?.email || ''}
+                  onChange={handleEditChange}
+                  required
+                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="you@example.com"
+                />
               </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && leadToDelete && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Confirm Delete</h3>
             </div>
-            <div className="px-6 py-4">
-              <p className="text-sm text-gray-500">
-                Are you sure you want to delete the lead for <span className="font-medium text-gray-900">{leadToDelete.name}</span>? This action cannot be undone.
-              </p>
+            
+            <div>
+              <label htmlFor="edit-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaPhone className="text-gray-400" />
+                </div>
+                <input
+                  type="tel"
+                  id="edit-phone"
+                  name="phone"
+                  value={editingLead?.phone || ''}
+                  onChange={handleEditChange}
+                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="(123) 456-7890"
+                />
+              </div>
             </div>
-            <div className="px-6 py-4 bg-gray-50 flex justify-end">
+            
+            <div>
+              <label htmlFor="edit-status" className="block text-sm font-medium text-gray-700 mb-1">
+                Status
+              </label>
+              <select
+                id="edit-status"
+                name="status"
+                value={editingLead?.status || 'New'}
+                onChange={handleEditChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Qualified">Qualified</option>
+                <option value="Converted">Converted</option>
+                <option value="Lost">Lost</option>
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="edit-assignedTo" className="block text-sm font-medium text-gray-700 mb-1">
+                Assigned To
+              </label>
+              <select
+                id="edit-assignedTo"
+                name="assignedTo"
+                value={editingLead?.assignedTo?._id || ''}
+                onChange={handleEditChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+              >
+                <option value="">Unassigned</option>
+                {salesTeam.map(user => (
+                  <option key={user._id} value={user._id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="edit-notes" className="block text-sm font-medium text-gray-700 mb-1">
+                Notes
+              </label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute top-3 left-3 flex items-start pointer-events-none">
+                  <FaQuestionCircle className="text-gray-400" />
+                </div>
+                <textarea
+                  id="edit-notes"
+                  name="notes"
+                  value={editingLead?.notes || ''}
+                  onChange={handleEditChange}
+                  rows="3"
+                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="Any additional notes about this lead?"
+                ></textarea>
+              </div>
+            </div>
+            
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="edit-requestCallback"
+                name="requestCallback"
+                checked={editingLead?.requestCallback || false}
+                onChange={(e) => handleEditChange({
+                  target: {
+                    name: 'requestCallback',
+                    value: e.target.checked
+                  }
+                })}
+                className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+              />
+              <label htmlFor="edit-requestCallback" className="ml-2 block text-sm text-gray-700">
+                Request a call back from our team
+              </label>
+            </div>
+            
+            <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
-                onClick={closeDeleteModal}
-                className="mr-3 inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                onClick={closeEditModal}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
               >
                 Cancel
               </button>
               <button
-                type="button"
-                onClick={() => {
-                  handleDeleteLead(leadToDelete._id);
-                  closeDeleteModal();
-                }}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                type="submit"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
               >
-                Delete
+                Save Changes
               </button>
             </div>
+          </form>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={closeDeleteModal}
+        title="Confirm Delete"
+        size="small"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
+            Are you sure you want to delete the lead for <span className="font-medium text-gray-900">{leadToDelete?.name}</span>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={closeDeleteModal}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                handleDeleteLead(leadToDelete._id);
+                closeDeleteModal();
+              }}
+              className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Delete
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Create Lead Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 p-6 overflow-y-auto max-h-[90vh]">
-            <h2 className="text-xl font-semibold mb-4">Create New Lead</h2>
-            <form onSubmit={handleCreateLead}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={newLead.name}
-                    onChange={handleNewLeadChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={newLead.email}
-                    onChange={handleNewLeadChange}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={newLead.phone}
-                    onChange={handleNewLeadChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    name="status"
-                    value={newLead.status}
-                    onChange={handleNewLeadChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Qualified">Qualified</option>
-                    <option value="Converted">Converted</option>
-                    <option value="Lost">Lost</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Source</label>
-                  <select
-                    name="source"
-                    value={newLead.source}
-                    onChange={handleNewLeadChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                  >
-                    <option value="Trek Detail Page">Trek Detail Page</option>
-                    <option value="Newsletter">Newsletter</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Request Callback</label>
-                  <input
-                    type="checkbox"
-                    name="requestCallback"
-                    checked={newLead.requestCallback}
-                    onChange={handleNewLeadChange}
-                    className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
-                  />
-                </div>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700">Notes</label>
-                <textarea
-                  name="notes"
-                  value={newLead.notes}
-                  onChange={handleNewLeadChange}
-                  rows={3}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
-                >
-                  Create Lead
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Lead"
+        size="large"
+      >
+        <form onSubmit={handleCreateLead}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Name</label>
+              <input
+                type="text"
+                name="name"
+                value={newLead.name}
+                onChange={handleNewLeadChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                name="email"
+                value={newLead.email}
+                onChange={handleNewLeadChange}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Phone</label>
+              <input
+                type="tel"
+                name="phone"
+                value={newLead.phone}
+                onChange={handleNewLeadChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Status</label>
+              <select
+                name="status"
+                value={newLead.status}
+                onChange={handleNewLeadChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+              >
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Qualified">Qualified</option>
+                <option value="Converted">Converted</option>
+                <option value="Lost">Lost</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Source</label>
+              <select
+                name="source"
+                value={newLead.source}
+                onChange={handleNewLeadChange}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+              >
+                <option value="Trek Detail Page">Trek Detail Page</option>
+                <option value="Newsletter">Newsletter</option>
+                <option value="Referral">Referral</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Request Callback</label>
+              <input
+                type="checkbox"
+                name="requestCallback"
+                checked={newLead.requestCallback}
+                onChange={handleNewLeadChange}
+                className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+              />
+            </div>
           </div>
-        </div>
-      )}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
+            <textarea
+              name="notes"
+              value={newLead.notes}
+              onChange={handleNewLeadChange}
+              rows={3}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+            />
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 border border-transparent rounded-md hover:bg-emerald-700"
+            >
+              Create Lead
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Bulk Actions Dropdown */}
       {selectedLeads.length > 0 && (
@@ -1221,47 +1280,45 @@ function AdminLeads() {
       )}
 
       {/* Bulk Update Modal */}
-      {showBulkUpdateModal && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">Bulk Update Status</h3>
-            </div>
-            <div className="p-6">
-              <p className="text-sm text-gray-500 mb-4">
-                You are about to update {selectedLeads.length} leads. Please select the new status:
-              </p>
-              <select
-                value={bulkUpdateStatus}
-                onChange={(e) => setBulkUpdateStatus(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
-              >
-                <option value="New">New</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Qualified">Qualified</option>
-                <option value="Converted">Converted</option>
-                <option value="Lost">Lost</option>
-              </select>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowBulkUpdateModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleBulkStatusUpdate}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                >
-                  Update
-                </button>
-              </div>
-            </div>
+      <Modal
+        isOpen={showBulkUpdateModal}
+        onClose={() => setShowBulkUpdateModal(false)}
+        title="Bulk Update Status"
+        size="small"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500">
+            You are about to update {selectedLeads.length} leads. Please select the new status:
+          </p>
+          <select
+            value={bulkUpdateStatus}
+            onChange={(e) => setBulkUpdateStatus(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+          >
+            <option value="New">New</option>
+            <option value="Contacted">Contacted</option>
+            <option value="Qualified">Qualified</option>
+            <option value="Converted">Converted</option>
+            <option value="Lost">Lost</option>
+          </select>
+          <div className="flex justify-end space-x-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowBulkUpdateModal(false)}
+              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleBulkStatusUpdate}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            >
+              Update
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Export Modal */}
       <ExportModal

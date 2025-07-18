@@ -4,13 +4,14 @@ const multer = require('multer');
 const { uploadToS3, s3 } = require('../config/s3');
 const mongoose = require('mongoose');
 
-// Get the Trek model using mongoose.model instead of require
+// Get the Trek and Region models using mongoose.model instead of require
 const Trek = mongoose.models.Trek || require('../models/trek.model');
+const Region = mongoose.models.Region || require('../models/Region');
 
 // Configure multer for memory storage
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
       cb(null, true);
@@ -123,31 +124,54 @@ router.delete('/:key(*)', async (req, res) => {
     console.log('10. Looking for URL in MongoDB:', imageUrl);
 
     // First, find the documents that contain this URL
-    const matchingDocs = await Trek.find({
+    const matchingTrekDocs = await Trek.find({
       $or: [
         { imageUrl: imageUrl },
         { images: imageUrl }
       ]
     });
-    console.log('11. Found matching documents:', matchingDocs.length);
+    console.log('11. Found matching trek documents:', matchingTrekDocs.length);
 
-    if (matchingDocs.length === 0) {
+    const matchingRegionDocs = await Region.find({
+      $or: [
+        { coverImage: imageUrl },
+        { images: imageUrl },
+        { descriptionImages: imageUrl }
+      ]
+    });
+    console.log('11b. Found matching region documents:', matchingRegionDocs.length);
+
+    if (matchingTrekDocs.length === 0 && matchingRegionDocs.length === 0) {
       // If no exact matches, try a more flexible search
-      const allDocs = await Trek.find({
+      const allTrekDocs = await Trek.find({
         $or: [
           { imageUrl: { $exists: true, $ne: null } },
           { images: { $exists: true, $ne: [] } }
         ]
       });
-      console.log('12. Documents with images:', allDocs.map(doc => ({
+      console.log('12. Trek documents with images:', allTrekDocs.map(doc => ({
         id: doc._id,
         imageUrl: doc.imageUrl,
         images: doc.images
       })));
+
+      const allRegionDocs = await Region.find({
+        $or: [
+          { coverImage: { $exists: true, $ne: null } },
+          { images: { $exists: true, $ne: [] } },
+          { descriptionImages: { $exists: true, $ne: [] } }
+        ]
+      });
+      console.log('12b. Region documents with images:', allRegionDocs.map(doc => ({
+        id: doc._id,
+        coverImage: doc.coverImage,
+        images: doc.images,
+        descriptionImages: doc.descriptionImages
+      })));
     }
 
     // Update all treks that might be using this image
-    const updateResult = await Trek.updateMany(
+    const trekUpdateResult = await Trek.updateMany(
       { 
         $or: [
           { imageUrl: imageUrl },
@@ -168,26 +192,56 @@ router.delete('/:key(*)', async (req, res) => {
       }
     );
 
-    console.log('13. MongoDB update result:', {
-      matchedCount: updateResult.matchedCount,
-      modifiedCount: updateResult.modifiedCount,
-      upsertedCount: updateResult.upsertedCount
+    // Update all regions that might be using this image
+    const regionUpdateResult = await Region.updateMany(
+      { 
+        $or: [
+          { coverImage: imageUrl },
+          { images: imageUrl },
+          { descriptionImages: imageUrl }
+        ]
+      },
+      { 
+        $pull: { 
+          images: imageUrl,
+          descriptionImages: imageUrl
+        },
+        $set: { 
+          coverImage: { 
+            $cond: {
+              if: { $eq: ['$coverImage', imageUrl] },
+              then: 'default-region.jpg',
+              else: '$coverImage'
+            }
+          }
+        }
+      }
+    );
+
+    console.log('13. MongoDB update results:', {
+      trekMatchedCount: trekUpdateResult.matchedCount,
+      trekModifiedCount: trekUpdateResult.modifiedCount,
+      regionMatchedCount: regionUpdateResult.matchedCount,
+      regionModifiedCount: regionUpdateResult.modifiedCount
     });
 
-    if (updateResult.modifiedCount === 0) {
+    if (trekUpdateResult.modifiedCount === 0 && regionUpdateResult.modifiedCount === 0) {
       console.log('14. No documents were updated in MongoDB');
     }
 
     res.json({ 
       message: 'Image deletion process completed',
       s3Deleted: true,
-      mongoUpdated: updateResult.modifiedCount > 0,
+      mongoUpdated: (trekUpdateResult.modifiedCount > 0 || regionUpdateResult.modifiedCount > 0),
       details: {
-        matchedCount: updateResult.matchedCount,
-        modifiedCount: updateResult.modifiedCount,
+        trekMatchedCount: trekUpdateResult.matchedCount,
+        trekModifiedCount: trekUpdateResult.modifiedCount,
+        regionMatchedCount: regionUpdateResult.matchedCount,
+        regionModifiedCount: regionUpdateResult.modifiedCount,
         imageUrl: imageUrl,
         actualKey: actualKey,
-        matchingDocsCount: matchingDocs.length
+        matchingTrekDocsCount: matchingTrekDocs.length,
+        matchingRegionDocsCount: matchingRegionDocs.length
       }
     });
   } catch (error) {
