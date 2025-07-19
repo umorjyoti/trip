@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { shiftBookingToBatch, getTrekById } from '../services/api';
+import { shiftBookingToBatch, getTrekByIdForAdmin } from '../services/api';
 import { toast } from 'react-toastify';
 import Modal from './Modal';
 
@@ -18,7 +18,7 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
   const fetchAvailableBatches = async () => {
     setFetchingBatches(true);
     try {
-      const trek = await getTrekById(trekId);
+      const trek = await getTrekByIdForAdmin(trekId);
       if (trek && trek.batches) {
         // Filter out the current batch and only show future batches
         const currentDate = new Date();

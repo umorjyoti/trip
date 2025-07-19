@@ -145,17 +145,27 @@ exports.getTrekById = async (req, res) => {
     }));
 
     // Filter batches to only show future batches with available spots
-    const availableBatches = updatedBatches.filter(batch => {
-      const batchStartDate = new Date(batch.startDate);
-      batchStartDate.setHours(0, 0, 0, 0);
-      
-      return (
-        // Batch hasn't started yet
-        batchStartDate > currentDate &&
-        // Has available spots
-        batch.availableSpots > 0
-      );
-    });
+    // Check if this is an admin request (no filtering) or user request (filtering)
+    const isAdminRequest = req.query.admin === 'true' || req.user?.isAdmin || req.user?.role === 'admin';
+    
+    let availableBatches;
+    if (isAdminRequest) {
+      // For admin requests, show all batches without filtering
+      availableBatches = updatedBatches;
+    } else {
+      // For user requests, filter to only show future batches with available spots
+      availableBatches = updatedBatches.filter(batch => {
+        const batchStartDate = new Date(batch.startDate);
+        batchStartDate.setHours(0, 0, 0, 0);
+        
+        return (
+          // Batch hasn't started yet
+          batchStartDate > currentDate &&
+          // Has available spots
+          batch.availableSpots > 0
+        );
+      });
+    }
 
     // Ensure GST and gateway details are included in the response
     const response = trek.toObject();

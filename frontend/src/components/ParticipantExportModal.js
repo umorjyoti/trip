@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { toast } from 'react-toastify';
-import { exportBatchParticipants, getTrekById } from '../services/api';
+import { exportBatchParticipants, getTrekByIdForAdmin } from '../services/api';
 import { FaTimes } from 'react-icons/fa';
 
 const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) => {
@@ -21,7 +21,7 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
         try {
           setFetchingTrekData(true);
           console.log('Fetching trek data for custom fields...');
-          const fetchedTrekData = await getTrekById(trekId);
+          const fetchedTrekData = await getTrekByIdForAdmin(trekId);
           console.log('Fetched trek data:', fetchedTrekData);
           setLocalTrekData(fetchedTrekData);
         } catch (error) {

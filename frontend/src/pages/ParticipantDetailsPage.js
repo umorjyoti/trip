@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { updateParticipantDetails, getTrekById, getBookingById } from "../services/api";
+import { updateParticipantDetails, getTrekByIdForAdmin, getBookingById } from "../services/api";
 import { toast } from "react-toastify";
 
 function ParticipantDetailsPage() {
@@ -39,7 +39,7 @@ function ParticipantDetailsPage() {
     const fetchTrekFields = async () => {
       if (!trekId) return;
       try {
-        const trek = await getTrekById(trekId);
+        const trek = await getTrekByIdForAdmin(trekId);
         setTrek(trek);
         if (Array.isArray(trek.participantFields)) {
           setTrekFields(trek.participantFields);

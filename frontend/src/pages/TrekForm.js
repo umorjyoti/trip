@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { createTrek, getTrekById, updateTrek, getRegions } from '../services/api';
+import { createTrek, getTrekByIdForAdmin, updateTrek, getRegions } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -174,7 +174,7 @@ function TrekForm() {
         setRegions(regionsData || []);
 
         if (id) {
-          const trekData = await getTrekById(id);
+          const trekData = await getTrekByIdForAdmin(id);
           setFormData({
             name: trekData.name || '',
             description: trekData.description || '',

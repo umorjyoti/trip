@@ -147,6 +147,11 @@ export const getTrekById = async (id) => {
   return response.data;
 };
 
+export const getTrekByIdForAdmin = async (id) => {
+  const response = await api.get(`/treks/${id}?admin=true`);
+  return response.data;
+};
+
 // Custom trek APIs
 export const getCustomTrekByToken = async (token) => {
   try {

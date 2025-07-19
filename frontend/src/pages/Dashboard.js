@@ -3,7 +3,7 @@ import { Routes, Route, Link, useNavigate } from "react-router-dom";
 import {
   getTrekStats,
   getTreks,
-  getTrekById,
+  getTrekByIdForAdmin,
   getRegions,
   getUserBookings,
   getDashboardStats,
@@ -393,7 +393,7 @@ function Dashboard() {
   const handleTrekUpdated = async (trekId) => {
     try {
       // Refresh the trek data
-      const updatedTrek = await getTrekById(trekId);
+      const updatedTrek = await getTrekByIdForAdmin(trekId);
 
       // Update the treks list with the updated trek
       setTreks((prevTreks) =>

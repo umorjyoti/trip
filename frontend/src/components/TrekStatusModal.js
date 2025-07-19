@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
 import BatchManager from './BatchManager';
-import { getTrekById, toggleTrekStatus } from '../services/api';
+import { getTrekByIdForAdmin, toggleTrekStatus } from '../services/api';
 import toast from 'react-hot-toast';
 
 function TrekStatusModal({ isOpen, onClose, trek, onToggleStatus, onTrekUpdated }) {
@@ -52,7 +52,7 @@ function TrekStatusModal({ isOpen, onClose, trek, onToggleStatus, onTrekUpdated 
   const handleBatchesUpdated = async () => {
     try {
       // Refresh the trek data
-      const updatedTrek = await getTrekById(currentTrek._id);
+      const updatedTrek = await getTrekByIdForAdmin(currentTrek._id);
       setCurrentTrek(updatedTrek);
       
       // If trek was updated with batches, it should be enabled now

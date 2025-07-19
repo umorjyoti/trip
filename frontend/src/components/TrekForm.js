@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTrekById, createTrek, updateTrek, getRegions } from '../services/api';
+import { getTrekByIdForAdmin, createTrek, updateTrek, getRegions } from '../services/api';
 import { toast } from 'react-toastify';
 
 function TrekForm(props) {
@@ -35,7 +35,7 @@ function TrekForm(props) {
       const fetchTrek = async () => {
         try {
           setLoading(true);
-          const data = await getTrekById(id);
+          const data = await getTrekByIdForAdmin(id);
           setFormData(data);
         } catch (err) {
           console.error('Error fetching trek details:', err);
