@@ -35,6 +35,19 @@ function ParticipantDetailsPage() {
   const [trek, setTrek] = useState(null);
   const [customFields, setCustomFields] = useState([]);
 
+  // Ensure body scrolling is enabled when component mounts
+  useEffect(() => {
+    // Restore body scrolling in case it was locked by a modal from another page
+    document.body.style.overflow = 'auto';
+    document.body.style.height = 'auto';
+    
+    // Cleanup function to ensure scrolling is restored when component unmounts
+    return () => {
+      document.body.style.overflow = 'auto';
+      document.body.style.height = 'auto';
+    };
+  }, []);
+
   useEffect(() => {
     const fetchTrekFields = async () => {
       if (!trekId) return;

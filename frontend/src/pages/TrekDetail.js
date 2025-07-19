@@ -801,6 +801,13 @@ function TrekDetail() {
     };
   }, [galleryOpen]);
 
+  // Ensure body scrolling is restored when component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, []);
+
   // Render batches section
   const renderBatches = () => {
     if (!trek.batches || trek.batches.length === 0) {

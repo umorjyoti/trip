@@ -53,6 +53,13 @@ function RegionDetail() {
     };
   }, [galleryOpen]);
 
+  // Ensure body scrolling is restored when component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, []);
+
   // Gallery functions
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
