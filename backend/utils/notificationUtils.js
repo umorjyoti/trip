@@ -137,5 +137,4 @@ module.exports = {
   createSupportTicketNotification,
   createCancellationRequestNotification,
   createRescheduleRequestNotification
-}; NotificationContext.js:17 Uncaught Error: useNotifications must be used within a NotificationProvider
-at useNotifications (NotificationContext.js:17:1)
+};

@@ -1,4 +1,4 @@
-const { Booking, Batch, Trek, User } = require("../models");
+const { Booking, Batch, Trek, User, PromoCode } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail } = require('../utils/email');
@@ -231,6 +231,50 @@ const createBooking = async (req, res) => {
         .json({ message: "Not enough spots available in this batch" });
     }
 
+    // Validate coupon code if provided
+    let validatedCouponCode = null;
+    if (couponCode && couponCode.code) {
+      try {
+        const promoCode = await PromoCode.findOne({ 
+          code: couponCode.code.toUpperCase(),
+          isActive: true,
+          validFrom: { $lte: new Date() },
+          validUntil: { $gte: new Date() }
+        });
+
+        if (!promoCode) {
+          return res.status(400).json({ message: "Invalid or expired coupon code" });
+        }
+
+        // Check if coupon has reached max uses
+        if (promoCode.maxUses && promoCode.usedCount >= promoCode.maxUses) {
+          return res.status(400).json({ message: "Coupon code has reached maximum usage limit" });
+        }
+
+        // Check minimum order value
+        if (promoCode.minOrderValue && totalPrice < promoCode.minOrderValue) {
+          return res.status(400).json({ 
+            message: `Minimum order value of ₹${promoCode.minOrderValue} required for this coupon` 
+          });
+        }
+
+        // Check if coupon is applicable to this trek
+        if (promoCode.applicableTreks && promoCode.applicableTreks.length > 0) {
+          const isApplicable = promoCode.applicableTreks.some(trekId => 
+            trekId.toString() === trekId.toString()
+          );
+          if (!isApplicable) {
+            return res.status(400).json({ message: "Coupon code is not applicable to this trek" });
+          }
+        }
+
+        validatedCouponCode = promoCode;
+      } catch (error) {
+        console.error("Error validating coupon code:", error);
+        return res.status(400).json({ message: "Error validating coupon code" });
+      }
+    }
+
     // Check for existing pending payment booking for this user, trek, and batch
     const existingPendingBooking = await Booking.findOne({
       user: req.user._id,
@@ -253,12 +297,12 @@ const createBooking = async (req, res) => {
       booking.totalPrice = totalPrice;
       
               // Update promo code details if provided
-        if (couponCode) {
+        if (validatedCouponCode) {
           booking.promoCodeDetails = {
-            promoCodeId: couponCode._id,
-            code: couponCode.code,
-            discountType: couponCode.discountType,
-            discountValue: couponCode.discountValue,
+            promoCodeId: validatedCouponCode._id,
+            code: validatedCouponCode.code,
+            discountType: validatedCouponCode.discountType,
+            discountValue: validatedCouponCode.discountValue,
             discountAmount: discountAmount || 0,
             originalPrice: originalPrice || totalPrice
           };
@@ -286,11 +330,11 @@ const createBooking = async (req, res) => {
         userDetails,
         totalPrice,
         status: "pending_payment",
-        promoCodeDetails: couponCode ? {
-          promoCodeId: couponCode._id,
-          code: couponCode.code,
-          discountType: couponCode.discountType,
-          discountValue: couponCode.discountValue,
+        promoCodeDetails: validatedCouponCode ? {
+          promoCodeId: validatedCouponCode._id,
+          code: validatedCouponCode.code,
+          discountType: validatedCouponCode.discountType,
+          discountValue: validatedCouponCode.discountValue,
           discountAmount: discountAmount || 0,
           originalPrice: originalPrice || totalPrice
         } : undefined,
@@ -786,8 +830,22 @@ const updateBookingStatus = async (req, res) => {
     booking.status = status;
     await booking.save();
 
-    // If status is confirmed, generate and send invoice
+    // If status is confirmed, handle coupon usage and generate invoice
     if (status === 'confirmed') {
+      // Increment coupon usage count if promo code was used
+      if (booking.promoCodeDetails && booking.promoCodeDetails.promoCodeId) {
+        try {
+          await PromoCode.findByIdAndUpdate(
+            booking.promoCodeDetails.promoCodeId,
+            { $inc: { usedCount: 1 } }
+          );
+          console.log(`Incremented usage count for promo code: ${booking.promoCodeDetails.code}`);
+        } catch (error) {
+          console.error('Error updating promo code usage count:', error);
+        }
+      }
+
+      // Generate and send invoice
       try {
         // Populate trek and user for invoice
         await booking.populate('trek').populate('user');
@@ -851,6 +909,19 @@ const restoreBooking = async (req, res) => {
 
     booking.status = "confirmed";
     await booking.save();
+
+    // Increment coupon usage count if promo code was used
+    if (booking.promoCodeDetails && booking.promoCodeDetails.promoCodeId) {
+      try {
+        await PromoCode.findByIdAndUpdate(
+          booking.promoCodeDetails.promoCodeId,
+          { $inc: { usedCount: 1 } }
+        );
+        console.log(`Incremented usage count for promo code: ${booking.promoCodeDetails.code}`);
+      } catch (error) {
+        console.error('Error updating promo code usage count:', error);
+      }
+    }
 
     res.json({ message: "Booking restored successfully", booking });
   } catch (error) {
@@ -1443,6 +1514,19 @@ const updateParticipantDetails = async (req, res) => {
     booking.status = 'confirmed'; // Update status to confirmed after collecting details
 
     await booking.save();
+
+    // Increment coupon usage count if promo code was used
+    if (booking.promoCodeDetails && booking.promoCodeDetails.promoCodeId) {
+      try {
+        await PromoCode.findByIdAndUpdate(
+          booking.promoCodeDetails.promoCodeId,
+          { $inc: { usedCount: 1 } }
+        );
+        console.log(`Incremented usage count for promo code: ${booking.promoCodeDetails.code}`);
+      } catch (error) {
+        console.error('Error updating promo code usage count:', error);
+      }
+    }
 
     console.log('Booking updated successfully, status:', booking.status);
 
