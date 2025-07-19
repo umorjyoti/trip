@@ -154,11 +154,33 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
 
   // Early return if no booking or cancellation request
   if (!booking || !booking.cancellationRequest) {
-    return null;
+    return (
+      <Modal
+        title="Respond to Request"
+        isOpen={isOpen}
+        onClose={onClose}
+        size="large"
+      >
+        <div className="p-6 text-center">
+          <div className="text-red-600 mb-4">
+            <p className="text-lg font-medium">No request data available</p>
+            <p className="text-sm text-gray-600 mt-2">
+              {!booking ? 'No booking data provided' : 'No cancellation/reschedule request found for this booking'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </Modal>
+    );
   }
 
   const request = booking.cancellationRequest;
-
+  
   return (
     <Modal
       title={`Respond to ${request.type} Request`}
@@ -279,7 +301,40 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
                   <div>
                     <span className="font-medium text-gray-600">Batch:</span>
                     <span className="ml-2 text-gray-900">
-                      {booking.batch?.startDate ? new Date(booking.batch.startDate).toLocaleDateString() : 'N/A'}
+                      {(() => {
+                        // Try to get batch information from different possible sources
+                        if (booking.batch) {
+                          // If batch is populated as an object
+                          if (booking.batch.startDate && booking.batch.endDate) {
+                            return `${new Date(booking.batch.startDate).toLocaleDateString()} - ${new Date(booking.batch.endDate).toLocaleDateString()}`;
+                          } else if (booking.batch.startDate) {
+                            return new Date(booking.batch.startDate).toLocaleDateString();
+                          } else if (booking.batch._id) {
+                            return `Batch ID: ${booking.batch._id}`;
+                          }
+                        }
+                        
+                        // If batch is just an ID, try to find it in trek batches
+                        if (booking.trek && booking.trek.batches && booking.batch) {
+                          const batchId = typeof booking.batch === 'string' ? booking.batch : booking.batch._id;
+                          const batch = booking.trek.batches.find(b => b._id.toString() === batchId.toString());
+                          if (batch) {
+                            if (batch.startDate && batch.endDate) {
+                              return `${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`;
+                            } else if (batch.startDate) {
+                              return new Date(batch.startDate).toLocaleDateString();
+                            }
+                          }
+                        }
+                        
+                        // Fallback to showing batch ID if available
+                        if (booking.batch) {
+                          const batchId = typeof booking.batch === 'string' ? booking.batch : booking.batch._id;
+                          return `Batch ID: ${batchId}`;
+                        }
+                        
+                        return 'N/A';
+                      })()}
                     </span>
                   </div>
                   <div>
