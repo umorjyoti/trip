@@ -249,15 +249,27 @@ router.post('/:bookingId/cancellation-request',
 // Admin: Update cancellation/reschedule request status
 router.put('/:bookingId/cancellation-request', 
   protect, 
-  admin, 
+  checkPermission('actions', 'manageBookings'), 
   bookingController.updateCancellationRequest
 );
 
 // Calculate refund amount for cancellation
-router.post('/calculate-refund', 
+router.post('/:bookingId/calculate-refund', 
+  protect, 
+  bookingController.calculateRefund
+);
+
+// Check for existing pending booking
+router.get('/check-pending', 
+  protect, 
+  bookingController.getExistingPendingBooking
+);
+
+// Cleanup expired pending bookings (admin only)
+router.post('/cleanup-expired', 
   protect, 
   admin, 
-  bookingController.calculateRefund
+  bookingController.cleanupExpiredBookings
 );
 
 module.exports = router; 

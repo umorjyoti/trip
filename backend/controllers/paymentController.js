@@ -1,6 +1,7 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
+const PromoCode = require('../models/PromoCode');
 const { sendEmail, sendPaymentReceivedEmail, sendEmailWithAttachment } = require('../utils/email');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { createBookingConfirmedNotification } = require('../utils/notificationUtils');
@@ -30,7 +31,7 @@ exports.createOrder = async (req, res) => {
 
     // Create order
     const options = {
-      amount: amount * 100, // Razorpay amount is in paisa (multiply by 100)
+      amount: Math.round(amount * 100), // Razorpay amount is in paisa (multiply by 100 and round to avoid floating point issues)
       currency,
       receipt: `booking_${bookingId}`,
       notes: {
@@ -43,7 +44,7 @@ exports.createOrder = async (req, res) => {
 
     // Add partial payment options if enabled
     if (partial_payment) {
-      options.first_payment_min_amount = Math.floor(amount * 0.2 * 100); // Minimum 20% of total amount
+      options.first_payment_min_amount = Math.round(amount * 0.2 * 100); // Minimum 20% of total amount
     }
 
     const order = await razorpay.orders.create(options);
@@ -105,6 +106,29 @@ exports.verifyPayment = async (req, res) => {
           method: payment.method,
           status: payment.status
         };
+        
+        // Increment promo code used count if a promo code was used
+        if (booking.promoCodeDetails && booking.promoCodeDetails.code) {
+          try {
+            let promoCode;
+            // Try to find by ID first, then by code
+            if (booking.promoCodeDetails.promoCodeId) {
+              promoCode = await PromoCode.findById(booking.promoCodeDetails.promoCodeId);
+            }
+            if (!promoCode) {
+              promoCode = await PromoCode.findOne({ code: booking.promoCodeDetails.code });
+            }
+            if (promoCode) {
+              promoCode.usedCount += 1;
+              await promoCode.save();
+              console.log(`Incremented used count for promo code: ${booking.promoCodeDetails.code}`);
+            }
+          } catch (promoError) {
+            console.error('Error updating promo code used count:', promoError);
+            // Don't fail the payment verification if promo code update fails
+          }
+        }
+        
         await booking.save();
 
         // Create admin notification for booking confirmation

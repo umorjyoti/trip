@@ -85,16 +85,18 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import LeadsManagement from "./pages/admin/LeadsManagement";
 import WeekendGetawayManager from "./components/admin/WeekendGetawayManager";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
+import FailedBookings from "./pages/admin/FailedBookings";
 
 function App() {
   const { currentUser, loading, refreshUser } = useAuth();
   const permissions = currentUser?.group?.permissions;
   const location = useLocation();
 
-  useEffect(() => {
-    // Refresh user data when app loads
-    refreshUser();
-  }, [refreshUser]);
+  // Remove this useEffect as AuthContext already handles user refresh on mount
+  // useEffect(() => {
+  //   // Refresh user data when app loads
+  //   refreshUser();
+  // }, [refreshUser]);
 
   // Check if current path is an admin route
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -356,6 +358,18 @@ function App() {
                         />
 
                         <Route
+                          path="failed-bookings"
+                          element={
+                            <ProtectedRoutes
+                              permissionKey="manageBookings"
+                              permissions={permissions}
+                            >
+                              <FailedBookings />
+                            </ProtectedRoutes>
+                          }
+                        />
+
+                        <Route
                           path="users"
                           element={
                             <ProtectedRoutes
@@ -570,8 +584,8 @@ function App() {
                 }
               />
 
-              {/* Region Detail Route */}
-              <Route path="/regions/:id" element={<RegionDetail />} />
+              {/* Region Detail Routes */}
+              <Route path="/regions/:slug" element={<RegionDetail />} />
 
               {/* Region List Route */}
               <Route path="/regions" element={<RegionList />} />

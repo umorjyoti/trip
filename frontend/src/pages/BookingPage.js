@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
-import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon } from "../services/api";
+import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon, checkExistingPendingBooking } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Modal from "../components/Modal";
@@ -224,6 +224,28 @@ function BookingPage() {
 
     try {
       setProcessingPayment(true);
+      
+      // Check for existing pending booking first
+      try {
+        const existingBookingCheck = await checkExistingPendingBooking(
+          location?.state?.trekId || trek?._id,
+          selectedBatch._id
+        );
+        
+        if (existingBookingCheck.exists) {
+          toast.info("You have an existing pending payment. Redirecting to payment page...");
+          navigate(`/payment/${existingBookingCheck.booking._id}`);
+          setProcessingPayment(false);
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking existing booking:", error);
+        // Continue with new booking creation if check fails
+      }
+      
+      // Generate a unique session ID for this booking attempt
+      const sessionId = `session_${Date.now()}_${currentUser._id}_${Math.random().toString(36).substr(2, 9)}`;
+      
       // Map selected add-on IDs to { name, price } objects
       const validAddOns = trek.addOns
         .map((addOn, idx) => ({ ...addOn, key: getAddOnKey(addOn, idx) }))
@@ -237,15 +259,16 @@ function BookingPage() {
         addOns: validAddOns,
         userDetails: formData.userDetails,
         totalPrice: calculateTotalPrice(),
-        couponCode: appliedCoupon?.code || null,
-        discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.discountPercent / 100) : 0,
-        originalPrice: calculateBasePrice()
+        couponCode: appliedCoupon?.promoCode || null,
+        discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.promoCode.discountValue / 100) : 0,
+        originalPrice: calculateBasePrice(),
+        sessionId: sessionId // Add session ID to prevent duplicate bookings
       };
 
       const booking = await createBooking(bookingData);
       
       // Create Razorpay order using the API service
-      const { order } = await createPaymentOrder(Math.round(booking.totalPrice), booking._id);
+      const { order } = await createPaymentOrder(booking.totalPrice, booking._id);
 
       // Initialize Razorpay
       const options = {
@@ -253,7 +276,7 @@ function BookingPage() {
         amount: order.amount,
         currency: order.currency,
         name: 'Trek Booking',
-        description: `Trek Booking Payment${appliedCoupon ? ` (with ${appliedCoupon.discountPercent}% discount)` : ''}`,
+        description: `Trek Booking Payment${appliedCoupon ? ` (with ${appliedCoupon.promoCode.discountValue}% discount)` : ''}`,
         order_id: order.id,
         handler: async function (response) {
           try {

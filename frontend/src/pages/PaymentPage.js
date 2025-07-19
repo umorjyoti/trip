@@ -181,7 +181,7 @@ const PaymentPage = () => {
             </div>
           </div>
           <PaymentButton 
-            amount={Math.round(booking.totalPrice)} 
+            amount={booking.totalPrice} 
             bookingId={booking._id} 
             onSuccess={handlePaymentSuccess} 
           />

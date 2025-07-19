@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getRegions } from '../services/api';
 import { FaHome, FaHiking, FaMapMarkedAlt, FaBlog, FaInfoCircle, FaPhone, FaGlobe } from 'react-icons/fa';
 import NotificationBell from './NotificationBell';
+import { createRegionSlug } from '../services/api';
 
 const MobileNavLink = ({ to, icon: Icon, children, onClick }) => (
   <Link
@@ -35,7 +36,7 @@ function Header() {
       try {
         const data = await getRegions();
         // Only show active regions
-        const activeRegions = data.filter(region => region.isActive);
+        const activeRegions = data.filter(region => region.isEnabled);
         setRegions(activeRegions);
       } catch (error) {
         console.error('Error fetching regions:', error);
@@ -186,20 +187,25 @@ function Header() {
                   </svg>
                 </button>
                 <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <div className="py-1 max-h-60 overflow-y-auto" role="menu" aria-orientation="vertical">
-                    {regions.map(region => (
-                      <Link
-                        key={region._id}
-                        to={`/regions/${region._id}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        role="menuitem"
-                      >
-                        {region.name}
-                      </Link>
-                    ))}
+                  <div className="py-1" role="menu" aria-orientation="vertical">
+                    {/* Scrollable region list - max 5 items visible */}
+                    <div className={`max-h-40 ${regions.length > 4 ? 'regions-dropdown-scroll' : 'overflow-y-auto'}`}>
+                      {regions.map(region => (
+                        <Link
+                          key={region._id}
+                          to={`/regions/${createRegionSlug(region.name)}`}
+                          state={{ id: region?._id }}
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
+                        >
+                          {region.name}
+                        </Link>
+                      ))}
+                    </div>
+                    {/* Always visible "View All Regions" link */}
                     <Link
                       to="/regions"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-100"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-100 bg-gray-50"
                       role="menuitem"
                     >
                       View All Regions

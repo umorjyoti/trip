@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendRescheduleApprovalEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
@@ -69,8 +69,28 @@ const createCustomTrekBooking = async (req, res) => {
       return res.status(404).json({ message: "Custom batch not found" });
     }
 
-    // Check if batch is full
-    if (customBatch.currentParticipants + participantsCount > customBatch.maxParticipants) {
+    // Calculate actual current participants by querying confirmed bookings
+    const confirmedBookings = await Booking.find({
+      batch: customBatch._id,
+      status: 'confirmed'
+    });
+    
+    const actualCurrentParticipants = confirmedBookings.reduce((sum, booking) => {
+      if (booking && booking.status === 'confirmed') {
+        const activeParticipants = booking.participantDetails ? 
+          booking.participantDetails.filter(p => !p.isCancelled).length : 
+          booking.numberOfParticipants || 0;
+        return sum + activeParticipants;
+      }
+      return sum;
+    }, 0);
+    
+    console.log("Custom trek - Actual current participants:", actualCurrentParticipants);
+    console.log("Custom trek - Requested participants:", participantsCount);
+    console.log("Custom trek - Max participants:", customBatch.maxParticipants);
+    
+    // Check if batch is full using actual participant count
+    if (actualCurrentParticipants + participantsCount > customBatch.maxParticipants) {
       return res
         .status(400)
         .json({ message: "Not enough spots available in this custom trek" });
@@ -138,6 +158,10 @@ const createBooking = async (req, res) => {
       addOns,
       userDetails,
       totalPrice,
+      sessionId, // Add session ID to track booking attempts
+      couponCode, // Promo code information
+      discountAmount,
+      originalPrice,
     } = req.body;
 
     // Validate required fields
@@ -178,32 +202,115 @@ const createBooking = async (req, res) => {
     if (!batch) {
       return res.status(404).json({ message: "Batch not found" });
     }
-
-    // Check if batch is full
-    if (batch.currentParticipants + participantsCount > batch.maxParticipants) {
+    console.log("batch", batch);
+    
+    // Calculate actual current participants by querying confirmed bookings
+    const confirmedBookings = await Booking.find({
+      batch: batchId,
+      status: 'confirmed'
+    });
+    
+    const actualCurrentParticipants = confirmedBookings.reduce((sum, booking) => {
+      if (booking && booking.status === 'confirmed') {
+        const activeParticipants = booking.participantDetails ? 
+          booking.participantDetails.filter(p => !p.isCancelled).length : 
+          booking.numberOfParticipants || 0;
+        return sum + activeParticipants;
+      }
+      return sum;
+    }, 0);
+    
+    console.log("Actual current participants:", actualCurrentParticipants);
+    console.log("Requested participants:", participantsCount);
+    console.log("Max participants:", batch.maxParticipants);
+    
+    // Check if batch is full using actual participant count
+    if (actualCurrentParticipants + participantsCount > batch.maxParticipants) {
       return res
         .status(400)
         .json({ message: "Not enough spots available in this batch" });
     }
 
-    // Create booking
-    const booking = new Booking({
+    // Check for existing pending payment booking for this user, trek, and batch
+    const existingPendingBooking = await Booking.findOne({
       user: req.user._id,
       trek: trekId,
       batch: batchId,
-      numberOfParticipants: participantsCount,
-      addOns: Array.isArray(addOns) ? addOns : [],
-      userDetails,
-      totalPrice,
-      status: "pending_payment",
+      status: 'pending_payment',
+      'bookingSession.expiresAt': { $gt: new Date() } // Only consider non-expired sessions
     });
 
-    // Save booking
-    await booking.save();
+    let booking;
 
-    // Update batch participants count
-    batch.currentParticipants += participantsCount;
-    await trek.save();
+    if (existingPendingBooking) {
+      // Update existing booking instead of creating a new one
+      booking = existingPendingBooking;
+      
+      // Update booking details
+      booking.numberOfParticipants = participantsCount;
+      booking.addOns = Array.isArray(addOns) ? addOns : [];
+      booking.userDetails = userDetails;
+      booking.totalPrice = totalPrice;
+      
+              // Update promo code details if provided
+        if (couponCode) {
+          booking.promoCodeDetails = {
+            promoCodeId: couponCode._id,
+            code: couponCode.code,
+            discountType: couponCode.discountType,
+            discountValue: couponCode.discountValue,
+            discountAmount: discountAmount || 0,
+            originalPrice: originalPrice || totalPrice
+          };
+        }
+      
+      // Update session info
+      if (sessionId) {
+        booking.bookingSession.sessionId = sessionId;
+        booking.bookingSession.expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        booking.bookingSession.paymentAttempts += 1;
+        booking.bookingSession.lastPaymentAttempt = new Date();
+      }
+      
+      await booking.save();
+      
+      console.log(`Updated existing pending booking ${booking._id} for user ${req.user._id}`);
+    } else {
+      // Create new booking
+      booking = new Booking({
+        user: req.user._id,
+        trek: trekId,
+        batch: batchId,
+        numberOfParticipants: participantsCount,
+        addOns: Array.isArray(addOns) ? addOns : [],
+        userDetails,
+        totalPrice,
+        status: "pending_payment",
+        promoCodeDetails: couponCode ? {
+          promoCodeId: couponCode._id,
+          code: couponCode.code,
+          discountType: couponCode.discountType,
+          discountValue: couponCode.discountValue,
+          discountAmount: discountAmount || 0,
+          originalPrice: originalPrice || totalPrice
+        } : undefined,
+        bookingSession: {
+          sessionId: sessionId || `session_${Date.now()}_${req.user._id}`,
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+          paymentAttempts: 1,
+          lastPaymentAttempt: new Date()
+        }
+      });
+
+      // Save booking
+      await booking.save();
+
+      // Update batch participants count only for new bookings
+      batch.currentParticipants += participantsCount;
+      await trek.save();
+
+      console.log(`Created new booking ${booking._id} for user ${req.user._id}`);
+    }
 
     // Generate and send invoice for pending payment
     try {
@@ -486,6 +593,23 @@ const cancelBooking = async (req, res) => {
       );
     } catch (emailError) {
       console.error('Error sending cancellation/refund email:', emailError);
+    }
+
+    // Send cancellation emails to participants
+    try {
+      // Get all cancelled participant objects
+      const cancelledParticipantObjects = booking.participantDetails.filter(p => p.isCancelled);
+      
+      if (cancelledParticipantObjects.length > 0) {
+        await sendParticipantCancellationEmails(
+          booking,
+          trek,
+          cancelledParticipantObjects,
+          reason || 'Booking cancelled'
+        );
+      }
+    } catch (emailError) {
+      console.error('Error sending participant cancellation emails:', emailError);
     }
     res.json({ message: "Booking cancelled successfully", booking });
   } catch (error) {
@@ -828,6 +952,25 @@ const cancelParticipant = async (req, res) => {
     } catch (emailError) {
       console.error('Error sending participant cancellation/refund email:', emailError);
     }
+
+    // Send cancellation email to the specific cancelled participant
+    try {
+      const cancelledParticipant = booking.participantDetails.find(p => 
+        p._id.toString() === participantId || p._id.toString() === participantId.toString()
+      );
+      if (cancelledParticipant && cancelledParticipant.email) {
+        await sendParticipantCancellationEmails(
+          booking,
+          trek,
+          [cancelledParticipant],
+          reason || 'Participant cancelled'
+        );
+      }
+    } catch (emailError) {
+      console.error('Error sending participant cancellation email:', emailError);
+    }
+
+
     res.json({ message: "Participant cancelled successfully", booking });
   } catch (error) {
     console.error("Error cancelling participant:", error);
@@ -1219,10 +1362,10 @@ const exportBookings = async (req, res) => {
 const updateParticipantDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const { participants, pickupLocation, dropLocation, additionalRequests } = req.body;
+    const { participants, emergencyContact, pickupLocation, dropLocation, additionalRequests } = req.body;
 
     console.log('updateParticipantDetails called for booking:', id);
-    console.log('Request body:', { participants, pickupLocation, dropLocation, additionalRequests });
+    console.log('Request body:', { participants, pickupLocation, dropLocation, additionalRequests, emergencyContact });
 
     const booking = await Booking.findById(id)
       .populate('trek')
@@ -1255,6 +1398,13 @@ const updateParticipantDetails = async (req, res) => {
       });
     }
 
+    // Validate emergency contact
+    if (!emergencyContact || !emergencyContact.name || !emergencyContact.phone || !emergencyContact.relation) {
+      return res.status(400).json({ 
+        message: "Emergency contact information is required (name, phone, relation)" 
+      });
+    }
+
     // Validate and format participant data
     const formattedParticipants = participants.map((participant, index) => {
       // Validate required fields
@@ -1262,10 +1412,7 @@ const updateParticipantDetails = async (req, res) => {
         throw new Error(`Participant ${index + 1} is missing required fields (name, email, phone)`);
       }
 
-      // Validate emergency contact fields
-      if (!participant.emergencyContact?.name || !participant.emergencyContact?.phone || !participant.emergencyContact?.relation) {
-        throw new Error(`Participant ${index + 1} is missing required emergency contact fields (name, phone, relation)`);
-      }
+
 
       // Format the participant data
       return {
@@ -1276,19 +1423,20 @@ const updateParticipantDetails = async (req, res) => {
         gender: participant.gender,
         allergies: participant.allergies || '',
         extraComment: participant.extraComment || '',
-        emergencyContact: {
-          name: participant.emergencyContact.name,
-          phone: participant.emergencyContact.phone,
-          relation: participant.emergencyContact.relation
-        },
+
         customFields: participant.customFields || {},
         medicalConditions: participant.medicalConditions || '',
         specialRequests: participant.specialRequests || ''
       };
     });
 
-    // Update booking with participant details
+    // Update booking with participant details and emergency contact
     booking.participantDetails = formattedParticipants;
+    booking.emergencyContact = {
+      name: emergencyContact.name,
+      phone: emergencyContact.phone,
+      relation: emergencyContact.relation
+    };
     booking.pickupLocation = pickupLocation || 'To be confirmed';
     booking.dropLocation = dropLocation || 'To be confirmed';
     booking.additionalRequests = additionalRequests || '';
@@ -1924,6 +2072,77 @@ const calculateRefund = async (req, res) => {
   }
 };
 
+// Get existing pending payment booking for user
+const getExistingPendingBooking = async (req, res) => {
+  try {
+    const { trekId, batchId } = req.query;
+
+    if (!trekId || !batchId) {
+      return res.status(400).json({ 
+        message: "Trek ID and Batch ID are required" 
+      });
+    }
+
+    // Find existing pending payment booking for this user, trek, and batch
+    const existingBooking = await Booking.findOne({
+      user: req.user._id,
+      trek: trekId,
+      batch: batchId,
+      status: 'pending_payment',
+      'bookingSession.expiresAt': { $gt: new Date() } // Only consider non-expired sessions
+    });
+
+    if (existingBooking) {
+      return res.json({
+        exists: true,
+        booking: existingBooking,
+        message: "You have an existing pending payment for this trek and batch"
+      });
+    }
+
+    res.json({
+      exists: false,
+      message: "No existing pending payment found"
+    });
+
+  } catch (error) {
+    console.error("Error checking existing pending booking:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Cleanup expired pending bookings (admin only)
+const cleanupExpiredBookings = async (req, res) => {
+  try {
+    // Check if user is authorized (admin only)
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to perform cleanup" });
+    }
+
+    const { cleanupExpiredPendingBookings } = require('../scripts/cleanupPendingBookings');
+    
+    // Run cleanup with error handling
+    try {
+      await cleanupExpiredPendingBookings();
+      
+      res.json({ 
+        message: "Cleanup completed successfully",
+        timestamp: new Date()
+      });
+    } catch (cleanupError) {
+      console.error("Error during cleanup process:", cleanupError);
+      res.status(500).json({ 
+        message: "Cleanup process failed", 
+        error: cleanupError.message 
+      });
+    }
+
+  } catch (error) {
+    console.error("Error setting up cleanup:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -1948,5 +2167,7 @@ module.exports = {
   shiftBookingToBatch,
   createCancellationRequest,
   updateCancellationRequest,
-  calculateRefund
+  calculateRefund,
+  getExistingPendingBooking,
+  cleanupExpiredBookings
 };

@@ -39,7 +39,7 @@ function EditBooking() {
       setBooking(bookingData);
       
       // Fetch trek details to get available batches
-      const trekData = await getTrekById(bookingData.trek._id);
+      const trekData = await getTrekByIdForAdmin(bookingData.trek._id);
       setTrek(trekData);
       
       // Initialize form data

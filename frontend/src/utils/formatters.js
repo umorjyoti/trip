@@ -15,3 +15,9 @@ export const formatDate = (dateString) => {
     day: 'numeric'
   }).format(date);
 }; 
+
+export function formatLocation(input) {
+  return decodeURIComponent(input)      // "Andaman Islands"
+    .toLowerCase()                      // "andaman islands"
+    .replace(/\s+/g, "-");              // "andaman-islands"
+}

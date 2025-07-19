@@ -2,7 +2,7 @@
 const Booking = require('../models/Booking');
 const { getRefundAmount } = require('../utils/refundUtils');
 const { refundPayment } = require('../utils/razorpayUtils');
-const { sendCancellationEmail } = require('../utils/email');
+const { sendCancellationEmail, sendParticipantCancellationEmails } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 
 exports.cancelBooking = async (req, res) => {
@@ -40,7 +40,7 @@ exports.cancelBooking = async (req, res) => {
         participant.cancelledAt = new Date();
         participant.cancellationReason = cancellationReason || 'Admin cancelled';
         participant.status = 'bookingCancelled';
-        cancelledParticipants.push(participantId);
+        cancelledParticipants.push(participantId.toString());
 
         // Calculate refund for this participant
         const perPrice = booking.totalPrice / booking.participantDetails.length;
@@ -97,7 +97,7 @@ exports.cancelBooking = async (req, res) => {
         p.cancelledAt = new Date();
         p.cancellationReason = cancellationReason || 'Admin cancelled';
         p.status = 'bookingCancelled';
-        cancelledParticipants.push(p._id);
+        cancelledParticipants.push(p._id.toString());
       });
 
       // Process refund for entire booking
@@ -128,7 +128,7 @@ exports.cancelBooking = async (req, res) => {
 
     await booking.save();
 
-    // Send professional cancellation email
+    // Send professional cancellation email to booking organizer
     try {
       await sendCancellationEmail(
         booking,
@@ -142,6 +142,39 @@ exports.cancelBooking = async (req, res) => {
       );
     } catch (e) {
       console.error('Error sending cancellation email:', e);
+      // log email error, but don't fail the request
+    }
+
+    // Send cancellation emails to participants
+    try {
+      // Get the actual cancelled participant objects (not just IDs)
+      const cancelledParticipantObjects = booking.participantDetails.filter(p => 
+        cancelledParticipants.includes(p._id.toString()) || cancelledParticipants.includes(p._id)
+      );
+      
+      console.log('Cancelled participants for email:', {
+        totalParticipants: booking.participantDetails.length,
+        cancelledParticipantIds: cancelledParticipants,
+        cancelledParticipantObjects: cancelledParticipantObjects.map(p => ({
+          id: p._id,
+          name: p.name,
+          email: p.email,
+          hasEmail: !!p.email
+        }))
+      });
+      
+      if (cancelledParticipantObjects.length > 0) {
+        await sendParticipantCancellationEmails(
+          booking,
+          booking.trek,
+          cancelledParticipantObjects,
+          cancellationReason || 'Admin cancelled'
+        );
+      } else {
+        console.log('No cancelled participant objects found for email sending');
+      }
+    } catch (e) {
+      console.error('Error sending participant cancellation emails:', e);
       // log email error, but don't fail the request
     }
 

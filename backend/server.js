@@ -21,6 +21,7 @@ const userGroupRoutes = require('./routes/userGroupRoutes');
 const userRoutes = require('./routes/userRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const adminBookingRoutes = require('./routes/adminBookingRoutes');
+const failedBookingRoutes = require('./routes/failedBookingRoutes');
 const blogRoutes = require('./src/routes/blogRoutes');
 const careerRoutes = require('./routes/careerRoutes');
 const passport = require('./config/passport');
@@ -46,7 +47,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5001','http://localhost:3000', 'https://trip-ctuq.onrender.com',"89.117.157.153","https://bengalurutrekkers.in","https://www.bengalurutrekkers.in"],
+  origin: ['http://localhost:5001' , 'http://localhost:3000', 'https://trip-ctuq.onrender.com',"89.117.157.153","https://bengalurutrekkers.in","https://www.bengalurutrekkers.in"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
@@ -149,6 +150,7 @@ app.use('/api/trek-sections', trekSectionRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminBookingRoutes);
+app.use('/api/failed-bookings', failedBookingRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/blog-regions', blogRegionRoutes);
 app.use('/api/careers', careerRoutes);
@@ -192,7 +194,15 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/trekking-
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('MongoDB connected'))
+.then(() => {
+  console.log('MongoDB connected');
+  
+  // Setup cron jobs for automated tasks (only in production)
+  if (process.env.NODE_ENV === 'production') {
+    const { setupCronJobs } = require('./scripts/setupCronJobs');
+    setupCronJobs();
+  }
+})
 .catch(err => console.error('MongoDB connection error:', err));
 
 // Serve blog routes (including sitemap.xml, rss.xml, robots.txt) before static React app

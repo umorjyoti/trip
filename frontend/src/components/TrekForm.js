@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getTrekById, createTrek, updateTrek, getRegions } from '../services/api';
+import { getTrekByIdForAdmin, createTrek, updateTrek, getRegions } from '../services/api';
 import { toast } from 'react-toastify';
 
 function TrekForm(props) {
@@ -35,7 +35,7 @@ function TrekForm(props) {
       const fetchTrek = async () => {
         try {
           setLoading(true);
-          const data = await getTrekById(id);
+          const data = await getTrekByIdForAdmin(id);
           setFormData(data);
         } catch (err) {
           console.error('Error fetching trek details:', err);
@@ -115,7 +115,20 @@ function TrekForm(props) {
       navigate('/dashboard');
     } catch (err) {
       console.error('Error saving trek:', err);
-      setError('Failed to save trek. Please try again.');
+      
+      // Handle specific field errors
+      if (err.response?.data?.field === 'name') {
+        setError(err.response.data.message);
+        // Focus on the name field
+        const nameInput = document.getElementById('name');
+        if (nameInput) {
+          nameInput.focus();
+        }
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Failed to save trek. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

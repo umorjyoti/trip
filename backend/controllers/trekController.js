@@ -82,8 +82,144 @@ exports.getTrekById = async (req, res) => {
     const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0); // Set to start of day
 
-    // Fetch trek with populated batches
-    const trek = await Trek.findById(id).select('+gstPercent +gstType +gatewayPercent +gatewayType');
+    // Fetch trek with populated batches and include customFields
+    const trek = await Trek.findById(id).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
+    
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+
+    // Get all bookings for this trek's batches to calculate actual current participants
+    const batchIds = trek.batches
+      .filter(batch => batch && batch._id)
+      .map(batch => batch._id);
+    
+    let bookings = [];
+    if (batchIds.length > 0) {
+      bookings = await Booking.find({
+        batch: { $in: batchIds }
+      }).populate('user', 'name email');
+    }
+
+    // Safely filter bookings
+    const safeBookings = bookings.filter(booking => booking != null);
+
+    // Calculate actual current participants and confirmed booking count for each batch
+    const updatedBatches = await Promise.all(trek.batches.map(async batch => {
+      const batchBookings = safeBookings.filter(booking => {
+        if (!booking || !booking.batch || !batch || !batch._id) {
+          return false;
+        }
+        // Safe string comparison
+        const bookingBatchId = booking.batch.toString ? booking.batch.toString() : String(booking.batch);
+        const batchId = batch._id.toString ? batch._id.toString() : String(batch._id);
+        return bookingBatchId === batchId;
+      });
+
+      // Query DB for confirmed bookings for this batch
+      const bookingCountConfirmed = await Booking.countDocuments({
+        batch: batch._id,
+        status: 'confirmed'
+      });
+
+      // Calculate actual current participants using the improved logic
+      const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
+        if (booking && booking.status === 'confirmed') {
+          if (booking.participantDetails && booking.participantDetails.length > 0) {
+            return sum + booking.participantDetails.filter(p => !p.isCancelled).length;
+          }
+          return sum + (booking.numberOfParticipants || 0);
+        }
+        return sum;
+      }, 0);
+
+      // Calculate available spots based on confirmed booking count (not participant count)
+      const availableSpots = Math.max(0, batch.maxParticipants - bookingCountConfirmed);
+
+      return {
+        ...batch.toObject(),
+        currentParticipants: actualCurrentParticipants,
+        availableSpots: availableSpots,
+        bookingCountConfirmed: bookingCountConfirmed // new attribute
+      };
+    }));
+
+    // Filter batches to only show future batches with available spots
+    // Check if this is an admin request (no filtering) or user request (filtering)
+    const isAdminRequest = req.query.admin === 'true' || req.user?.isAdmin || req.user?.role === 'admin';
+    
+    let availableBatches;
+    if (isAdminRequest) {
+      // For admin requests, show all batches without filtering
+      availableBatches = updatedBatches;
+    } else {
+      // For user requests, filter to only show future batches with available spots
+      availableBatches = updatedBatches.filter(batch => {
+        const batchStartDate = new Date(batch.startDate);
+        batchStartDate.setHours(0, 0, 0, 0);
+        
+        return (
+          // Batch hasn't started yet
+          batchStartDate > currentDate &&
+          // Has available spots
+          batch.availableSpots > 0
+        );
+      });
+    }
+
+    // Ensure GST and gateway details are included in the response
+    const response = trek.toObject();
+    response.batches = availableBatches;
+    response.gstDetails = {
+      percent: trek.gstPercent || 0,
+      type: trek.gstType || 'excluded'
+    };
+    response.gatewayDetails = {
+      percent: trek.gatewayPercent || 0,
+      type: trek.gatewayType || 'customer'
+    };
+    
+    console.log('Trek found:', trek.name);
+    console.log('Available future batches:', availableBatches.length);
+    console.log('Custom fields:', trek.customFields);
+    console.log('GST and Gateway details:', { gst: response.gstDetails, gateway: response.gatewayDetails });
+    
+    // Debug the specific batch that's showing 3 participants
+    const debugBatch = availableBatches.find(batch => batch._id.toString() === '6868f9c33aaf550003d8807e');
+    if (debugBatch) {
+      console.log(`\n=== DEBUG: Specific batch ${debugBatch._id} ===`);
+      console.log(`currentParticipants: ${debugBatch.currentParticipants}`);
+      console.log(`availableSpots: ${debugBatch.availableSpots}`);
+    }
+    
+    // Debug all bookings for this trek
+    console.log(`\n=== DEBUG: All bookings for trek ${trek._id} ===`);
+    safeBookings.forEach(booking => {
+      console.log(`Booking ${booking._id}: batch=${booking.batch}, status=${booking.status}, numberOfParticipants=${booking.numberOfParticipants}`);
+    });
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting trek by ID:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get trek by slug
+exports.getTrekBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    
+    if (!slug) {
+      return res.status(400).json({ message: 'Trek slug is required' });
+    }
+    
+    // Get current date for filtering batches
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0); // Set to start of day
+
+    // Fetch trek by slug with populated batches and include customFields
+    const trek = await Trek.findOne({ slug: slug.toLowerCase() }).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
     
     if (!trek) {
       return res.status(404).json({ message: 'Trek not found' });
@@ -113,13 +249,14 @@ exports.getTrekById = async (req, res) => {
       type: trek.gatewayType || 'customer'
     };
     
-    console.log('Trek found:', trek.name);
+    console.log('Trek found by slug:', trek.name);
     console.log('Available future batches:', trek.batches.length);
+    console.log('Custom fields:', trek.customFields);
     console.log('GST and Gateway details:', { gst: response.gstDetails, gateway: response.gatewayDetails });
     
     res.json(response);
   } catch (error) {
-    console.error('Error getting trek by ID:', error);
+    console.error('Error getting trek by slug:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -136,7 +273,7 @@ exports.getTrekByCustomToken = async (req, res) => {
     const trek = await Trek.findOne({ 
       customAccessToken: token,
       isCustom: true 
-    }).select('+gstPercent +gstType +gatewayPercent +gatewayType');
+    }).select('+gstPercent +gstType +gatewayPercent +gatewayType +customFields');
     
     if (!trek) {
       return res.status(404).json({ message: 'Custom trek not found' });
@@ -146,8 +283,60 @@ exports.getTrekByCustomToken = async (req, res) => {
     const currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
     
-    // Filter batches manually to ensure proper date comparison
-    trek.batches = trek.batches.filter(batch => {
+    // Get all bookings for this trek's batches to calculate actual current participants
+    const batchIds = trek.batches
+      .filter(batch => batch && batch._id)
+      .map(batch => batch._id);
+    
+    let bookings = [];
+    if (batchIds.length > 0) {
+      bookings = await Booking.find({
+        batch: { $in: batchIds }
+      }).populate('user', 'name email');
+    }
+
+    // Safely filter bookings
+    const safeBookings = bookings.filter(booking => booking != null);
+
+    // Calculate actual current participants for each batch
+    const updatedBatches = trek.batches.map(batch => {
+      const batchBookings = safeBookings.filter(booking => {
+        if (!booking || !booking.batch || !batch || !batch._id) {
+          return false;
+        }
+        
+        // Safe string comparison
+        const bookingBatchId = booking.batch.toString ? booking.batch.toString() : String(booking.batch);
+        const batchId = batch._id.toString ? batch._id.toString() : String(batch._id);
+        
+        return bookingBatchId === batchId;
+      });
+      
+      // Calculate actual current participants using the same logic as getTrekPerformance
+      const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
+        // Only count participants from confirmed bookings
+        if (booking && booking.status === 'confirmed') {
+          // Count only non-cancelled participants
+          const activeParticipants = booking.participantDetails ? 
+            booking.participantDetails.filter(p => !p.isCancelled).length : 
+            booking.numberOfParticipants || 0;
+          return sum + activeParticipants;
+        }
+        return sum;
+      }, 0);
+
+      // Calculate available spots
+      const availableSpots = Math.max(0, batch.maxParticipants - actualCurrentParticipants);
+      
+      return {
+        ...batch.toObject(),
+        currentParticipants: actualCurrentParticipants,
+        availableSpots: availableSpots
+      };
+    });
+
+    // Filter batches to only show future batches with available spots
+    const availableBatches = updatedBatches.filter(batch => {
       const batchStartDate = new Date(batch.startDate);
       batchStartDate.setHours(0, 0, 0, 0);
       
@@ -155,12 +344,13 @@ exports.getTrekByCustomToken = async (req, res) => {
         // Batch hasn't started yet
         batchStartDate > currentDate &&
         // Has available spots
-        batch.currentParticipants < batch.maxParticipants
+        batch.availableSpots > 0
       );
     });
     
     // Ensure GST and gateway details are included in the response
     const response = trek.toObject();
+    response.batches = availableBatches;
     response.gstDetails = {
       percent: trek.gstPercent || 0,
       type: trek.gstType || 'excluded'
@@ -171,7 +361,8 @@ exports.getTrekByCustomToken = async (req, res) => {
     };
     
     console.log('Custom trek found:', trek.name);
-    console.log('Available future batches:', trek.batches.length);
+    console.log('Available future batches:', availableBatches.length);
+    console.log('Custom fields:', trek.customFields);
     
     res.json(response);
   } catch (error) {
@@ -183,6 +374,15 @@ exports.getTrekByCustomToken = async (req, res) => {
 exports.createTrek = async (req, res) => {
   try {
     console.log('Creating trek with data:', req.body);
+    
+    // Check for duplicate trek name
+    const existingTrek = await Trek.findOne({ name: req.body.name });
+    if (existingTrek) {
+      return res.status(400).json({ 
+        message: 'A trek with this name already exists. Please choose a different name.',
+        field: 'name'
+      });
+    }
     
     // Get region name if region ID is provided
     let regionName = req.body.regionName || 'Unknown Region';
@@ -1194,6 +1394,8 @@ exports.getBatchPerformance = async (req, res) => {
 exports.getTrekPerformance = async (req, res) => {
   try {
     console.log('Getting trek performance for ID:', req.params.id);
+
+    console.log("meow meow meow meow meow meow meow meow meow meow");
     
     // Validate input parameter
     if (!req.params.id) {
@@ -1441,9 +1643,11 @@ exports.exportBatchParticipants = async (req, res) => {
         case 'dropLocation': return 'Drop Location';
         case 'additionalRequests': return 'Additional Requests';
         default:
-          // Custom fields
+          // Custom fields - use the field name as header
           if (field.startsWith('custom_')) {
-            return field.replace('custom_', '');
+            const customFieldKey = field.replace('custom_', '');
+            const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
+            return customField?.fieldName || customFieldKey;
           }
           return field;
       }
@@ -1474,17 +1678,17 @@ exports.exportBatchParticipants = async (req, res) => {
                   contactPhone: participant.contactPhone,
                   allKeys: Object.keys(participant)
                 });
-                return participant.phone || 'N/A';
+                return participant.phone || participant.contactNumber || 'N/A';
               case 'emergencyContactName':
-                return participant.emergencyContact?.name || 'N/A';
+                return booking.emergencyContact?.name || 'N/A';
               case 'emergencyContactPhone':
-                return participant.emergencyContact?.phone || 'N/A';
+                return booking.emergencyContact?.phone || 'N/A';
               case 'emergencyContactRelation':
-                return participant.emergencyContact?.relationship || participant.emergencyContact?.relation || 'N/A';
+                return booking.emergencyContact?.relation || 'N/A';
               case 'medicalConditions':
-                return participant.allergies || 'N/A';
+                return participant.allergies || participant.medicalConditions || 'N/A';
               case 'specialRequests':
-                return participant.extraComment || 'N/A';
+                return participant.extraComment || participant.specialRequests || 'N/A';
               case 'bookingUserName':
                 return booking.user?.name || 'N/A';
               case 'bookingUserEmail':
@@ -1509,23 +1713,36 @@ exports.exportBatchParticipants = async (req, res) => {
                   const customFieldKey = field.replace('custom_', '');
                   const customField = trek.customFields?.find(f => f.fieldName === customFieldKey);
                   console.log('Processing custom field:', customFieldKey, 'Found field:', customField);
+                  
                   if (customField) {
+                    let value = null;
+                    
                     // First try to get from customFields Map
                     if (participant.customFields && participant.customFields instanceof Map) {
-                      const value = participant.customFields.get(customFieldKey);
+                      value = participant.customFields.get(customFieldKey);
                       console.log('Found custom field value from Map:', value);
-                      if (value) {
-                        return value;
-                      }
+                    }
+                    
+                    // If not found in Map, try customFields object
+                    if (!value && participant.customFields && typeof participant.customFields === 'object') {
+                      value = participant.customFields[customFieldKey];
+                      console.log('Found custom field value from object:', value);
                     }
                     
                     // Fallback to customFieldResponses array
-                    const customFieldResponse = participant.customFieldResponses?.find(f => f.fieldId === customFieldKey);
-                    console.log('Found custom field response:', customFieldResponse);
-                    const value = customFieldResponse?.value;
+                    if (!value && participant.customFieldResponses) {
+                      const customFieldResponse = participant.customFieldResponses.find(f => 
+                        f.fieldId === customFieldKey || f.fieldName === customFieldKey
+                      );
+                      console.log('Found custom field response:', customFieldResponse);
+                      value = customFieldResponse?.value;
+                    }
+                    
+                    // Handle array values (for checkbox fields)
                     if (Array.isArray(value)) {
                       return value.join(', ') || 'N/A';
                     }
+                    
                     return value || 'N/A';
                   }
                 }

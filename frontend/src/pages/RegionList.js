@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getRegions } from '../services/api';
 import { FaMapMarkerAlt, FaCalendarAlt, FaMountain } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { createRegionSlug } from '../services/api';
 
 function RegionList() {
   const [regions, setRegions] = useState([]);
@@ -17,7 +18,7 @@ function RegionList() {
         console.log('Fetched regions:', data);
         
         // Only show active regions to users
-        const activeRegions = data.filter(region => region.isActive);
+        const activeRegions = data.filter(region => region.isEnabled);
         console.log('Active regions:', activeRegions);
         
         setRegions(activeRegions);
@@ -82,8 +83,9 @@ function RegionList() {
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {regions.map((region) => (
               <Link
-                key={region._id}
-                to={`/regions/${region._id}`}
+                key={region._id} 
+                to={`/regions/${createRegionSlug(region.name)}`}
+                state={{ id: region?._id }}
                 className="group bg-white overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300"
               >
                 <div className="relative h-60">

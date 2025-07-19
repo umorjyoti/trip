@@ -233,7 +233,20 @@ function RegionForm({ region, onSave, isEditing = false }) {
       }
     } catch (error) {
       console.error('Error saving region:', error);
-      toast.error(error.response?.data?.message || 'Failed to save region');
+      
+      // Handle specific field errors
+      if (error.response?.data?.field === 'name') {
+        toast.error(error.response.data.message);
+        // Focus on the name field
+        const nameInput = document.getElementById('name');
+        if (nameInput) {
+          nameInput.focus();
+        }
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to save region');
+      }
     } finally {
       setLoading(false);
     }

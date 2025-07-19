@@ -36,11 +36,6 @@ const ParticipantDetailSchema = new mongoose.Schema({
     enum: ['Male', 'Female', 'Other']
   },
   contactNumber: String,
-  emergencyContact: {
-    name: String,
-    relationship: String,
-    phone: String
-  },
   medicalConditions: String,
   specialRequests: String,
   customFieldResponses: [CustomFieldResponseSchema],
@@ -92,6 +87,22 @@ const PaymentDetailsSchema = new mongoose.Schema({
   method: String
 }, { _id: false });
 
+// Add promo code details schema
+const PromoCodeDetailsSchema = new mongoose.Schema({
+  promoCodeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PromoCode'
+  },
+  code: String,
+  discountType: {
+    type: String,
+    enum: ['percentage', 'fixed']
+  },
+  discountValue: Number,
+  discountAmount: Number,
+  originalPrice: Number
+}, { _id: false });
+
 const BookingSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -128,6 +139,21 @@ const BookingSchema = new mongoose.Schema({
     type: UserDetailsSchema,
     required: true
   },
+  // Single emergency contact for the entire booking (filled during participant details step)
+  emergencyContact: {
+    name: {
+      type: String,
+      required: false
+    },
+    phone: {
+      type: String,
+      required: false
+    },
+    relation: {
+      type: String,
+      required: false
+    }
+  },
   totalPrice: {
     type: Number,
     required: true,
@@ -137,6 +163,25 @@ const BookingSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled'],
     default: 'pending'
+  },
+  // Add booking session tracking
+  bookingSession: {
+    sessionId: {
+      type: String,
+      required: false
+    },
+    expiresAt: {
+      type: Date,
+      required: false
+    },
+    paymentAttempts: {
+      type: Number,
+      default: 0
+    },
+    lastPaymentAttempt: {
+      type: Date,
+      required: false
+    }
   },
   cancelledAt: {
     type: Date
@@ -156,6 +201,8 @@ const BookingSchema = new mongoose.Schema({
   },
   // Add payment details field
   paymentDetails: PaymentDetailsSchema,
+  // Add promo code details field
+  promoCodeDetails: PromoCodeDetailsSchema,
   // This will be filled after payment success
   participantDetails: [{
     name: String,
@@ -168,11 +215,6 @@ const BookingSchema = new mongoose.Schema({
     },
     allergies: String,
     extraComment: String,
-    emergencyContact: {
-      name: String,
-      phone: String,
-      relation: String
-    },
     customFields: {
       type: Map,
       of: String

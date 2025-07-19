@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getBatchPerformance, getTrekById } from '../services/api';
+import { getBatchPerformance, getTrekByIdForAdmin } from '../services/api';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ParticipantExportModal from '../components/ParticipantExportModal';
@@ -20,7 +20,7 @@ const BatchPerformance = () => {
         setLoading(true);
         const [performanceResponse, trekResponse] = await Promise.all([
           getBatchPerformance(trekId, batchId),
-          getTrekById(trekId)
+          getTrekByIdForAdmin(trekId)
         ]);
         setPerformanceData(performanceResponse);
         setTrekData(trekResponse);

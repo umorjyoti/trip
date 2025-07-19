@@ -12,6 +12,13 @@ function Modal({ title, children, onClose, size = 'default', isOpen = true }) {
     };
   }, [isOpen]);
 
+  // Ensure body scrolling is restored when component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
   // Handle ESC key to close modal
   useEffect(() => {
     if (!isOpen) return;

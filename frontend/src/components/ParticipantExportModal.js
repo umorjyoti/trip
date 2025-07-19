@@ -1,13 +1,43 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom';
 import { toast } from 'react-toastify';
-import { exportBatchParticipants } from '../services/api';
+import { exportBatchParticipants, getTrekByIdForAdmin } from '../services/api';
 import { FaTimes } from 'react-icons/fa';
 
 const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) => {
   const [selectedFields, setSelectedFields] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasBeenCleared, setHasBeenCleared] = useState(false);
+  const [localTrekData, setLocalTrekData] = useState(trekData);
+  const [fetchingTrekData, setFetchingTrekData] = useState(false);
+
+  // Fetch trek data if not provided or if customFields are missing
+  useEffect(() => {
+    const fetchTrekData = async () => {
+      if (!trekId) return;
+      
+      // If trekData doesn't have customFields, fetch it
+      if (!trekData?.customFields || !Array.isArray(trekData.customFields)) {
+        try {
+          setFetchingTrekData(true);
+          console.log('Fetching trek data for custom fields...');
+          const fetchedTrekData = await getTrekByIdForAdmin(trekId);
+          console.log('Fetched trek data:', fetchedTrekData);
+          setLocalTrekData(fetchedTrekData);
+        } catch (error) {
+          console.error('Error fetching trek data:', error);
+        } finally {
+          setFetchingTrekData(false);
+        }
+      } else {
+        setLocalTrekData(trekData);
+      }
+    };
+
+    if (isOpen) {
+      fetchTrekData();
+    }
+  }, [isOpen, trekId, trekData]);
 
   // Prevent scrolling of the background when modal is open
   useEffect(() => {
@@ -17,6 +47,13 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
       document.body.style.overflow = 'auto';
     };
   }, [isOpen]);
+
+  // Ensure body scrolling is restored when component unmounts
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -55,21 +92,50 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
   // Use useMemo to prevent recreation of allFields on every render
   const allFields = useMemo(() => {
     const fields = [...availableFields];
-    console.log('Processing custom fields from trekData:', trekData?.customFields);
-    if (trekData?.customFields && Array.isArray(trekData.customFields)) {
-      trekData.customFields.forEach(field => {
-        console.log('Adding custom field:', field);
-        fields.push({
+    console.log('Processing custom fields from trekData:', localTrekData);
+    console.log('localTrekData.customFields:', localTrekData?.customFields);
+    console.log('localTrekData.customFields type:', typeof localTrekData?.customFields);
+    console.log('localTrekData.customFields is array:', Array.isArray(localTrekData?.customFields));
+    
+    if (localTrekData?.customFields && Array.isArray(localTrekData.customFields)) {
+      console.log('Custom fields array length:', localTrekData.customFields.length);
+      localTrekData.customFields.forEach((field, index) => {
+        console.log(`Adding custom field ${index}:`, field);
+        
+        // Determine category based on field name or type
+        let category = 'Custom Fields';
+        const fieldNameLower = field.fieldName.toLowerCase();
+        
+        // Categorize emergency contact related custom fields
+        if (fieldNameLower.includes('emergency') || fieldNameLower.includes('contact')) {
+          category = 'Emergency Contact';
+        } else if (fieldNameLower.includes('medical') || fieldNameLower.includes('health') || fieldNameLower.includes('allergy')) {
+          category = 'Health & Safety';
+        } else if (fieldNameLower.includes('pickup') || fieldNameLower.includes('drop') || fieldNameLower.includes('location')) {
+          category = 'Logistics';
+        } else if (fieldNameLower.includes('booking') || fieldNameLower.includes('user')) {
+          category = 'Booking Information';
+        }
+        
+        const newField = {
           key: `custom_${field.fieldName}`,
           label: field.fieldName,
-          category: 'Custom Fields',
-          fieldType: field.fieldType
-        });
+          category: category,
+          fieldType: field.fieldType,
+          isRequired: field.isRequired
+        };
+        
+        console.log('Adding field to fields array:', newField);
+        fields.push(newField);
       });
+    } else {
+      console.log('No custom fields found or customFields is not an array');
     }
+    
     console.log('Total fields available:', fields.length);
+    console.log('Final fields array:', fields);
     return fields;
-  }, [trekData?.customFields]);
+  }, [localTrekData?.customFields]);
 
   // Group fields by category
   const groupedFields = useMemo(() => {
@@ -85,7 +151,33 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
   useEffect(() => {
     // Only set default fields when modal opens and no fields are selected and hasn't been manually cleared
     if (isOpen && selectedFields.length === 0 && !hasBeenCleared) {
-      setSelectedFields(allFields.slice(0, 10).map(field => field.key));
+      // Prioritize important fields for default selection
+      const priorityFields = [
+        'participantName',
+        'participantAge', 
+        'participantGender',
+        'emergencyContactName',
+        'emergencyContactPhone',
+        'emergencyContactRelation',
+        'bookingUserName',
+        'bookingUserEmail',
+        'bookingUserPhone',
+        'bookingDate'
+      ];
+      
+      // Get priority fields that exist in allFields
+      const selectedPriorityFields = priorityFields.filter(field => 
+        allFields.some(f => f.key === field)
+      );
+      
+      // Fill remaining slots with other fields up to 10 total
+      const remainingSlots = 10 - selectedPriorityFields.length;
+      const otherFields = allFields
+        .filter(field => !selectedPriorityFields.includes(field.key))
+        .slice(0, remainingSlots)
+        .map(field => field.key);
+      
+      setSelectedFields([...selectedPriorityFields, ...otherFields]);
     }
   }, [isOpen, allFields, selectedFields.length, hasBeenCleared]);
 
@@ -113,8 +205,33 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
   };
 
   const handleSelectAll = () => {
-    const firstTen = allFields.slice(0, 10).map(field => field.key);
-    setSelectedFields(firstTen);
+    // Use the same priority logic as default selection
+    const priorityFields = [
+      'participantName',
+      'participantAge', 
+      'participantGender',
+      'emergencyContactName',
+      'emergencyContactPhone',
+      'emergencyContactRelation',
+      'bookingUserName',
+      'bookingUserEmail',
+      'bookingUserPhone',
+      'bookingDate'
+    ];
+    
+    // Get priority fields that exist in allFields
+    const selectedPriorityFields = priorityFields.filter(field => 
+      allFields.some(f => f.key === field)
+    );
+    
+    // Fill remaining slots with other fields up to 10 total
+    const remainingSlots = 10 - selectedPriorityFields.length;
+    const otherFields = allFields
+      .filter(field => !selectedPriorityFields.includes(field.key))
+      .slice(0, remainingSlots)
+      .map(field => field.key);
+    
+    setSelectedFields([...selectedPriorityFields, ...otherFields]);
     setHasBeenCleared(false); // Reset the cleared flag
   };
 
@@ -138,7 +255,7 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `batch-participants-${trekData?.name || 'trek'}-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.download = `batch-participants-${localTrekData?.name || 'trek'}-${new Date().toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -191,11 +308,33 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
             <div className="mb-6">
               <p className="text-gray-600 mb-3">
                 Select up to 10 fields to include in the PDF export. Currently selected: <span className="font-semibold text-emerald-600">{selectedFields.length}/10</span>
+                <br />
+                <span className="text-xs text-gray-500">Priority fields (participant details, emergency contact, booking info) are automatically selected by default.</span>
               </p>
-              {trekData?.customFields && trekData.customFields.length > 0 && (
+              
+              {fetchingTrekData && (
+                <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    <span className="font-medium">Loading Custom Fields...</span> Fetching trek data to display available custom fields.
+                  </p>
+                </div>
+              )}
+              
+              {localTrekData?.customFields && localTrekData.customFields.length > 0 && (
                 <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800">
-                    <span className="font-medium">Custom Fields Available:</span> This trek has {trekData.customFields.length} custom field(s) that can be included in the export.
+                    <span className="font-medium">Custom Fields Available:</span> This trek has {localTrekData.customFields.length} custom field(s) that can be included in the export.
+                  </p>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Custom fields are automatically categorized based on their names. Emergency contact, medical, and logistics related fields will appear in their respective categories.
+                  </p>
+                </div>
+              )}
+              
+              {!fetchingTrekData && !localTrekData?.customFields && (
+                <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">No Custom Fields:</span> This trek doesn't have any custom fields defined.
                   </p>
                 </div>
               )}
@@ -204,7 +343,7 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
                   onClick={handleSelectAll}
                   className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition-colors"
                 >
-                  Select First 10
+                  Select Priority Fields
                 </button>
                 <button
                   onClick={handleClearAll}
@@ -232,6 +371,9 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
                           {field.label}
                           {field.fieldType && (
                             <span className="text-xs text-gray-500 ml-1">({field.fieldType})</span>
+                          )}
+                          {field.isRequired && (
+                            <span className="text-xs text-red-500 ml-1">*</span>
                           )}
                         </span>
                       </label>

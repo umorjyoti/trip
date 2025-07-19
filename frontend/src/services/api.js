@@ -147,6 +147,11 @@ export const getTrekById = async (id) => {
   return response.data;
 };
 
+export const getTrekByIdForAdmin = async (id) => {
+  const response = await api.get(`/treks/${id}?admin=true`);
+  return response.data;
+};
+
 // Custom trek APIs
 export const getCustomTrekByToken = async (token) => {
   try {
@@ -469,6 +474,82 @@ export const updateBookingStatus = async (bookingId, status) => {
     return response.data;
   } catch (error) {
     const errorMessage = error.response?.data?.message || 'Failed to update booking status';
+    throw new Error(errorMessage);
+  }
+};
+
+export const checkExistingPendingBooking = async (trekId, batchId) => {
+  try {
+    const response = await api.get('/bookings/check-pending', {
+      params: { trekId, batchId }
+    });
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to check existing pending booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const cleanupExpiredBookings = async () => {
+  try {
+    const response = await api.post('/bookings/cleanup-expired');
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to cleanup expired bookings';
+    throw new Error(errorMessage);
+  }
+};
+
+// Failed Bookings API functions
+export const getFailedBookings = async (params = {}) => {
+  try {
+    const response = await api.get('/failed-bookings', { params });
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to fetch failed bookings';
+    throw new Error(errorMessage);
+  }
+};
+
+export const getFailedBookingById = async (id) => {
+  try {
+    const response = await api.get(`/failed-bookings/${id}`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to fetch failed booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const restoreFailedBooking = async (id) => {
+  try {
+    const response = await api.post(`/failed-bookings/${id}/restore`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to restore failed booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const deleteFailedBooking = async (id) => {
+  try {
+    const response = await api.delete(`/failed-bookings/${id}`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to delete failed booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const exportFailedBookings = async (params = {}) => {
+  try {
+    const response = await api.get('/failed-bookings/export/excel', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to export failed bookings';
     throw new Error(errorMessage);
   }
 };
@@ -880,6 +961,27 @@ export const getRegionById = async (id) => {
     console.error('Error fetching region:', error);
     throw error;
   }
+};
+
+// Get region by slug
+export const getRegionBySlug = async (slug) => {
+  try {
+    const response = await api.get(`/regions/slug/${slug}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching region by slug:', error);
+    throw error;
+  }
+};
+
+// Helper function to convert region name to URL-friendly slug
+export const createRegionSlug = (name) => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 };
 
 // Get treks by region name
@@ -1414,7 +1516,7 @@ export const createTrekSlug = (name) => {
     .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .trim('-'); // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 };
 
 // Helper function to get trek ID from slug

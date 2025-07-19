@@ -16,6 +16,7 @@ const LeadHistory = require('./LeadHistory');
 const CareerApplication = require('./CareerApplication');
 const Blog = require('../src/models/Blog');
 const Notification = require('./Notification');
+const FailedBooking = require('./FailedBooking');
 
 // Export all models
 module.exports = {
@@ -33,5 +34,6 @@ module.exports = {
   LeadHistory,
   CareerApplication,
   Blog,
-  Notification
+  Notification,
+  FailedBooking
 }; 

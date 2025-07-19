@@ -3,8 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getTreks, deleteTrek, toggleTrekStatus, getAllTreksWithCustomToggle, sendCustomTrekLink, updateTrek, removeBatch, addBatch, updateBatch, getAllRegions } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Modal from '../components/Modal';
 import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { FaEye, FaEyeSlash, FaEdit, FaTrash, FaChartLine, FaThList, FaThLarge, FaSearch } from 'react-icons/fa';
+
 
 function AdminTrekList() {
   const [treks, setTreks] = useState([]);
@@ -25,6 +27,7 @@ function AdminTrekList() {
   const [batchEditData, setBatchEditData] = useState({});
   const [newBatchData, setNewBatchData] = useState({ startDate: '', endDate: '', price: '', maxParticipants: 10 });
   const [batchLoading, setBatchLoading] = useState(false);
+  const [batchDeleteModal, setBatchDeleteModal] = useState({ isOpen: false, trekId: null, batchId: null, batchInfo: null });
   const DIFFICULTY_OPTIONS = ['Easy', 'Moderate', 'Difficult', 'Very Difficult'];
   const [regions, setRegions] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
@@ -225,12 +228,32 @@ function AdminTrekList() {
       setBatchLoading(false);
     }
   };
-  const deleteBatch = async (trekId, batchId) => {
+  const openBatchDeleteModal = (trekId, batchId, batchInfo) => {
+    setBatchDeleteModal({
+      isOpen: true,
+      trekId,
+      batchId,
+      batchInfo
+    });
+  };
+
+  const closeBatchDeleteModal = () => {
+    setBatchDeleteModal({
+      isOpen: false,
+      trekId: null,
+      batchId: null,
+      batchInfo: null
+    });
+  };
+
+  const confirmDeleteBatch = async () => {
+    const { trekId, batchId } = batchDeleteModal;
     try {
       setBatchLoading(true);
       await removeBatch(trekId, batchId);
       toast.success('Batch deleted successfully!');
       fetchTreks();
+      closeBatchDeleteModal();
     } catch (err) {
       toast.error('Failed to delete batch');
     } finally {
@@ -265,7 +288,7 @@ function AdminTrekList() {
     );
   }
 
-  console.log("trek",treks)
+
 
   if (error) {
     return (
@@ -480,18 +503,47 @@ function AdminTrekList() {
                           {trek.batches && trek.batches.length > 0 && trek.batches.map((batch) => (
                             <div
                               key={batch._id}
-                              className="bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative cursor-pointer hover:border-emerald-500 border-2 border-transparent"
+                              className={`bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative border-2 border-transparent ${
+                                editingBatchId === batch._id 
+                                  ? 'cursor-default' 
+                                  : 'cursor-pointer hover:border-emerald-500'
+                              }`}
                               onClick={() => {
                                 if (editingBatchId !== batch._id) {
                                   navigate(`/admin/treks/${trek._id}/performance?batchId=${batch._id}`);
                                 }
                               }}
-                              style={{ pointerEvents: editingBatchId === batch._id ? 'none' : 'auto' }}
                             >
                               {/* Icon container with reserved space */}
-                              <div className="absolute top-2 right-2 z-10 flex space-x-1">
-                                <button onClick={e => { e.stopPropagation(); startEditingBatch(batch); }} className="p-1 rounded-full hover:bg-gray-200"><FaEdit className="w-4 h-4 text-blue-600" /></button>
-                                <button onClick={e => { e.stopPropagation(); deleteBatch(trek._id, batch._id); }} className="p-1 rounded-full hover:bg-gray-200"><FaTrash className="w-4 h-4 text-red-600" /></button>
+                              <div className="absolute top-2 right-2 z-50 flex space-x-1">
+                                <button 
+                                  onClick={e => { 
+                                    e.preventDefault();
+                                    e.stopPropagation(); 
+                                    startEditingBatch(batch); 
+                                  }} 
+                                  className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                  type="button"
+                                  title="Edit Batch"
+                                >
+                                  <FaEdit className="w-4 h-4 text-blue-600" />
+                                </button>
+                                <button 
+                                  onClick={e => { 
+                                    e.preventDefault();
+                                    e.stopPropagation(); 
+                                    openBatchDeleteModal(trek._id, batch._id, {
+                                      startDate: batch.startDate,
+                                      endDate: batch.endDate,
+                                      price: batch.price
+                                    }); 
+                                  }} 
+                                  className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                                  type="button"
+                                  title="Delete Batch"
+                                >
+                                  <FaTrash className="w-4 h-4 text-red-600" />
+                                </button>
                               </div>
                               <div className="pt-8"> {/* Add top padding to avoid overlap */}
                                 {editingBatchId === batch._id ? (
@@ -501,9 +553,45 @@ function AdminTrekList() {
                                     <input type="number" name="price" value={batchEditData.price} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
                                     <input type="number" name="maxParticipants" value={batchEditData.maxParticipants} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
                                     <div className="flex space-x-2 mt-2">
-                                      <button onClick={() => saveBatchEdit(trek._id, batch._id)} className="flex-1 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium" disabled={batchLoading}>Save</button>
-                                      <button onClick={cancelEditingBatch} className="flex-1 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs font-medium">Cancel</button>
-                                      <button onClick={() => deleteBatch(trek._id, batch._id)} className="flex-1 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium" disabled={batchLoading}>Delete</button>
+                                      <button 
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          saveBatchEdit(trek._id, batch._id);
+                                        }} 
+                                        className="flex-1 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                                        disabled={batchLoading}
+                                        type="button"
+                                      >
+                                        Save
+                                      </button>
+                                      <button 
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          cancelEditingBatch();
+                                        }} 
+                                        className="flex-1 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                        type="button"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button 
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          openBatchDeleteModal(trek._id, batch._id, {
+                                            startDate: batch.startDate,
+                                            endDate: batch.endDate,
+                                            price: batch.price
+                                          });
+                                        }} 
+                                        className="flex-1 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-500" 
+                                        disabled={batchLoading}
+                                        type="button"
+                                      >
+                                        Delete
+                                      </button>
                                     </div>
                                   </>
                                 ) : (
@@ -667,51 +755,95 @@ function AdminTrekList() {
       )}
 
       {/* Delete Confirmation Modal */}
-      {deleteModal && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">Delete Trek</h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Are you sure you want to delete "{trekToDelete?.name}"? This action cannot be undone.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  onClick={handleDeleteTrek}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Delete
-                </button>
-                <button
-                  type="button"
-                  onClick={closeDeleteModal}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
+      <Modal
+        isOpen={deleteModal}
+        onClose={closeDeleteModal}
+        title="Delete Trek"
+        size="small"
+      >
+        <div className="sm:flex sm:items-start">
+          <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+            <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <div className="mt-2">
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete "{trekToDelete?.name}"? This action cannot be undone.
+              </p>
             </div>
           </div>
         </div>
-      )}
+        
+        <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+          <button
+            type="button"
+            onClick={handleDeleteTrek}
+            className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            onClick={closeDeleteModal}
+            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
+
+      {/* Batch Delete Confirmation Modal */}
+      <Modal
+        isOpen={batchDeleteModal.isOpen}
+        onClose={closeBatchDeleteModal}
+        title="Delete Batch"
+        size="small"
+      >
+        <div className="sm:flex sm:items-start">
+          <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+            <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+            <div className="mt-2">
+              <p className="text-sm text-gray-500">
+                Are you sure you want to delete this batch?
+              </p>
+              {batchDeleteModal.batchInfo && (
+                <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
+                  <p><strong>Date:</strong> {new Date(batchDeleteModal.batchInfo.startDate).toLocaleDateString()} - {new Date(batchDeleteModal.batchInfo.endDate).toLocaleDateString()}</p>
+                  <p><strong>Price:</strong> ₹{batchDeleteModal.batchInfo.price}</p>
+                </div>
+              )}
+              <p className="text-sm text-red-600 mt-2">
+                This action cannot be undone and will remove all associated data.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
+          <button
+            type="button"
+            className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+            onClick={confirmDeleteBatch}
+            disabled={batchLoading}
+          >
+            {batchLoading ? 'Deleting...' : 'Delete'}
+          </button>
+          <button
+            type="button"
+            className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            onClick={closeBatchDeleteModal}
+            disabled={batchLoading}
+          >
+            Cancel
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

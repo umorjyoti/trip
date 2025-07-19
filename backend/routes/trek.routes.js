@@ -40,6 +40,9 @@ router.patch('/:id/toggle-status', [protect, admin], trekController.toggleTrekSt
 // Performance route - must come before general ID route
 router.get('/:id/performance', [protect, admin], trekController.getTrekPerformance);
 
+// Get trek by slug route - must come before general ID route
+router.get('/slug/:slug', trekController.getTrekBySlug);
+
 // General routes - these should come AFTER more specific routes
 router.get('/:id', (req, res, next) => {
   console.log(`ID route matched with id: ${req.params.id}`);
