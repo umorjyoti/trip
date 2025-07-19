@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getAllBookings, updateBookingStatus, getAllTreks, exportBookings, adminCancelBooking, sendReminderEmail, sendConfirmationEmail, sendInvoiceEmail, cancelBooking } from '../services/api';
+import { useNotifications } from '../contexts/NotificationContext';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DatePicker from 'react-datepicker';
@@ -28,6 +29,7 @@ const STATUS_OPTIONS = [
 ];
 
 function AdminBookings() {
+  const { refreshNotifications } = useNotifications();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -163,6 +165,12 @@ function AdminBookings() {
       console.log(`Changing booking ${bookingId} status to ${newStatus}`);
       await updateBookingStatus(bookingId, newStatus);
       toast.success(`Booking ${newStatus === 'confirmed' ? 'restored' : 'cancelled'} successfully`);
+      
+      // Refresh notifications if booking is confirmed
+      if (newStatus === 'confirmed') {
+        refreshNotifications();
+      }
+      
       fetchBookings(); // Refresh the list
     } catch (err) {
       console.error('Error updating booking status:', err);

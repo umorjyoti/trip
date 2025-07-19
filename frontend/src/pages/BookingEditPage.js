@@ -11,6 +11,7 @@ import {
   updateParticipant,
   adminCancelBooking,
 } from "../services/api";
+import { useNotifications } from "../contexts/NotificationContext";
 import { toast } from "react-toastify";
 import {
   FaCalendarAlt,
@@ -35,6 +36,7 @@ import Modal from "../components/Modal";
 function BookingEditPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { refreshNotifications } = useNotifications();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -188,6 +190,8 @@ function BookingEditPage() {
       await updateBookingStatus(id, "confirmed");
       toast.success("Booking restored successfully");
       setShowRestoreModal(false);
+      // Refresh notifications to show the new booking confirmation notification
+      refreshNotifications();
       navigate(`/admin/bookings/${id}`);
     } catch (err) {
       console.error("Error restoring booking:", err);

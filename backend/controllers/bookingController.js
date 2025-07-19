@@ -845,10 +845,19 @@ const updateBookingStatus = async (req, res) => {
         }
       }
 
+      // Populate trek and user for notification and invoice
+      await booking.populate('trek').populate('user');
+
+      // Create admin notification for booking confirmation
+      try {
+        await createBookingConfirmedNotification(booking, booking.trek, booking.user);
+      } catch (notificationError) {
+        console.error('Error creating booking confirmation notification:', notificationError);
+        // Don't fail the confirmation if notification fails
+      }
+
       // Generate and send invoice
       try {
-        // Populate trek and user for invoice
-        await booking.populate('trek').populate('user');
         // Use booking.totalPrice as payment amount, and mark as 'Manual/Offline' if no paymentDetails
         const paymentDetails = booking.paymentDetails || {
           id: booking._id.toString(),
@@ -921,6 +930,17 @@ const restoreBooking = async (req, res) => {
       } catch (error) {
         console.error('Error updating promo code usage count:', error);
       }
+    }
+
+    // Populate trek and user for notification
+    await booking.populate('trek').populate('user');
+
+    // Create admin notification for booking restoration
+    try {
+      await createBookingConfirmedNotification(booking, booking.trek, booking.user);
+    } catch (notificationError) {
+      console.error('Error creating booking restoration notification:', notificationError);
+      // Don't fail the restoration if notification fails
     }
 
     res.json({ message: "Booking restored successfully", booking });
@@ -1526,6 +1546,17 @@ const updateParticipantDetails = async (req, res) => {
       } catch (error) {
         console.error('Error updating promo code usage count:', error);
       }
+    }
+
+    // Populate trek and user for notification
+    await booking.populate('trek').populate('user');
+
+    // Create admin notification for booking confirmation
+    try {
+      await createBookingConfirmedNotification(booking, booking.trek, booking.user);
+    } catch (notificationError) {
+      console.error('Error creating booking confirmation notification:', notificationError);
+      // Don't fail the confirmation if notification fails
     }
 
     console.log('Booking updated successfully, status:', booking.status);
