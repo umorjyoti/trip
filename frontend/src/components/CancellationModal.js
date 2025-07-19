@@ -65,9 +65,10 @@ const CancellationModal = ({
       const policy = getCancellationPolicyDescription(bookingData?.batch?.startDate);
       return calculateRefund(bookingData?.totalPrice, bookingData?.batch?.startDate, refundType);
     } else {
-      const perParticipantPrice = bookingData?.totalPrice / bookingData?.participantDetails.length;
+      const participantDetails = bookingData?.participantDetails || [];
+      const perParticipantPrice = participantDetails.length > 0 ? bookingData?.totalPrice / participantDetails.length : 0;
       return selectedParticipants.reduce((total, participantId) => {
-        const participant = bookingData?.participantDetails.find(p => p._id === participantId);
+        const participant = participantDetails.find(p => p._id === participantId);
         if (participant && !participant.isCancelled) {
           return total + calculateRefund(perParticipantPrice, bookingData?.batch?.startDate, refundType);
         }
@@ -94,7 +95,7 @@ const CancellationModal = ({
       setSelectedParticipants([]);
     } else {
       // Select all non-cancelled participants by default
-      const nonCancelledParticipants = bookingData?.participantDetails
+      const nonCancelledParticipants = (bookingData?.participantDetails || [])
         .filter(p => !p.isCancelled)
         .map(p => p._id);
       setSelectedParticipants(nonCancelledParticipants);
@@ -135,10 +136,11 @@ const CancellationModal = ({
   // Fetch booking data when modal opens
   useEffect(() => {
     const fetchBooking = async () => {
-      if (isOpen && bookingId && !bookingData) {
+      if (isOpen && bookingId) {
         setFetchingBooking(true);
         try {
           const data = await getBookingById(bookingId);
+          console.log('Fetched booking data:', data);
           setBookingData(data);
         } catch (error) {
           console.error('Error fetching booking:', error);
@@ -151,7 +153,7 @@ const CancellationModal = ({
     };
 
     fetchBooking();
-  }, [isOpen, bookingId]); // Remove bookingData from dependencies to avoid infinite loops
+  }, [isOpen, bookingId, onClose]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -167,10 +169,10 @@ const CancellationModal = ({
     }
   }, [isOpen]);
 
-  if (!isOpen || !bookingData) return null;
+  if (!isOpen) return null;
 
   // Show loading state while fetching booking data
-  if (fetchingBooking) {
+  if (fetchingBooking || !bookingData) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title="Cancel Booking">
         <div className="flex items-center justify-center py-8">
@@ -183,7 +185,19 @@ const CancellationModal = ({
 
   const policy = getCancellationPolicyDescription(bookingData.batch?.startDate);
   const totalRefund = calculateTotalRefund();
-  const nonCancelledParticipants = bookingData.participantDetails.filter(p => !p.isCancelled);
+  const nonCancelledParticipants = (bookingData.participantDetails || []).filter(p => !p.isCancelled);
+  
+  // Debug logging
+  console.log('CancellationModal Debug:', {
+    bookingId: bookingData._id,
+    hasParticipantDetails: !!bookingData.participantDetails,
+    participantDetailsLength: bookingData.participantDetails?.length || 0,
+    participantDetails: bookingData.participantDetails,
+    nonCancelledParticipantsLength: nonCancelledParticipants.length,
+    nonCancelledParticipants: nonCancelledParticipants,
+    cancellationType: cancellationType,
+    selectedParticipants: selectedParticipants
+  });
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Cancel Booking">
@@ -268,20 +282,30 @@ const CancellationModal = ({
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Select Participants to Cancel</h3>
             <div className="space-y-2 max-h-40 overflow-y-auto">
-              {nonCancelledParticipants.map((participant) => (
-                <label key={participant._id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    checked={selectedParticipants.includes(participant._id)}
-                    onChange={() => handleParticipantToggle(participant._id)}
-                    className="mr-3"
-                  />
-                  <div>
-                    <span className="font-medium">{participant.name}</span>
-                    <span className="text-sm text-gray-500 ml-2">({participant.age} years)</span>
-                  </div>
-                </label>
-              ))}
+              {nonCancelledParticipants.length > 0 ? (
+                nonCancelledParticipants.map((participant) => (
+                  <label key={participant._id} className="flex items-center p-2 border rounded cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={selectedParticipants.includes(participant._id)}
+                      onChange={() => handleParticipantToggle(participant._id)}
+                      className="mr-3"
+                    />
+                    <div>
+                      <span className="font-medium">{participant.name || 'Unnamed Participant'}</span>
+                      <span className="text-sm text-gray-500 ml-2">({participant.age || 'N/A'} years)</span>
+                      {participant.email && (
+                        <span className="text-sm text-gray-400 ml-2">({participant.email})</span>
+                      )}
+                    </div>
+                  </label>
+                ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <p>No participants available for cancellation</p>
+                  <p className="text-sm mt-1">All participants may already be cancelled or no participant details are available.</p>
+                </div>
+              )}
             </div>
           </div>
         )}

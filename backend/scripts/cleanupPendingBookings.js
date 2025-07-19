@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const { Booking, FailedBooking, Trek } = require('../models');
-require('dotenv').config();
+const path = require('path');
+
+// Load environment variables
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 /**
  * Cleanup Expired Pending Payment Bookings
