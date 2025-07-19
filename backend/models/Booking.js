@@ -87,6 +87,22 @@ const PaymentDetailsSchema = new mongoose.Schema({
   method: String
 }, { _id: false });
 
+// Add promo code details schema
+const PromoCodeDetailsSchema = new mongoose.Schema({
+  promoCodeId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PromoCode'
+  },
+  code: String,
+  discountType: {
+    type: String,
+    enum: ['percentage', 'fixed']
+  },
+  discountValue: Number,
+  discountAmount: Number,
+  originalPrice: Number
+}, { _id: false });
+
 const BookingSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -185,6 +201,8 @@ const BookingSchema = new mongoose.Schema({
   },
   // Add payment details field
   paymentDetails: PaymentDetailsSchema,
+  // Add promo code details field
+  promoCodeDetails: PromoCodeDetailsSchema,
   // This will be filled after payment success
   participantDetails: [{
     name: String,

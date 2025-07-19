@@ -1,6 +1,7 @@
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
+const PromoCode = require('../models/PromoCode');
 const { sendEmail, sendPaymentReceivedEmail, sendEmailWithAttachment } = require('../utils/email');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 
@@ -104,6 +105,29 @@ exports.verifyPayment = async (req, res) => {
           method: payment.method,
           status: payment.status
         };
+        
+        // Increment promo code used count if a promo code was used
+        if (booking.promoCodeDetails && booking.promoCodeDetails.code) {
+          try {
+            let promoCode;
+            // Try to find by ID first, then by code
+            if (booking.promoCodeDetails.promoCodeId) {
+              promoCode = await PromoCode.findById(booking.promoCodeDetails.promoCodeId);
+            }
+            if (!promoCode) {
+              promoCode = await PromoCode.findOne({ code: booking.promoCodeDetails.code });
+            }
+            if (promoCode) {
+              promoCode.usedCount += 1;
+              await promoCode.save();
+              console.log(`Incremented used count for promo code: ${booking.promoCodeDetails.code}`);
+            }
+          } catch (promoError) {
+            console.error('Error updating promo code used count:', promoError);
+            // Don't fail the payment verification if promo code update fails
+          }
+        }
+        
         await booking.save();
 
         // Send payment confirmation email with invoice

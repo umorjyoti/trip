@@ -1633,6 +1633,259 @@ For support, contact us through our website or mobile app.
 };
 
 /**
+ * Send cancellation notification email to participants
+ * @param {Object} booking - Booking object
+ * @param {Object} trek - Trek object
+ * @param {Array} cancelledParticipants - Array of cancelled participant objects
+ * @param {string} cancellationReason - Reason for cancellation
+ */
+const sendParticipantCancellationEmails = async (booking, trek, cancelledParticipants, cancellationReason) => {
+  const emailSubject = `❌ Trek Booking Cancelled - ${trek?.name || 'Trek Booking'}`;
+  
+  // Get cancelled participant names
+  const cancelledParticipantNames = cancelledParticipants.map(p => p.name).join(', ');
+  
+  const emailContent = `
+Dear Participant,
+
+We regret to inform you that your trek booking has been cancelled.
+
+📋 CANCELLATION DETAILS:
+Booking ID: ${booking._id}
+Trek: ${trek?.name || 'N/A'}
+Cancelled Participants: ${cancelledParticipantNames}
+Cancellation Date: ${new Date().toLocaleDateString()}
+Cancellation Time: ${new Date().toLocaleTimeString()}
+Reason: ${cancellationReason || 'Admin cancelled booking'}
+
+💰 REFUND INFORMATION:
+The booking organizer will receive the refund for this cancellation. Please contact the person who made the booking for refund details.
+
+❓ NEXT STEPS:
+• No further action is required from your side
+• If you have any questions, please contact the booking organizer
+
+🏔️ FUTURE BOOKINGS:
+We hope to see you on another adventure soon! Feel free to browse our other exciting treks and book again when you're ready.
+
+If you have any questions about this cancellation or would like to book another trek, please don't hesitate to contact our support team.
+
+We appreciate your understanding.
+
+Best regards,
+The Bengaluru Trekkers Team
+
+---
+This is an automated message. Please do not reply to this email.
+For support, contact us through our website or mobile app.
+  `;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${emailSubject}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #ef4444;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .cancellation-container {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        .booking-id {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .details-section {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 25px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #374151;
+        }
+        .detail-value {
+            color: #1f2937;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .contact-info {
+            background-color: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .warning-box {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+        
+        <div class="cancellation-container">
+            <h1 style="margin: 0; font-size: 28px;">❌ Trek Booking Cancelled</h1>
+            <div class="booking-id">${booking._id}</div>
+            <p style="margin: 0; font-size: 18px;">Cancellation processed successfully</p>
+        </div>
+        
+        <div class="details-section">
+            <h3 style="margin-top: 0; color: #374151;">📋 Cancellation Details</h3>
+            <div class="detail-row">
+                <span class="detail-label">Booking ID:</span>
+                <span class="detail-value">${booking._id}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Trek:</span>
+                <span class="detail-value">${trek?.name || 'N/A'}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancelled Participants:</span>
+                <span class="detail-value">${cancelledParticipantNames}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancellation Date:</span>
+                <span class="detail-value">${new Date().toLocaleDateString()}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancellation Time:</span>
+                <span class="detail-value">${new Date().toLocaleTimeString()}</span>
+            </div>
+            ${cancellationReason ? `
+            <div class="detail-row">
+                <span class="detail-label">Reason:</span>
+                <span class="detail-value">${cancellationReason}</span>
+            </div>
+            ` : ''}
+        </div>
+        
+        <div class="warning-box">
+            <h4 style="margin-top: 0; color: #92400e;">💰 Refund Information</h4>
+            <p style="margin: 5px 0; color: #92400e;">The booking organizer will receive the refund for this cancellation. Please contact the person who made the booking for refund details.</p>
+        </div>
+        
+        <div class="contact-info">
+            <h4 style="margin-top: 0; color: #374151;">🏔️ Future Bookings</h4>
+            <p style="margin: 5px 0;">We hope to see you on another adventure soon! Feel free to browse our other exciting treks.</p>
+        </div>
+        
+        <div class="footer">
+            <p>Best regards,<br>The Bengaluru Trekkers Team</p>
+            <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+
+  // Send emails to all cancelled participants who have email addresses
+  console.log('Participant cancellation email function called with:', {
+    totalParticipants: cancelledParticipants.length,
+    participantsWithEmails: cancelledParticipants.filter(p => p.email && p.email.trim()).length,
+    participantDetails: cancelledParticipants.map(p => ({
+      name: p.name,
+      email: p.email,
+      hasEmail: !!p.email,
+      emailLength: p.email ? p.email.length : 0
+    }))
+  });
+
+  const emailPromises = cancelledParticipants
+    .filter(participant => participant.email && participant.email.trim())
+    .map(participant => {
+      console.log(`Preparing to send email to participant: ${participant.name} (${participant.email})`);
+      return sendEmail({
+        to: participant.email,
+        subject: emailSubject,
+        text: emailContent,
+        html: htmlContent
+      });
+    });
+
+  // Execute all email sends in parallel
+  if (emailPromises.length > 0) {
+    try {
+      await Promise.all(emailPromises);
+      console.log(`Sent cancellation emails to ${emailPromises.length} participants`);
+    } catch (error) {
+      console.error('Error sending participant cancellation emails:', error);
+      // Don't throw error to avoid breaking the main cancellation flow
+    }
+  } else {
+    console.log('No participants with valid email addresses found');
+  }
+};
+
+/**
  * Send reschedule request approval notification email
  * @param {Object} booking - Booking object
  * @param {Object} trek - Trek object
@@ -1899,6 +2152,7 @@ module.exports = {
   sendBatchShiftNotificationEmail,
   sendProfessionalInvoiceEmail,
   sendCancellationEmail,
+  sendParticipantCancellationEmails,
   sendRescheduleApprovalEmail,
   sendEmailWithAttachment
 };

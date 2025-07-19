@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendRescheduleApprovalEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
@@ -158,6 +158,9 @@ const createBooking = async (req, res) => {
       userDetails,
       totalPrice,
       sessionId, // Add session ID to track booking attempts
+      couponCode, // Promo code information
+      discountAmount,
+      originalPrice,
     } = req.body;
 
     // Validate required fields
@@ -248,6 +251,18 @@ const createBooking = async (req, res) => {
       booking.userDetails = userDetails;
       booking.totalPrice = totalPrice;
       
+              // Update promo code details if provided
+        if (couponCode) {
+          booking.promoCodeDetails = {
+            promoCodeId: couponCode._id,
+            code: couponCode.code,
+            discountType: couponCode.discountType,
+            discountValue: couponCode.discountValue,
+            discountAmount: discountAmount || 0,
+            originalPrice: originalPrice || totalPrice
+          };
+        }
+      
       // Update session info
       if (sessionId) {
         booking.bookingSession.sessionId = sessionId;
@@ -270,6 +285,14 @@ const createBooking = async (req, res) => {
         userDetails,
         totalPrice,
         status: "pending_payment",
+        promoCodeDetails: couponCode ? {
+          promoCodeId: couponCode._id,
+          code: couponCode.code,
+          discountType: couponCode.discountType,
+          discountValue: couponCode.discountValue,
+          discountAmount: discountAmount || 0,
+          originalPrice: originalPrice || totalPrice
+        } : undefined,
         bookingSession: {
           sessionId: sessionId || `session_${Date.now()}_${req.user._id}`,
           expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
@@ -569,6 +592,23 @@ const cancelBooking = async (req, res) => {
       );
     } catch (emailError) {
       console.error('Error sending cancellation/refund email:', emailError);
+    }
+
+    // Send cancellation emails to participants
+    try {
+      // Get all cancelled participant objects
+      const cancelledParticipantObjects = booking.participantDetails.filter(p => p.isCancelled);
+      
+      if (cancelledParticipantObjects.length > 0) {
+        await sendParticipantCancellationEmails(
+          booking,
+          trek,
+          cancelledParticipantObjects,
+          reason || 'Booking cancelled'
+        );
+      }
+    } catch (emailError) {
+      console.error('Error sending participant cancellation emails:', emailError);
     }
     res.json({ message: "Booking cancelled successfully", booking });
   } catch (error) {
@@ -911,6 +951,25 @@ const cancelParticipant = async (req, res) => {
     } catch (emailError) {
       console.error('Error sending participant cancellation/refund email:', emailError);
     }
+
+    // Send cancellation email to the specific cancelled participant
+    try {
+      const cancelledParticipant = booking.participantDetails.find(p => 
+        p._id.toString() === participantId || p._id.toString() === participantId.toString()
+      );
+      if (cancelledParticipant && cancelledParticipant.email) {
+        await sendParticipantCancellationEmails(
+          booking,
+          trek,
+          [cancelledParticipant],
+          reason || 'Participant cancelled'
+        );
+      }
+    } catch (emailError) {
+      console.error('Error sending participant cancellation email:', emailError);
+    }
+
+
     res.json({ message: "Participant cancelled successfully", booking });
   } catch (error) {
     console.error("Error cancelling participant:", error);

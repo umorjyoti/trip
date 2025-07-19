@@ -259,8 +259,8 @@ function BookingPage() {
         addOns: validAddOns,
         userDetails: formData.userDetails,
         totalPrice: calculateTotalPrice(),
-        couponCode: appliedCoupon?.code || null,
-        discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.discountPercent / 100) : 0,
+        couponCode: appliedCoupon?.promoCode || null,
+        discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.promoCode.discountValue / 100) : 0,
         originalPrice: calculateBasePrice(),
         sessionId: sessionId // Add session ID to prevent duplicate bookings
       };
@@ -276,7 +276,7 @@ function BookingPage() {
         amount: order.amount,
         currency: order.currency,
         name: 'Trek Booking',
-        description: `Trek Booking Payment${appliedCoupon ? ` (with ${appliedCoupon.discountPercent}% discount)` : ''}`,
+        description: `Trek Booking Payment${appliedCoupon ? ` (with ${appliedCoupon.promoCode.discountValue}% discount)` : ''}`,
         order_id: order.id,
         handler: async function (response) {
           try {
