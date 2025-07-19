@@ -478,6 +478,82 @@ export const updateBookingStatus = async (bookingId, status) => {
   }
 };
 
+export const checkExistingPendingBooking = async (trekId, batchId) => {
+  try {
+    const response = await api.get('/bookings/check-pending', {
+      params: { trekId, batchId }
+    });
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to check existing pending booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const cleanupExpiredBookings = async () => {
+  try {
+    const response = await api.post('/bookings/cleanup-expired');
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to cleanup expired bookings';
+    throw new Error(errorMessage);
+  }
+};
+
+// Failed Bookings API functions
+export const getFailedBookings = async (params = {}) => {
+  try {
+    const response = await api.get('/failed-bookings', { params });
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to fetch failed bookings';
+    throw new Error(errorMessage);
+  }
+};
+
+export const getFailedBookingById = async (id) => {
+  try {
+    const response = await api.get(`/failed-bookings/${id}`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to fetch failed booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const restoreFailedBooking = async (id) => {
+  try {
+    const response = await api.post(`/failed-bookings/${id}/restore`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to restore failed booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const deleteFailedBooking = async (id) => {
+  try {
+    const response = await api.delete(`/failed-bookings/${id}`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to delete failed booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const exportFailedBookings = async (params = {}) => {
+  try {
+    const response = await api.get('/failed-bookings/export/excel', { 
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to export failed bookings';
+    throw new Error(errorMessage);
+  }
+};
+
 export const markTrekCompleted = async (bookingId) => {
   try {
     const response = await api.put(`/bookings/${bookingId}/complete-trek`);

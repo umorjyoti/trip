@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { getDashboardStats } from '../services/api';
+import { getDashboardStats, cleanupExpiredBookings } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { FaMountain, FaCalendarAlt, FaMapMarkedAlt, FaChartLine, FaUsers, FaHiking, FaLayerGroup } from 'react-icons/fa';
+import { FaMountain, FaCalendarAlt, FaMapMarkedAlt, FaChartLine, FaUsers, FaHiking, FaLayerGroup, FaBroom, FaTicketAlt } from 'react-icons/fa';
 import { MdSupportAgent, MdDashboard, MdManageAccounts, MdGroup } from 'react-icons/md';
+import { Link } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState({});
+  const [cleaningUp, setCleaningUp] = useState(false);
   const { user } = useAuth();
 
   // Define available stats and their required permissions
@@ -54,26 +58,45 @@ const AdminDashboard = () => {
     return availableActions.filter(action => actionPermissions[action.permission]);
   };
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const permittedStats = getPermittedStats();
-        
-        // Only make API call if user has permissions for at least one stat
-        if (permittedStats.length > 0) {
-          const data = await getDashboardStats();
-          setDashboardData(data);
-        }
-        setError(null);
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-        setError("Failed to load dashboard data. Please try again later.");
-      } finally {
-        setLoading(false);
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const permittedStats = getPermittedStats();
+      
+      // Only make API call if user has permissions for at least one stat
+      if (permittedStats.length > 0) {
+        const data = await getDashboardStats();
+        setDashboardData(data);
       }
-    };
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+      setError("Failed to load dashboard data. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const handleCleanupExpiredBookings = async () => {
+    if (!window.confirm('Are you sure you want to cleanup expired pending bookings? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setCleaningUp(true);
+      await cleanupExpiredBookings();
+      toast.success('Expired pending bookings cleaned up successfully!');
+      // Refresh stats after cleanup
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      toast.error(error.message || 'Failed to cleanup expired bookings');
+    } finally {
+      setCleaningUp(false);
+    }
+  };
+
+  useEffect(() => {
     fetchDashboardData();
   }, [user]);
 
@@ -154,14 +177,97 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {permittedActions.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Quick Actions */}
+      <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Link
+              to="/admin/treks"
+              className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors"
+            >
+              <div>
+                <span className="rounded-lg inline-flex p-3 bg-emerald-50 text-emerald-700 ring-4 ring-white">
+                  <FaCalendarAlt className="h-6 w-6" />
+                </span>
+              </div>
+              <div className="mt-8">
+                <h3 className="text-lg font-medium">
+                  <span className="absolute inset-0" aria-hidden="true" />
+                  Manage Treks
+                </h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  Add, edit, and manage trek information
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              to="/admin/bookings"
+              className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors"
+            >
+              <div>
+                <span className="rounded-lg inline-flex p-3 bg-blue-50 text-blue-700 ring-4 ring-white">
+                  <FaTicketAlt className="h-6 w-6" />
+                </span>
+              </div>
+              <div className="mt-8">
+                <h3 className="text-lg font-medium">
+                  <span className="absolute inset-0" aria-hidden="true" />
+                  View Bookings
+                </h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  Manage and track all bookings
+                </p>
+              </div>
+            </Link>
+
+            <Link
+              to="/admin/failed-bookings"
+              className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors"
+            >
+              <div>
+                <span className="rounded-lg inline-flex p-3 bg-red-50 text-red-700 ring-4 ring-white">
+                  <FaTicketAlt className="h-6 w-6" />
+                </span>
+              </div>
+              <div className="mt-8">
+                <h3 className="text-lg font-medium">
+                  <span className="absolute inset-0" aria-hidden="true" />
+                  Failed Bookings
+                </h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  View and manage failed payment bookings
+                </p>
+              </div>
+            </Link>
+
+            <button
+              onClick={handleCleanupExpiredBookings}
+              disabled={cleaningUp}
+              className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-emerald-500 rounded-lg border border-gray-200 hover:border-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div>
+                <span className="rounded-lg inline-flex p-3 bg-yellow-50 text-yellow-700 ring-4 ring-white">
+                  <FaBroom className="h-6 w-6" />
+                </span>
+              </div>
+              <div className="mt-8">
+                <h3 className="text-lg font-medium">
+                  {cleaningUp ? 'Cleaning Up...' : 'Cleanup Expired'}
+                </h3>
+                <p className="mt-2 text-sm text-gray-500">
+                  Remove expired pending payment bookings
+                </p>
+              </div>
+            </button>
+
             {permittedActions.map(renderActionCard)}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

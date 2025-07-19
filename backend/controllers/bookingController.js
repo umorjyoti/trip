@@ -137,6 +137,7 @@ const createBooking = async (req, res) => {
       addOns,
       userDetails,
       totalPrice,
+      sessionId, // Add session ID to track booking attempts
     } = req.body;
 
     // Validate required fields
@@ -185,24 +186,66 @@ const createBooking = async (req, res) => {
         .json({ message: "Not enough spots available in this batch" });
     }
 
-    // Create booking
-    const booking = new Booking({
+    // Check for existing pending payment booking for this user, trek, and batch
+    const existingPendingBooking = await Booking.findOne({
       user: req.user._id,
       trek: trekId,
       batch: batchId,
-      numberOfParticipants: participantsCount,
-      addOns: Array.isArray(addOns) ? addOns : [],
-      userDetails,
-      totalPrice,
-      status: "pending_payment",
+      status: 'pending_payment',
+      'bookingSession.expiresAt': { $gt: new Date() } // Only consider non-expired sessions
     });
 
-    // Save booking
-    await booking.save();
+    let booking;
 
-    // Update batch participants count
-    batch.currentParticipants += participantsCount;
-    await trek.save();
+    if (existingPendingBooking) {
+      // Update existing booking instead of creating a new one
+      booking = existingPendingBooking;
+      
+      // Update booking details
+      booking.numberOfParticipants = participantsCount;
+      booking.addOns = Array.isArray(addOns) ? addOns : [];
+      booking.userDetails = userDetails;
+      booking.totalPrice = totalPrice;
+      
+      // Update session info
+      if (sessionId) {
+        booking.bookingSession.sessionId = sessionId;
+        booking.bookingSession.expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        booking.bookingSession.paymentAttempts += 1;
+        booking.bookingSession.lastPaymentAttempt = new Date();
+      }
+      
+      await booking.save();
+      
+      console.log(`Updated existing pending booking ${booking._id} for user ${req.user._id}`);
+    } else {
+      // Create new booking
+      booking = new Booking({
+        user: req.user._id,
+        trek: trekId,
+        batch: batchId,
+        numberOfParticipants: participantsCount,
+        addOns: Array.isArray(addOns) ? addOns : [],
+        userDetails,
+        totalPrice,
+        status: "pending_payment",
+        bookingSession: {
+          sessionId: sessionId || `session_${Date.now()}_${req.user._id}`,
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
+          paymentAttempts: 1,
+          lastPaymentAttempt: new Date()
+        }
+      });
+
+      // Save booking
+      await booking.save();
+
+      // Update batch participants count only for new bookings
+      batch.currentParticipants += participantsCount;
+      await trek.save();
+
+      console.log(`Created new booking ${booking._id} for user ${req.user._id}`);
+    }
 
     // Generate and send invoice for pending payment
     try {
@@ -1912,6 +1955,77 @@ const calculateRefund = async (req, res) => {
   }
 };
 
+// Get existing pending payment booking for user
+const getExistingPendingBooking = async (req, res) => {
+  try {
+    const { trekId, batchId } = req.query;
+
+    if (!trekId || !batchId) {
+      return res.status(400).json({ 
+        message: "Trek ID and Batch ID are required" 
+      });
+    }
+
+    // Find existing pending payment booking for this user, trek, and batch
+    const existingBooking = await Booking.findOne({
+      user: req.user._id,
+      trek: trekId,
+      batch: batchId,
+      status: 'pending_payment',
+      'bookingSession.expiresAt': { $gt: new Date() } // Only consider non-expired sessions
+    });
+
+    if (existingBooking) {
+      return res.json({
+        exists: true,
+        booking: existingBooking,
+        message: "You have an existing pending payment for this trek and batch"
+      });
+    }
+
+    res.json({
+      exists: false,
+      message: "No existing pending payment found"
+    });
+
+  } catch (error) {
+    console.error("Error checking existing pending booking:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Cleanup expired pending bookings (admin only)
+const cleanupExpiredBookings = async (req, res) => {
+  try {
+    // Check if user is authorized (admin only)
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to perform cleanup" });
+    }
+
+    const { cleanupExpiredPendingBookings } = require('../scripts/cleanupPendingBookings');
+    
+    // Run cleanup with error handling
+    try {
+      await cleanupExpiredPendingBookings();
+      
+      res.json({ 
+        message: "Cleanup completed successfully",
+        timestamp: new Date()
+      });
+    } catch (cleanupError) {
+      console.error("Error during cleanup process:", cleanupError);
+      res.status(500).json({ 
+        message: "Cleanup process failed", 
+        error: cleanupError.message 
+      });
+    }
+
+  } catch (error) {
+    console.error("Error setting up cleanup:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -1936,5 +2050,7 @@ module.exports = {
   shiftBookingToBatch,
   createCancellationRequest,
   updateCancellationRequest,
-  calculateRefund
+  calculateRefund,
+  getExistingPendingBooking,
+  cleanupExpiredBookings
 };

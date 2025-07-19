@@ -148,6 +148,25 @@ const BookingSchema = new mongoose.Schema({
     enum: ['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled'],
     default: 'pending'
   },
+  // Add booking session tracking
+  bookingSession: {
+    sessionId: {
+      type: String,
+      required: false
+    },
+    expiresAt: {
+      type: Date,
+      required: false
+    },
+    paymentAttempts: {
+      type: Number,
+      default: 0
+    },
+    lastPaymentAttempt: {
+      type: Date,
+      required: false
+    }
+  },
   cancelledAt: {
     type: Date
   },

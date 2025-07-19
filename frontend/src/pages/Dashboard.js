@@ -10,6 +10,7 @@ import {
   getAllUsers,
   getAllBookings,
   formatCurrency,
+  cleanupExpiredBookings,
 } from "../services/api";
 import TrekForm from "../components/TrekForm";
 import TrekList from "../components/TrekList";
@@ -30,6 +31,7 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import TrekSectionManager from "../components/TrekSectionManager";
+import Modal from "../components/Modal";
 import {
   FaHiking,
   FaGlobe,
@@ -47,6 +49,7 @@ import {
   FaHeadset,
   FaChevronRight,
   FaUsersCog,
+  FaBroom,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import RichTextEditor from "../components/RichTextEditor";
@@ -138,6 +141,9 @@ const QuickActionCard = ({
   icon: Icon,
   link,
   color = "emerald",
+  isAction = false,
+  action,
+  disabled = false,
 }) => {
   const bgColors = {
     emerald: "bg-emerald-50 hover:bg-emerald-100",
@@ -173,6 +179,41 @@ const QuickActionCard = ({
     orange: "focus:ring-orange-500",
   };
 
+  const cardContent = (
+    <>
+      <div
+        className={`inline-block p-2 sm:p-3 rounded-lg ${textColors[color]} bg-white mb-3 sm:mb-4 shadow-sm`}
+      >
+        <Icon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
+      </div>
+      <h3 className={`text-base sm:text-lg font-semibold ${textColors[color]} mb-1`}>
+        {disabled ? 'Cleaning Up...' : title}
+      </h3>
+      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{description}</p>
+      {!isAction && (
+        <FaArrowRight
+          className={`absolute bottom-3 right-3 sm:bottom-4 sm:right-4 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:${textColors[color]} transition-colors`}
+        />
+      )}
+    </>
+  );
+
+  if (isAction) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        whileHover={{ scale: disabled ? 1 : 1.02 }}
+        whileTap={{ scale: disabled ? 1 : 0.98 }}
+        className={`relative group ${bgColors[color]} p-4 sm:p-6 rounded-lg shadow-sm transition-all duration-200 min-h-[140px] sm:min-h-[160px] ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        onClick={disabled ? undefined : action}
+      >
+        {cardContent}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -187,18 +228,7 @@ const QuickActionCard = ({
         className={`absolute inset-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 ${ringColors[color]}`}
         aria-label={title}
       ></Link>
-      <div
-        className={`inline-block p-2 sm:p-3 rounded-lg ${textColors[color]} bg-white mb-3 sm:mb-4 shadow-sm`}
-      >
-        <Icon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
-      </div>
-      <h3 className={`text-base sm:text-lg font-semibold ${textColors[color]} mb-1`}>
-        {title}
-      </h3>
-      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">{description}</p>
-      <FaArrowRight
-        className={`absolute bottom-3 right-3 sm:bottom-4 sm:right-4 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 group-hover:${textColors[color]} transition-colors`}
-      />
+      {cardContent}
     </motion.div>
   );
 };
@@ -224,6 +254,8 @@ function Dashboard() {
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [selectedTrek, setSelectedTrek] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [cleanupModalOpen, setCleanupModalOpen] = useState(false);
 
   useEffect(() => {
     // Check if user is admin
@@ -418,6 +450,26 @@ function Dashboard() {
     );
   };
 
+  const handleCleanupExpiredBookings = async () => {
+    try {
+      setCleaningUp(true);
+      setCleanupModalOpen(false);
+      await cleanupExpiredBookings();
+      toast.success('Expired pending bookings cleaned up successfully!');
+      // Refresh stats after cleanup
+      fetchDashboardData();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+      toast.error(error.message || 'Failed to cleanup expired bookings');
+    } finally {
+      setCleaningUp(false);
+    }
+  };
+
+  const openCleanupModal = () => {
+    setCleanupModalOpen(true);
+  };
+
   const openStatusModal = (trek) => {
     setSelectedTrek(trek);
     setStatusModalOpen(true);
@@ -570,6 +622,25 @@ function Dashboard() {
       link: "/admin/careers",
       color: "cyan",
       permissionKey: "manageCareers",
+    },
+    {
+      title: "Failed Bookings",
+      description: "View and manage failed payment bookings",
+      icon: FaTicketAlt,
+      link: "/admin/failed-bookings",
+      color: "red",
+      permissionKey: "manageBookings",
+    },
+    {
+      title: "Cleanup Expired",
+      description: "Remove expired pending payment bookings",
+      icon: FaBroom,
+      link: "#",
+      color: "yellow",
+      permissionKey: "manageBookings",
+      isAction: true,
+      action: openCleanupModal,
+      disabled: cleaningUp,
     }
   ];
 
@@ -804,6 +875,44 @@ function Dashboard() {
           <TrekSectionManager />
         </div>
       )}
+
+      {/* Cleanup Confirmation Modal */}
+      <Modal
+        title="Confirm Cleanup"
+        isOpen={cleanupModalOpen}
+        onClose={() => setCleanupModalOpen(false)}
+        size="small"
+      >
+        <div className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+            <FaBroom className="h-6 w-6 text-yellow-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            Cleanup Expired Bookings
+          </h3>
+          <p className="text-sm text-gray-500 mb-6">
+            This action will archive all expired pending payment bookings to the failed bookings collection. 
+            This action cannot be undone.
+          </p>
+          <div className="flex justify-center space-x-3">
+            <button
+              type="button"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+              onClick={() => setCleanupModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 border border-transparent rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+              onClick={handleCleanupExpiredBookings}
+              disabled={cleaningUp}
+            >
+              {cleaningUp ? 'Cleaning Up...' : 'Confirm Cleanup'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

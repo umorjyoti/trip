@@ -84,6 +84,7 @@ import { useAuth } from "./contexts/AuthContext";
 import LeadsManagement from "./pages/admin/LeadsManagement";
 import WeekendGetawayManager from "./components/admin/WeekendGetawayManager";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
+import FailedBookings from "./pages/admin/FailedBookings";
 
 function App() {
   const { currentUser, loading, refreshUser } = useAuth();
@@ -350,6 +351,18 @@ function App() {
                               permissions={permissions}
                             >
                               <BookingEditPage />
+                            </ProtectedRoutes>
+                          }
+                        />
+
+                        <Route
+                          path="failed-bookings"
+                          element={
+                            <ProtectedRoutes
+                              permissionKey="manageBookings"
+                              permissions={permissions}
+                            >
+                              <FailedBookings />
                             </ProtectedRoutes>
                           }
                         />
