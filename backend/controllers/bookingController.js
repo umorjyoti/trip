@@ -158,6 +158,9 @@ const createBooking = async (req, res) => {
       userDetails,
       totalPrice,
       sessionId, // Add session ID to track booking attempts
+      couponCode, // Promo code information
+      discountAmount,
+      originalPrice,
     } = req.body;
 
     // Validate required fields
@@ -248,6 +251,18 @@ const createBooking = async (req, res) => {
       booking.userDetails = userDetails;
       booking.totalPrice = totalPrice;
       
+              // Update promo code details if provided
+        if (couponCode) {
+          booking.promoCodeDetails = {
+            promoCodeId: couponCode._id,
+            code: couponCode.code,
+            discountType: couponCode.discountType,
+            discountValue: couponCode.discountValue,
+            discountAmount: discountAmount || 0,
+            originalPrice: originalPrice || totalPrice
+          };
+        }
+      
       // Update session info
       if (sessionId) {
         booking.bookingSession.sessionId = sessionId;
@@ -270,6 +285,14 @@ const createBooking = async (req, res) => {
         userDetails,
         totalPrice,
         status: "pending_payment",
+        promoCodeDetails: couponCode ? {
+          promoCodeId: couponCode._id,
+          code: couponCode.code,
+          discountType: couponCode.discountType,
+          discountValue: couponCode.discountValue,
+          discountAmount: discountAmount || 0,
+          originalPrice: originalPrice || totalPrice
+        } : undefined,
         bookingSession: {
           sessionId: sessionId || `session_${Date.now()}_${req.user._id}`,
           expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
