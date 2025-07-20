@@ -35,8 +35,7 @@ The export supports the following field categories:
    - Booking-related Custom Fields
 
 5. **Logistics**
-   - Pickup Location
-   - Drop Location
+   
    - Additional Requests
    - Location-related Custom Fields
 
@@ -48,7 +47,7 @@ The export supports the following field categories:
 Custom fields are automatically categorized based on their names:
 - Fields containing "emergency" or "contact" → Emergency Contact category
 - Fields containing "medical", "health", or "allergy" → Health & Safety category
-- Fields containing "pickup", "drop", or "location" → Logistics category
+
 - Fields containing "booking" or "user" → Booking Information category
 - Other fields → Custom Fields category
 
