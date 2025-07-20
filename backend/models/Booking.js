@@ -259,15 +259,7 @@ const BookingSchema = new mongoose.Schema({
       type: Date
     }
   }],
-  // Add pickup and drop location fields
-  pickupLocation: {
-    type: String,
-    trim: true
-  },
-  dropLocation: {
-    type: String,
-    trim: true
-  },
+
   additionalRequests: {
     type: String,
     trim: true

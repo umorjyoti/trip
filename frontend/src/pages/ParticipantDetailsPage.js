@@ -148,8 +148,7 @@ function ParticipantDetailsPage() {
       await updateParticipantDetails(bookingId, { 
         participants: participants,
         emergencyContact: emergencyContact, // Include single emergency contact
-        pickupLocation: "To be confirmed", // Default value, can be updated later
-        dropLocation: "To be confirmed", // Default value, can be updated later
+
         additionalRequests: "" // Default empty value
       });
       toast.success("Participant details saved!");

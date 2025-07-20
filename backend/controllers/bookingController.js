@@ -1152,12 +1152,10 @@ const updateBooking = async (req, res) => {
         const user = booking.user;
         const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
         
-        // Get pickup/drop locations and additional requests from booking if available
-        const pickupLocation = booking.pickupLocation || 'To be confirmed';
-        const dropLocation = booking.dropLocation || 'To be confirmed';
+        // Get additional requests from booking if available
         const additionalRequests = booking.additionalRequests || 'None';
 
-        await sendBookingConfirmationEmail(booking, trek, user, participantDetails, batch, pickupLocation, dropLocation, additionalRequests);
+        await sendBookingConfirmationEmail(booking, trek, user, participantDetails, batch, additionalRequests);
         console.log('Booking confirmation email sent successfully from updateBooking');
       } catch (emailError) {
         console.error('Error sending booking confirmation email:', emailError);
@@ -1385,10 +1383,10 @@ const exportBookings = async (req, res) => {
 const updateParticipantDetails = async (req, res) => {
   try {
     const { id } = req.params;
-    const { participants, emergencyContact, pickupLocation, dropLocation, additionalRequests } = req.body;
+    const { participants, emergencyContact, additionalRequests } = req.body;
 
     console.log('updateParticipantDetails called for booking:', id);
-    console.log('Request body:', { participants, pickupLocation, dropLocation, additionalRequests, emergencyContact });
+    console.log('Request body:', { participants, additionalRequests, emergencyContact });
 
     const booking = await Booking.findById(id)
       .populate('trek')
@@ -1460,8 +1458,7 @@ const updateParticipantDetails = async (req, res) => {
       phone: emergencyContact.phone,
       relation: emergencyContact.relation
     };
-    booking.pickupLocation = pickupLocation || 'To be confirmed';
-    booking.dropLocation = dropLocation || 'To be confirmed';
+
     booking.additionalRequests = additionalRequests || '';
     booking.status = 'confirmed'; // Update status to confirmed after collecting details
 
@@ -1477,7 +1474,7 @@ const updateParticipantDetails = async (req, res) => {
       
       console.log('Sending booking confirmation email to:', user.email);
 
-      await sendBookingConfirmationEmail(booking, trek, user, formattedParticipants, batch, pickupLocation, dropLocation, additionalRequests);
+      await sendBookingConfirmationEmail(booking, trek, user, formattedParticipants, batch, additionalRequests);
       
       console.log('Booking confirmation email sent successfully');
     } catch (emailError) {
@@ -1664,8 +1661,6 @@ const sendConfirmationEmail = async (req, res) => {
       booking.user, 
       participants, 
       booking.batch, 
-      booking.pickupLocation, 
-      booking.dropLocation, 
       booking.additionalRequests
     );
 
