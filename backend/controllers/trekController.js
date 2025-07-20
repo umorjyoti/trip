@@ -1321,8 +1321,14 @@ exports.getBatchPerformance = async (req, res) => {
       batch: batchId
     }).populate('user', 'name email phone');
 
+    console.log('Raw bookings found:', bookings.length);
+    console.log('Booking statuses:', bookings.map(b => ({ id: b._id, status: b.status })));
+
     // Safely filter bookings
     const safeBookings = bookings.filter(booking => booking != null);
+    
+    console.log('Safe bookings count:', safeBookings.length);
+    console.log('Safe booking statuses:', safeBookings.map(b => ({ id: b._id, status: b.status })));
 
     // Calculate performance metrics with null safety
     const performanceData = {
@@ -1342,7 +1348,8 @@ exports.getBatchPerformance = async (req, res) => {
         total: safeBookings.length,
         confirmed: safeBookings.filter(b => b && b.status === 'confirmed').length,
         cancelled: safeBookings.filter(b => b && b.status === 'cancelled').length,
-        completed: safeBookings.filter(b => b && b.status === 'completed').length
+        completed: safeBookings.filter(b => b && b.status === 'completed').length,
+        pending_payment: safeBookings.filter(b => b && b.status === 'pending_payment').length
       },
       revenue: {
         total: safeBookings.reduce((sum, booking) => {
@@ -1444,31 +1451,47 @@ exports.getBatchPerformance = async (req, res) => {
             return sum + cancelledParticipants;
           }, 0)
       },
-      bookingDetails: safeBookings.map(booking => {
-        if (!booking) return null;
-        return {
-          bookingId: booking._id || null,
-          user: {
-            name: booking.user?.name || 'N/A',
-            email: booking.user?.email || 'N/A',
-            phone: booking.user?.phone || 'N/A'
-          },
-          participants: booking.numberOfParticipants || 0,
-          participantDetails: booking.participantDetails || [],
-          totalPrice: booking.totalPrice || 0,
-          status: booking.status || 'unknown',
-          bookingDate: booking.createdAt || null,
-          adminRemarks: booking.adminRemarks || '',
-          cancellationRequest: booking.cancellationRequest || null,
-          refundStatus: booking.refundStatus || null,
-          refundAmount: booking.refundAmount || 0
-        };
-      }).filter(detail => detail !== null),
+      bookingDetails: (() => {
+        const details = safeBookings
+          .filter(booking => booking && booking.status !== 'pending_payment') // Exclude pending_payment bookings
+          .map(booking => {
+            if (!booking) return null;
+            return {
+              bookingId: booking._id || null,
+              user: {
+                name: booking.user?.name || 'N/A',
+                email: booking.user?.email || 'N/A',
+                phone: booking.user?.phone || 'N/A'
+              },
+              participants: booking.numberOfParticipants || 0,
+              participantDetails: booking.participantDetails || [],
+              totalPrice: booking.totalPrice || 0,
+              status: booking.status || 'unknown',
+              bookingDate: booking.createdAt || null,
+              adminRemarks: booking.adminRemarks || '',
+              cancellationRequest: booking.cancellationRequest || null,
+              refundStatus: booking.refundStatus || null,
+              refundAmount: booking.refundAmount || 0
+            };
+          }).filter(detail => detail !== null);
+        
+        console.log('Booking details count (excluding pending_payment):', details.length);
+        console.log('Booking details statuses:', details.map(d => ({ id: d.bookingId, status: d.status })));
+        
+        return details;
+      })(),
       feedback: batch.feedback || []
     };
 
     console.log('Performance data trek.customFields:', performanceData.trek.customFields);
     console.log('Performance data trek.customFields length:', performanceData.trek.customFields.length);
+    
+    // Log final summary
+    console.log('Final response summary:', {
+      totalBookings: performanceData.bookings.total,
+      bookingDetailsCount: performanceData.bookingDetails.length,
+      bookingStatuses: performanceData.bookings
+    });
 
     res.json(performanceData);
   } catch (error) {
