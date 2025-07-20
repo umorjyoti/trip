@@ -161,8 +161,34 @@ const BookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled'],
+    enum: ['pending', 'pending_payment', 'payment_completed', 'payment_confirmed_partial', 'confirmed', 'trek_completed', 'cancelled'],
     default: 'pending'
+  },
+  // Partial payment fields
+  paymentMode: {
+    type: String,
+    enum: ['full', 'partial'],
+    default: 'full'
+  },
+  partialPaymentDetails: {
+    initialAmount: {
+      type: Number,
+      default: 0
+    },
+    remainingAmount: {
+      type: Number,
+      default: 0
+    },
+    finalPaymentDueDate: {
+      type: Date
+    },
+    reminderSent: {
+      type: Boolean,
+      default: false
+    },
+    reminderSentAt: {
+      type: Date
+    }
   },
   // Add booking session tracking
   bookingSession: {

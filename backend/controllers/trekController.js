@@ -557,7 +557,7 @@ exports.updateTrek = async (req, res) => {
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns, highlights, batches, faqs, thingsToPack,
       gstPercent, gstType, gatewayPercent, gatewayType,
-      tags, itineraryPdfUrl , customFields, isCustom
+      tags, itineraryPdfUrl , customFields, isCustom, partialPayment
     } = req.body;
 
     // Get region name if region ID is provided and regionName is not
@@ -598,7 +598,8 @@ exports.updateTrek = async (req, res) => {
       faqs: faqs || trek.faqs,
       thingsToPack: thingsToPack || trek.thingsToPack,
       customFields: customFields || trek.customFields,
-      isCustom: isCustom !== undefined ? isCustom : trek.isCustom
+      isCustom: isCustom !== undefined ? isCustom : trek.isCustom,
+      partialPayment: partialPayment !== undefined ? partialPayment : trek.partialPayment
     };
 
     // Handle batches update
@@ -1353,7 +1354,24 @@ exports.getBatchPerformance = async (req, res) => {
       },
       revenue: {
         total: safeBookings.reduce((sum, booking) => {
-          const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+          // Calculate actual amount paid based on payment mode
+          let paid = 0;
+          if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+            if (booking.status === 'payment_confirmed_partial') {
+              // For partial payments in progress, use initial payment amount
+              paid = booking.partialPaymentDetails.initialAmount || 0;
+            } else if (booking.status === 'confirmed') {
+              // For completed partial payments, use total amount
+              paid = booking.totalPrice || 0;
+            } else {
+              // For other statuses, use total amount
+              paid = booking.totalPrice || 0;
+            }
+          } else {
+            // For full payments, use total amount
+            paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+          }
+          
           // Only subtract refunds if they were successfully processed
           let refunded = 0;
           if (booking && booking.refundStatus === 'success') {
@@ -1373,7 +1391,16 @@ exports.getBatchPerformance = async (req, res) => {
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
-            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Calculate actual amount paid based on payment mode
+            let paid = 0;
+            if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+              // For completed partial payments, use total amount
+              paid = booking.totalPrice || 0;
+            } else {
+              // For full payments, use total amount
+              paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            }
+            
             // Only subtract refunds if they were successfully processed
             let refunded = 0;
             if (booking && booking.refundStatus === 'success') {
@@ -1392,7 +1419,21 @@ exports.getBatchPerformance = async (req, res) => {
         cancelled: safeBookings
           .filter(b => b && b.status === 'cancelled')
           .reduce((sum, booking) => {
-            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Calculate actual amount paid based on payment mode
+            let paid = 0;
+            if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+              if (booking.status === 'payment_confirmed_partial') {
+                // For cancelled partial payments, use initial payment amount
+                paid = booking.partialPaymentDetails.initialAmount || 0;
+              } else {
+                // For other cancelled statuses, use total amount
+                paid = booking.totalPrice || 0;
+              }
+            } else {
+              // For full payments, use total amount
+              paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            }
+            
             // Only subtract refunds if they were successfully processed
             let refunded = 0;
             if (booking && booking.refundStatus === 'success') {
@@ -1456,6 +1497,21 @@ exports.getBatchPerformance = async (req, res) => {
           .filter(booking => booking && booking.status !== 'pending_payment') // Exclude pending_payment bookings
           .map(booking => {
             if (!booking) return null;
+            
+            // Calculate actual amount paid based on payment mode
+            let amountPaid = 0;
+            if (booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+              if (booking.status === 'payment_confirmed_partial') {
+                amountPaid = booking.partialPaymentDetails.initialAmount || 0;
+              } else if (booking.status === 'confirmed') {
+                amountPaid = booking.totalPrice || 0;
+              } else {
+                amountPaid = booking.totalPrice || 0;
+              }
+            } else {
+              amountPaid = booking.totalPrice || 0;
+            }
+            
             return {
               bookingId: booking._id || null,
               user: {
@@ -1466,6 +1522,9 @@ exports.getBatchPerformance = async (req, res) => {
               participants: booking.numberOfParticipants || 0,
               participantDetails: booking.participantDetails || [],
               totalPrice: booking.totalPrice || 0,
+              amountPaid: amountPaid,
+              paymentMode: booking.paymentMode || 'full',
+              partialPaymentDetails: booking.partialPaymentDetails || null,
               status: booking.status || 'unknown',
               bookingDate: booking.createdAt || null,
               adminRemarks: booking.adminRemarks || '',
@@ -1571,7 +1630,24 @@ exports.getTrekPerformance = async (req, res) => {
 
     // Calculate total revenue and bookings with null safety
     const totalRevenue = safeBookings.reduce((sum, booking) => {
-      const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+      // Calculate actual amount paid based on payment mode
+      let paid = 0;
+      if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+        if (booking.status === 'payment_confirmed_partial') {
+          // For partial payments in progress, use initial payment amount
+          paid = booking.partialPaymentDetails.initialAmount || 0;
+        } else if (booking.status === 'confirmed') {
+          // For completed partial payments, use total amount
+          paid = booking.totalPrice || 0;
+        } else {
+          // For other statuses, use total amount
+          paid = booking.totalPrice || 0;
+        }
+      } else {
+        // For full payments, use total amount
+        paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+      }
+      
       // Only subtract refunds if they were successfully processed
       let refunded = 0;
       if (booking && booking.refundStatus === 'success') {
@@ -1608,7 +1684,24 @@ exports.getTrekPerformance = async (req, res) => {
           });
           
           const revenue = batchBookings.reduce((sum, booking) => {
-            const paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            // Calculate actual amount paid based on payment mode
+            let paid = 0;
+            if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+              if (booking.status === 'payment_confirmed_partial') {
+                // For partial payments in progress, use initial payment amount
+                paid = booking.partialPaymentDetails.initialAmount || 0;
+              } else if (booking.status === 'confirmed') {
+                // For completed partial payments, use total amount
+                paid = booking.totalPrice || 0;
+              } else {
+                // For other statuses, use total amount
+                paid = booking.totalPrice || 0;
+              }
+            } else {
+              // For full payments, use total amount
+              paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            }
+            
             // Only subtract refunds if they were successfully processed
             let refunded = 0;
             if (booking && booking.refundStatus === 'success') {

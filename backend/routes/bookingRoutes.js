@@ -155,6 +155,18 @@ router.get('/',
  *               $ref: '#/components/schemas/Error'
  */
 
+// Check for existing pending booking
+router.get('/check-pending', 
+  protect, 
+  bookingController.getExistingPendingBooking
+);
+
+// Delete pending booking
+router.delete('/pending/:bookingId', 
+  protect, 
+  bookingController.deletePendingBooking
+);
+
 // Get booking by ID
 router.get('/:id', 
  
@@ -231,6 +243,12 @@ router.put('/:id/remarks', protect, admin, bookingController.updateAdminRemarks)
 // Send reminder email (admin only)
 router.post('/:bookingId/send-reminder', protect, admin, bookingController.sendReminderEmail);
 
+// Send partial payment reminder (admin only)
+router.post('/:bookingId/send-partial-reminder', protect, admin, bookingController.sendPartialPaymentReminder);
+
+// Mark partial payment as complete (admin only)
+router.put('/:bookingId/mark-partial-complete', protect, admin, bookingController.markPartialPaymentComplete);
+
 // Send confirmation email (admin only)
 router.post('/:bookingId/send-confirmation', protect, admin, bookingController.sendConfirmationEmail);
 
@@ -257,12 +275,6 @@ router.put('/:bookingId/cancellation-request',
 router.post('/:bookingId/calculate-refund', 
   protect, 
   bookingController.calculateRefund
-);
-
-// Check for existing pending booking
-router.get('/check-pending', 
-  protect, 
-  bookingController.getExistingPendingBooking
 );
 
 // Cleanup expired pending bookings (admin only)

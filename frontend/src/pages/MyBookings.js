@@ -44,6 +44,8 @@ function MyBookings() {
         return 'bg-yellow-100 text-yellow-800';
       case 'payment_completed':
         return 'bg-blue-100 text-blue-800';
+      case 'payment_confirmed_partial':
+        return 'bg-orange-100 text-orange-800';
       case 'confirmed':
         return 'bg-green-100 text-green-800';
       case 'trek_completed':
@@ -66,6 +68,13 @@ function MyBookings() {
           color: 'bg-yellow-600 hover:bg-yellow-700',
           icon: '💳'
         };
+      case 'payment_confirmed_partial':
+        return {
+          text: 'Pay Remaining Balance',
+          link: `/payment/${booking._id}`,
+          color: 'bg-orange-600 hover:bg-orange-700',
+          icon: '💰'
+        };
       case 'payment_completed':
         return {
           text: 'Fill Participant Details',
@@ -79,13 +88,15 @@ function MyBookings() {
   };
 
   const isIncompleteBooking = (status) => {
-    return ['pending_payment', 'payment_completed'].includes(status);
+    return ['pending_payment', 'payment_confirmed_partial', 'payment_completed'].includes(status);
   };
 
   const getBookingProgress = (status) => {
     switch (status) {
       case 'pending_payment':
         return { step: 1, total: 3, label: 'Payment Pending' };
+      case 'payment_confirmed_partial':
+        return { step: 1, total: 3, label: 'Partial Payment Complete' };
       case 'payment_completed':
         return { step: 2, total: 3, label: 'Payment Complete' };
       case 'confirmed':
@@ -388,6 +399,36 @@ function MyBookings() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Partial Payment Information */}
+                  {booking.paymentMode === 'partial' && booking.partialPaymentDetails && 
+                   booking.status !== 'confirmed' && booking.status !== 'payment_completed' && (
+                    <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-orange-800">Partial Payment Details</h4>
+                        {booking.status === 'payment_confirmed_partial' && (
+                          <span className="text-xs text-orange-600 font-medium">
+                            ⏰ Due: {booking.partialPaymentDetails.finalPaymentDueDate ? 
+                              formatDate(booking.partialPaymentDetails.finalPaymentDueDate) : 'N/A'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-600">Initial Payment:</span>
+                          <span className="ml-2 font-medium text-green-600">
+                            ₹{booking.partialPaymentDetails.initialAmount?.toFixed(2) || '0.00'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Remaining Balance:</span>
+                          <span className="ml-2 font-medium text-orange-600">
+                            ₹{booking.partialPaymentDetails.remainingAmount?.toFixed(2) || '0.00'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Action Buttons */}
                   <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">

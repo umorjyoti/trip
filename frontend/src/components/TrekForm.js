@@ -23,7 +23,14 @@ function TrekForm(props) {
     highlights: [],
     bestTimeToVisit: '',
     price: 0,
-    isCustom: false
+    isCustom: false,
+    partialPayment: {
+      enabled: false,
+      amount: 0,
+      amountType: 'fixed',
+      finalPaymentDueDays: 3,
+      autoCancelOnDueDate: true
+    }
   });
   const [regions, setRegions] = useState([]);
   const [customAccessUrl, setCustomAccessUrl] = useState('');
@@ -83,6 +90,16 @@ function TrekForm(props) {
     setFormData(prev => ({
       ...prev,
       highlights
+    }));
+  };
+
+  const handlePartialPaymentChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      partialPayment: {
+        ...prev.partialPayment,
+        [field]: value
+      }
     }));
   };
 
@@ -419,6 +436,102 @@ function TrekForm(props) {
               </div>
             </div>
           )}
+
+          {/* Partial Payment Configuration */}
+          <div className="md:col-span-2">
+            <div className="border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center mb-4">
+                <input
+                  type="checkbox"
+                  id="partialPaymentEnabled"
+                  checked={formData.partialPayment.enabled}
+                  onChange={(e) => handlePartialPaymentChange('enabled', e.target.checked)}
+                  className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                />
+                <label htmlFor="partialPaymentEnabled" className="ml-2 block text-sm font-medium text-gray-900">
+                  Enable Partial Payment for this trek
+                </label>
+              </div>
+              
+              {formData.partialPayment.enabled && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Partial Payment Amount Type
+                      </label>
+                      <select
+                        value={formData.partialPayment.amountType}
+                        onChange={(e) => handlePartialPaymentChange('amountType', e.target.value)}
+                        className="form-input"
+                      >
+                        <option value="fixed">Fixed Amount (₹)</option>
+                        <option value="percentage">Percentage (%)</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Partial Payment Amount
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.partialPayment.amount}
+                        onChange={(e) => handlePartialPaymentChange('amount', Number(e.target.value))}
+                        className="form-input"
+                        placeholder={formData.partialPayment.amountType === 'percentage' ? 'e.g., 30' : 'e.g., 1000'}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formData.partialPayment.amountType === 'percentage' 
+                          ? 'Percentage of total trek price' 
+                          : 'Fixed amount in ₹'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Final Payment Due (days before trek)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.partialPayment.finalPaymentDueDays}
+                        onChange={(e) => handlePartialPaymentChange('finalPaymentDueDays', Number(e.target.value))}
+                        className="form-input"
+                        placeholder="e.g., 3"
+                      />
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="autoCancelOnDueDate"
+                        checked={formData.partialPayment.autoCancelOnDueDate}
+                        onChange={(e) => handlePartialPaymentChange('autoCancelOnDueDate', e.target.checked)}
+                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="autoCancelOnDueDate" className="ml-2 block text-sm text-gray-900">
+                        Auto-cancel if final payment not received by due date
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      <strong>Partial Payment Features:</strong>
+                      <br />• Users can pay initial amount and remaining balance later
+                      <br />• Automatic reminders sent before due date
+                      <br />• Remaining balance payment available in "My Bookings"
+                      <br />• Partial payment disabled within final payment window
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         
         <div className="mt-6">

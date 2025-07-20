@@ -313,8 +313,13 @@ export const deleteRegion = async (id) => {
 
 // Booking APIs
 export const createBooking = async (bookingData) => {
-  const response = await api.post('/bookings', bookingData);
-  return response.data;
+  try {
+    const response = await api.post('/bookings', bookingData);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to create booking';
+    throw new Error(errorMessage);
+  }
 };
 
 // Custom trek booking API
@@ -406,6 +411,26 @@ export const updateAdminRemarks = async (bookingId, remarks) => {
 export const sendReminderEmail = async (bookingId) => {
   const response = await api.post(`/bookings/${bookingId}/send-reminder`);
   return response.data;
+};
+
+export const sendPartialPaymentReminder = async (bookingId) => {
+  try {
+    const response = await api.post(`/bookings/${bookingId}/send-partial-reminder`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to send partial payment reminder';
+    throw new Error(errorMessage);
+  }
+};
+
+export const markPartialPaymentComplete = async (bookingId) => {
+  try {
+    const response = await api.put(`/bookings/${bookingId}/mark-partial-complete`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to mark partial payment as complete';
+    throw new Error(errorMessage);
+  }
 };
 
 // Send confirmation email
@@ -515,6 +540,16 @@ export const checkExistingPendingBooking = async (trekId, batchId) => {
     return response.data;
   } catch (error) {
     const errorMessage = error.response?.data?.message || 'Failed to check existing pending booking';
+    throw new Error(errorMessage);
+  }
+};
+
+export const deletePendingBooking = async (bookingId) => {
+  try {
+    const response = await api.delete(`/bookings/pending/${bookingId}`);
+    return response.data;
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || 'Failed to delete pending booking';
     throw new Error(errorMessage);
   }
 };
@@ -1168,7 +1203,15 @@ export const updateWeekendGetawayGallery = async (id, gallery) => {
 
 export const getBatchPerformance = async (trekId, batchId) => {
   try {
-    const response = await api.get(`/treks/${trekId}/batches/${batchId}/performance`);
+    const response = await api.get(`/treks/${trekId}/batches/${batchId}/performance`, {
+      params: {
+        _t: new Date().getTime() // Add timestamp to prevent caching
+      },
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching batch performance:', error);
@@ -1196,7 +1239,15 @@ export const exportBatchParticipants = async (trekId, batchId, fields = [], file
 
 export const getTrekPerformance = async (trekId) => {
   try {
-    const response = await api.get(`/treks/${trekId}/performance`);
+    const response = await api.get(`/treks/${trekId}/performance`, {
+      params: {
+        _t: new Date().getTime() // Add timestamp to prevent caching
+      },
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    });
     return response.data;
   } catch (error) {
     console.error('Error fetching trek performance:', error);
@@ -1401,6 +1452,16 @@ export const verifyPayment = async (paymentData) => {
     return response.data;
   } catch (error) {
     console.error('Error verifying payment:', error);
+    throw error;
+  }
+};
+
+export const createRemainingBalanceOrder = async (bookingId) => {
+  try {
+    const response = await api.post('/payments/create-remaining-balance-order', { bookingId });
+    return response.data;
+  } catch (error) {
+    console.error('Error creating remaining balance order:', error);
     throw error;
   }
 };

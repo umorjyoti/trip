@@ -158,7 +158,14 @@ function TrekForm() {
     gatewayPercent: '',
     gatewayType: 'customer',
     itineraryPdfUrl: '',
-    isCustom: false
+    isCustom: false,
+    partialPayment: {
+      enabled: false,
+      amount: 0,
+      amountType: 'fixed',
+      finalPaymentDueDays: 3,
+      autoCancelOnDueDate: true
+    }
   });
   const [batches, setBatches] = useState([{ startDate: '', endDate: '', price: '', maxParticipants: 10, currentParticipants: 0 }]);
   const [itinerary, setItinerary] = useState([{ title: 'Day 1', description: '', accommodation: '', meals: '', activities: [''] }]);
@@ -213,7 +220,14 @@ function TrekForm() {
             gatewayPercent: trekData.gatewayPercent || '',
             gatewayType: trekData.gatewayType || 'customer',
             itineraryPdfUrl: trekData.itineraryPdfUrl || '',
-            isCustom: trekData.isCustom !== undefined ? trekData.isCustom : false
+            isCustom: trekData.isCustom !== undefined ? trekData.isCustom : false,
+            partialPayment: trekData.partialPayment || {
+              enabled: false,
+              amount: 0,
+              amountType: 'fixed',
+              finalPaymentDueDays: 3,
+              autoCancelOnDueDate: true
+            }
           });
 
           setBatches(trekData.batches?.length > 0 ? trekData.batches.map(b => ({ ...b, startDate: b.startDate?.split('T')[0] || '', endDate: b.endDate?.split('T')[0] || '' })) : [{ startDate: '', endDate: '', price: '', maxParticipants: 10, currentParticipants: 0 }]);
@@ -244,6 +258,16 @@ function TrekForm() {
     if (formErrors[name]) {
       setFormErrors(prev => ({ ...prev, [name]: null }));
     }
+  };
+
+  const handlePartialPaymentChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      partialPayment: {
+        ...prev.partialPayment,
+        [field]: value
+      }
+    }));
   };
 
   const handleBatchChange = (index, field, value) => {
@@ -637,6 +661,105 @@ function TrekForm() {
                     <input type="radio" name="gatewayType" value="self" checked={formData.gatewayType === 'self'} onChange={handleInputChange} className="mr-2 accent-emerald-600" /> I will pay
                   </label>
                 </div>
+              </div>
+            </div>
+            
+            {/* Partial Payment Configuration */}
+            <div className="md:col-span-2 mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                Partial Payment Configuration <span title="Allow users to pay partial amount initially" className="text-xs text-gray-400">&#9432;</span>
+              </label>
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center mb-4">
+                  <input
+                    type="checkbox"
+                    id="partialPaymentEnabled"
+                    checked={formData.partialPayment.enabled}
+                    onChange={(e) => handlePartialPaymentChange('enabled', e.target.checked)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="partialPaymentEnabled" className="ml-2 block text-sm font-medium text-gray-900">
+                    Enable Partial Payment for this trek
+                  </label>
+                </div>
+                
+                {formData.partialPayment.enabled && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Partial Payment Amount Type
+                        </label>
+                        <select
+                          value={formData.partialPayment.amountType}
+                          onChange={(e) => handlePartialPaymentChange('amountType', e.target.value)}
+                          className="block w-full px-3 py-2 rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                        >
+                          <option value="fixed">Fixed Amount (₹)</option>
+                          <option value="percentage">Percentage (%)</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Partial Payment Amount
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.partialPayment.amount}
+                          onChange={(e) => handlePartialPaymentChange('amount', Number(e.target.value))}
+                          className="block w-full px-3 py-2 rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                          placeholder={formData.partialPayment.amountType === 'percentage' ? 'e.g., 30' : 'e.g., 1000'}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formData.partialPayment.amountType === 'percentage' 
+                            ? 'Percentage of total trek price' 
+                            : 'Fixed amount in ₹'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Final Payment Due (days before trek)
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formData.partialPayment.finalPaymentDueDays}
+                          onChange={(e) => handlePartialPaymentChange('finalPaymentDueDays', Number(e.target.value))}
+                          className="block w-full px-3 py-2 rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                          placeholder="e.g., 3"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="autoCancelOnDueDate"
+                          checked={formData.partialPayment.autoCancelOnDueDate}
+                          onChange={(e) => handlePartialPaymentChange('autoCancelOnDueDate', e.target.checked)}
+                          className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="autoCancelOnDueDate" className="ml-2 block text-sm text-gray-900">
+                          Auto-cancel if final payment not received by due date
+                        </label>
+                      </div>
+                    </div>
+                    
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm text-blue-800">
+                        <strong>Partial Payment Features:</strong>
+                        <br />• Users can pay initial amount and remaining balance later
+                        <br />• Automatic reminders sent before due date
+                        <br />• Remaining balance payment available in "My Bookings"
+                        <br />• Partial payment disabled within final payment window
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
