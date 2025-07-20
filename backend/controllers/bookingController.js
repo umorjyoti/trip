@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendParticipantConfirmationEmails, sendRescheduleApprovalEmail } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
@@ -1155,10 +1155,15 @@ const updateBooking = async (req, res) => {
         // Get additional requests from booking if available
         const additionalRequests = booking.additionalRequests || 'None';
 
+        // Send confirmation email to organizer
         await sendBookingConfirmationEmail(booking, trek, user, participantDetails, batch, additionalRequests);
-        console.log('Booking confirmation email sent successfully from updateBooking');
+        console.log('Booking confirmation email sent successfully to organizer from updateBooking');
+        
+        // Send individual confirmation emails to each participant
+        await sendParticipantConfirmationEmails(booking, trek, user, participantDetails, batch, additionalRequests);
+        console.log('Individual participant confirmation emails sent successfully from updateBooking');
       } catch (emailError) {
-        console.error('Error sending booking confirmation email:', emailError);
+        console.error('Error sending booking confirmation emails:', emailError);
         // Don't fail the booking update if email fails
       }
     } else {
@@ -1466,19 +1471,35 @@ const updateParticipantDetails = async (req, res) => {
 
     console.log('Booking updated successfully, status:', booking.status);
 
-    // Send booking confirmation email
+    // Send booking confirmation email to organizer
     try {
       const trek = booking.trek;
       const user = booking.user;
       const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
       
-      console.log('Sending booking confirmation email to:', user.email);
+      console.log('Sending booking confirmation email to organizer:', user.email);
 
       await sendBookingConfirmationEmail(booking, trek, user, formattedParticipants, batch, additionalRequests);
       
-      console.log('Booking confirmation email sent successfully');
+      console.log('Booking confirmation email sent successfully to organizer');
     } catch (emailError) {
-      console.error('Error sending booking confirmation email:', emailError);
+      console.error('Error sending booking confirmation email to organizer:', emailError);
+      // Don't fail the participant details update if email fails
+    }
+
+    // Send individual confirmation emails to each participant
+    try {
+      const trek = booking.trek;
+      const user = booking.user;
+      const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+      
+      console.log('Sending individual confirmation emails to participants:', formattedParticipants.length);
+
+      await sendParticipantConfirmationEmails(booking, trek, user, formattedParticipants, batch, additionalRequests);
+      
+      console.log('Individual participant confirmation emails sent successfully');
+    } catch (participantEmailError) {
+      console.error('Error sending individual participant confirmation emails:', participantEmailError);
       // Don't fail the participant details update if email fails
     }
 
@@ -1654,7 +1675,7 @@ const sendConfirmationEmail = async (req, res) => {
       gender: 'N/A'
     }];
 
-    // Send confirmation email using the proper template
+    // Send confirmation email to organizer using the proper template
     await sendBookingConfirmationEmail(
       booking, 
       booking.trek, 
@@ -1664,7 +1685,17 @@ const sendConfirmationEmail = async (req, res) => {
       booking.additionalRequests
     );
 
-    res.json({ message: 'Confirmation email sent successfully' });
+    // Send individual confirmation emails to each participant
+    await sendParticipantConfirmationEmails(
+      booking, 
+      booking.trek, 
+      booking.user, 
+      participants, 
+      booking.batch, 
+      booking.additionalRequests
+    );
+
+    res.json({ message: 'Confirmation emails sent successfully to organizer and all participants' });
   } catch (error) {
     console.error('Error sending confirmation email:', error);
     res.status(500).json({ message: 'Internal server error' });
