@@ -156,8 +156,8 @@ function Header() {
                 className="h-36 w-auto hover:opacity-80 transition-opacity mr-2 m-2"
                 style={{
                   height: window.innerWidth < 640 ? "7rem" : "8rem",
-                  marginTop: "0.7rem",
-                  marginRight: window.innerWidth < 640 ? "-1rem" : "0rem",
+                  marginTop: "1rem",
+                  marginRight: window.innerWidth < 640 ? "-1rem" : "-1rem",
                 }}
               />
               <span className="text-lg sm:text-2xl font-bold text-emerald-600 hover:text-emerald-700 transition-colors">

@@ -54,7 +54,7 @@ const createHistoryEntry = async (
 // Create a new lead
 exports.createLead = async (req, res) => {
   try {
-    const { name, email, phone, trekId, source, notes, requestCall } = req.body;
+    const { name, email, phone, trekId, source, notes, requestCallback } = req.body;
 
     // Only validate trek if trekId is provided
     if (trekId) {
@@ -71,7 +71,7 @@ exports.createLead = async (req, res) => {
       trekId,
       source: source || "Other",
       notes,
-      requestCallback: requestCall || false,
+      requestCallback: requestCallback || false,
     });
 
     const savedLead = await lead.save();

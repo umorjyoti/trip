@@ -26,7 +26,7 @@ import {
   FaDownload,
   FaLink,
 } from "react-icons/fa";
-import LeadCaptureForm from "../components/LeadCaptureForm";
+
 import TrekCard from "../components/TrekCard";
 import TrekItinerary from "../components/TrekItinerary";
 import TrekInclusionsExclusions from "../components/TrekInclusionsExclusions";
@@ -36,6 +36,7 @@ import Modal from "../components/Modal";
 import CancellationPolicy from "../components/CancellationPolicy";
 import { format, parseISO, addMonths, isSameMonth } from "date-fns";
 import CustomTrekBookingForm from "../components/CustomTrekBookingForm";
+import EnquiryBanner from "../components/EnquiryBanner";
 
 // Add this new component at the top level of the file
 const BatchesTabView = ({
@@ -322,8 +323,9 @@ function TrekDetail() {
   const [activeOffers, setActiveOffers] = useState([]);
   const [discountedPrice, setDiscountedPrice] = useState(null);
   const [applicableOffer, setApplicableOffer] = useState(null);
-  const [showLeadForm, setShowLeadForm] = useState(false);
+
   const [regionName, setRegionName] = useState("");
+  const [showEnquiryBanner, setShowEnquiryBanner] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
@@ -691,13 +693,7 @@ function TrekDetail() {
     navigate(`/booking-detail/${bookingId}`);
   };
 
-  const handleGetInfoClick = () => {
-    setShowLeadForm(true);
-  };
 
-  const handleCloseLeadForm = () => {
-    setShowLeadForm(false);
-  };
 
   // Close share menu on outside click
   useEffect(() => {
@@ -1111,7 +1107,7 @@ function TrekDetail() {
 
           {/* Send as Lead Action */}
           <button
-            onClick={handleGetInfoClick}
+            onClick={() => setShowEnquiryBanner(true)}
             className="flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
           >
             <FaInfoCircle className="mr-2" />
@@ -1606,18 +1602,23 @@ function TrekDetail() {
 
   return (
     <>
-      <Modal
-        isOpen={showLeadForm}
-        onClose={handleCloseLeadForm}
-        title="Get More Information"
-        size="large"
-      >
-        <LeadCaptureForm
-          trekId={trek?._id}
-          trekName={trek?.name}
-          onClose={handleCloseLeadForm}
-        />
-      </Modal>
+
+
+      {/* Enquiry Banner - shows automatically if configured globally or manually via Get More Info */}
+      <EnquiryBanner
+        trek={trek}
+        isOpen={showEnquiryBanner}
+        source="Trek Detail Page"
+        onClose={() => {
+          setShowEnquiryBanner(false);
+          // Store in session storage that banner was closed for this session
+          sessionStorage.setItem('enquiryBannerShown', 'true');
+        }}
+        onSuccess={() => {
+          setShowEnquiryBanner(false);
+          console.log('Enquiry submitted successfully');
+        }}
+      />
 
       <div
         className={`bg-white ${

@@ -19,6 +19,7 @@ import WeekendGetawaySection from "../components/WeekendGetawaySection";
 import HeroSection from "../components/HeroSection";
 import CategoryTrekSection from "../components/CategoryTrekSection";
 import FloatingEnquiryButton from "../components/FloatingEnquiryButton";
+import EnquiryBanner from "../components/EnquiryBanner";
 
 // Register ChartJS components
 ChartJS.register(
@@ -37,6 +38,7 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeOffers, setActiveOffers] = useState([]);
+  const [showEnquiryBanner, setShowEnquiryBanner] = useState(false);
   const [loadingStats, setLoadingStats] = useState(true);
   const [errorStats, setErrorStats] = useState(null);
 
@@ -313,7 +315,27 @@ function Home() {
       {/* Render other existing sections like HomeTrekSections if desired */}
       <HomeTrekSections />
 
-      <FloatingEnquiryButton />
+      <FloatingEnquiryButton 
+        onEnquireClick={() => setShowEnquiryBanner(true)} 
+        source="Landing Page"
+      />
+      
+      {/* Global Enquiry Banner - shows automatically if configured */}
+      <EnquiryBanner
+        trek={null}
+        isOpen={showEnquiryBanner}
+        source="Landing Page"
+        onClose={() => {
+          setShowEnquiryBanner(false);
+          // Store in session storage that banner was closed for this session
+          sessionStorage.setItem('enquiryBannerShown', 'true');
+        }}
+        onSuccess={() => {
+          setShowEnquiryBanner(false);
+          // Handle successful enquiry submission
+          console.log('Enquiry submitted successfully from home page');
+        }}
+      />
 
       {/* Statistics Section (Example) */}
       <section className="py-16 bg-white">

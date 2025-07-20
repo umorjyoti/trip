@@ -86,6 +86,7 @@ import LeadsManagement from "./pages/admin/LeadsManagement";
 import WeekendGetawayManager from "./components/admin/WeekendGetawayManager";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import FailedBookings from "./pages/admin/FailedBookings";
+import AdminSettings from "./pages/AdminSettings";
 
 function App() {
   const { currentUser, loading, refreshUser } = useAuth();
@@ -559,6 +560,12 @@ function App() {
                               <BlogRegionFormPage />
                             </ProtectedRoutes>
                           }
+                        />
+
+                        {/* Settings Route */}
+                        <Route
+                          path="settings"
+                          element={<AdminSettings />}
                         />
                       </Routes>
                     </AdminLayout>

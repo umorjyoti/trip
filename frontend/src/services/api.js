@@ -152,6 +152,35 @@ export const getTrekByIdForAdmin = async (id) => {
   return response.data;
 };
 
+
+
+// Settings APIs
+export const getSettings = async () => {
+  const response = await api.get('/settings');
+  return response.data;
+};
+
+export const updateSettings = async (settingsData) => {
+  const response = await api.put('/settings', settingsData);
+  return response.data;
+};
+
+export const getEnquiryBannerSettings = async () => {
+  const response = await api.get('/settings/enquiry-banner');
+  return response.data;
+};
+
+export const uploadImage = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 // Custom trek APIs
 export const getCustomTrekByToken = async (token) => {
   try {

@@ -14,6 +14,7 @@ router.use((req, res, next) => {
 // Public routes - ORDER IS CRITICAL
 router.get('/stats', trekController.getTrekStats);
 router.get('/all', trekController.getAllTreks);
+
 router.get('/by-region/:regionId', trekController.getTreksByExactRegion);
 
 // Weekend getaway routes - MUST come before general :id route
