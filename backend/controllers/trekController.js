@@ -57,11 +57,76 @@ exports.getAllTreks = async (req, res) => {
     } else if (showCustom === 'true') {
       query.isCustom = true;
     }
-    
+    console.log("Hellokitty")
     const treks = await Trek.find(query)
       .select('+customAccessToken')
       .sort({ createdAt: -1 });
-    res.json(treks);
+
+    // Calculate actual current participants for each trek's batches
+    const treksWithActualParticipants = await Promise.all(treks.map(async (trek) => {
+      const trekObj = trek.toObject();
+      
+      if (trek.batches && Array.isArray(trek.batches)) {
+        // Get all batch IDs for this trek
+        const batchIds = trek.batches
+          .filter(batch => batch && batch._id)
+          .map(batch => batch._id);
+        
+        let bookings = [];
+        if (batchIds.length > 0) {
+          // Get all bookings for this trek's batches
+          bookings = await Booking.find({
+            batch: { $in: batchIds }
+          }).populate('user', 'name email');
+        }
+
+        // Safely filter bookings
+        const safeBookings = bookings.filter(booking => booking != null);
+
+        // Calculate actual current participants for each batch
+        trekObj.batches = trek.batches.map(batch => {
+          const batchBookings = safeBookings.filter(booking => {
+            if (!booking || !booking.batch || !batch || !batch._id) {
+              return false;
+            }
+            // Safe string comparison
+            const bookingBatchId = booking.batch.toString ? booking.batch.toString() : String(booking.batch);
+            const batchId = batch._id.toString ? batch._id.toString() : String(batch._id);
+            return bookingBatchId === batchId;
+          });
+
+          // Calculate actual current participants using the new logic
+          const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
+            if (!booking) return sum;
+            
+            if (booking.status === 'payment_completed') {
+              // For payment_completed bookings, use numberOfParticipants directly
+              return sum + (booking.numberOfParticipants || 0);
+            } else if (booking.status === 'confirmed') {
+              // For confirmed bookings, check participantDetails and count non-cancelled participants
+              if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+                const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+                return sum + activeParticipants;
+              } else {
+                // Fallback to numberOfParticipants if no participantDetails
+                return sum + (booking.numberOfParticipants || 0);
+              }
+            }
+            
+            return sum;
+          }, 0);
+
+          return {
+            ...batch.toObject(),
+            actualCurrentParticipants: actualCurrentParticipants
+          };
+        });
+      }
+      
+      return trekObj;
+    }));
+
+    res.json(treksWithActualParticipants);
   } catch (error) {
     console.error('Error fetching all treks:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -124,12 +189,22 @@ exports.getTrekById = async (req, res) => {
 
       // Calculate actual current participants using the improved logic
       const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
-        if (booking && booking.status === 'confirmed') {
-          if (booking.participantDetails && booking.participantDetails.length > 0) {
-            return sum + booking.participantDetails.filter(p => !p.isCancelled).length;
-          }
+        if (!booking) return sum;
+        
+        if (booking.status === 'payment_completed') {
+          // For payment_completed bookings, use numberOfParticipants directly
           return sum + (booking.numberOfParticipants || 0);
+        } else if (booking.status === 'confirmed') {
+          // For confirmed bookings, check participantDetails and count non-cancelled participants
+          if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+            const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+            return sum + activeParticipants;
+          } else {
+            // Fallback to numberOfParticipants if no participantDetails
+            return sum + (booking.numberOfParticipants || 0);
+          }
         }
+        
         return sum;
       }, 0);
 
@@ -1329,20 +1404,35 @@ exports.getBatchPerformance = async (req, res) => {
       },
       participants: {
         total: safeBookings.reduce((sum, booking) => {
-          // Count only non-cancelled participants
-          const activeParticipants = booking && booking.participantDetails ? 
-            booking.participantDetails.filter(p => !p.isCancelled).length : 
-            (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
-          return sum + activeParticipants;
+          if (!booking) return sum;
+          
+          if (booking.status === 'payment_completed') {
+            // For payment_completed bookings, use numberOfParticipants directly
+            return sum + (booking.numberOfParticipants || 0);
+          } else if (booking.status === 'confirmed') {
+            // For confirmed bookings, check participantDetails and count non-cancelled participants
+            if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+              const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+              return sum + activeParticipants;
+            } else {
+              // Fallback to numberOfParticipants if no participantDetails
+              return sum + (booking.numberOfParticipants || 0);
+            }
+          }
+          
+          return sum;
         }, 0),
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
-            // Count only non-cancelled participants from confirmed bookings
-            const activeParticipants = booking && booking.participantDetails ? 
-              booking.participantDetails.filter(p => !p.isCancelled).length : 
-              (booking && booking.numberOfParticipants ? booking.numberOfParticipants : 0);
-            return sum + activeParticipants;
+            // For confirmed bookings, check participantDetails and count non-cancelled participants
+            if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+              const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+              return sum + activeParticipants;
+            } else {
+              // Fallback to numberOfParticipants if no participantDetails
+              return sum + (booking.numberOfParticipants || 0);
+            }
           }, 0),
         cancelled: safeBookings
           .filter(b => b && b.status === 'cancelled')
@@ -1513,14 +1603,22 @@ exports.getTrekPerformance = async (req, res) => {
           }, 0);
           
           const currentParticipants = batchBookings.reduce((sum, booking) => {
-            // Only count participants from confirmed bookings
-            if (booking && booking.status === 'confirmed') {
-              // Count only non-cancelled participants
-              const activeParticipants = booking.participantDetails ? 
-                booking.participantDetails.filter(p => !p.isCancelled).length : 
-                booking.numberOfParticipants || 0;
-              return sum + activeParticipants;
+            if (!booking) return sum;
+            
+            if (booking.status === 'payment_completed') {
+              // For payment_completed bookings, use numberOfParticipants directly
+              return sum + (booking.numberOfParticipants || 0);
+            } else if (booking.status === 'confirmed') {
+              // For confirmed bookings, check participantDetails and count non-cancelled participants
+              if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+                const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+                return sum + activeParticipants;
+              } else {
+                // Fallback to numberOfParticipants if no participantDetails
+                return sum + (booking.numberOfParticipants || 0);
+              }
             }
+            
             return sum;
           }, 0);
 

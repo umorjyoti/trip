@@ -1563,7 +1563,8 @@ export const updateCancellationRequest = async (bookingId, updateData) => {
 
 export const calculateRefund = async (refundData) => {
   try {
-    const response = await api.post('/bookings/calculate-refund', refundData);
+    const { bookingId, ...otherData } = refundData;
+    const response = await api.post(`/bookings/${bookingId}/calculate-refund`, otherData);
     return response.data;
   } catch (error) {
     console.error('Error calculating refund:', error);

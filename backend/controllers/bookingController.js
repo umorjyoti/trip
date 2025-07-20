@@ -735,6 +735,30 @@ const getBookings = async (req, res) => {
       ])
     ]);
 
+    // Extract batch information from trek.batches for each booking
+    const enrichedBookings = bookings.map((booking) => {
+      const batchId = booking.batch?.toString();
+      const trek = booking.trek;
+
+      let selectedBatch = null;
+      if (trek && trek.batches && batchId) {
+        selectedBatch = trek.batches.find((b) => b._id.toString() === batchId);
+      }
+
+      // Convert to plain object if it's a Mongoose document
+      const bookingObj = booking.toObject ? booking.toObject() : booking;
+
+      return {
+        ...bookingObj,
+        batch: selectedBatch, // replace batch with the enriched batch object
+        trek: {
+          _id: trek?._id,
+          name: trek?.name,
+          batches: trek?.batches,
+        },
+      };
+    });
+
     // Extract stats from aggregation result
     const statsData = stats.length > 0 ? stats[0] : {
       totalRevenue: 0,
@@ -745,7 +769,7 @@ const getBookings = async (req, res) => {
     };
 
     res.json({
-      bookings,
+      bookings: enrichedBookings,
       pagination: {
         total,
         page,
@@ -1978,7 +2002,8 @@ const updateCancellationRequest = async (req, res) => {
 // Calculate refund amount for cancellation
 const calculateRefund = async (req, res) => {
   try {
-    const { bookingId, cancellationType, selectedParticipants, refundType, customRefundAmount } = req.body;
+    const { bookingId } = req.params;
+    const { cancellationType, selectedParticipants, refundType, customRefundAmount } = req.body;
 
     // Find the booking
     const booking = await Booking.findById(bookingId).populate('trek');

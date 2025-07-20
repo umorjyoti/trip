@@ -599,8 +599,8 @@ function AdminTrekList() {
                                     <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{new Date(batch.startDate).toLocaleDateString('en-GB')} - {new Date(batch.endDate).toLocaleDateString('en-GB')}</h4>
                                     <div className="text-xs text-gray-500 mb-2">Price: <span className="font-semibold">₹{batch.price}</span></div>
                                     <div className="text-xs text-gray-500 mb-2">Slots: <span className="font-semibold">{batch.maxParticipants}</span></div>
-                                    <div className="text-xs text-gray-500 mb-2">Available: <span className="font-semibold">{batch.maxParticipants - (batch.currentParticipants || 0)}</span></div>
-                                    <div className="text-xs text-blue-700 font-semibold mt-auto">{batch.currentParticipants || 0} Bookings</div>
+                                    <div className="text-xs text-gray-500 mb-2">Available: <span className="font-semibold">{batch.maxParticipants - (batch.actualCurrentParticipants || batch.currentParticipants || 0)}</span></div>
+                                    <div className="text-xs text-blue-700 font-semibold mt-auto">{batch.actualCurrentParticipants || batch.currentParticipants || 0} Bookings</div>
                                   </>
                                 )}
                               </div>
