@@ -1321,8 +1321,14 @@ exports.getBatchPerformance = async (req, res) => {
       batch: batchId
     }).populate('user', 'name email phone');
 
+    console.log('Raw bookings found:', bookings.length);
+    console.log('Booking statuses:', bookings.map(b => ({ id: b._id, status: b.status })));
+
     // Safely filter bookings
     const safeBookings = bookings.filter(booking => booking != null);
+    
+    console.log('Safe bookings count:', safeBookings.length);
+    console.log('Safe booking statuses:', safeBookings.map(b => ({ id: b._id, status: b.status })));
 
     // Calculate performance metrics with null safety
     const performanceData = {
@@ -1342,7 +1348,8 @@ exports.getBatchPerformance = async (req, res) => {
         total: safeBookings.length,
         confirmed: safeBookings.filter(b => b && b.status === 'confirmed').length,
         cancelled: safeBookings.filter(b => b && b.status === 'cancelled').length,
-        completed: safeBookings.filter(b => b && b.status === 'completed').length
+        completed: safeBookings.filter(b => b && b.status === 'completed').length,
+        pending_payment: safeBookings.filter(b => b && b.status === 'pending_payment').length
       },
       revenue: {
         total: safeBookings.reduce((sum, booking) => {
@@ -1444,31 +1451,47 @@ exports.getBatchPerformance = async (req, res) => {
             return sum + cancelledParticipants;
           }, 0)
       },
-      bookingDetails: safeBookings.map(booking => {
-        if (!booking) return null;
-        return {
-          bookingId: booking._id || null,
-          user: {
-            name: booking.user?.name || 'N/A',
-            email: booking.user?.email || 'N/A',
-            phone: booking.user?.phone || 'N/A'
-          },
-          participants: booking.numberOfParticipants || 0,
-          participantDetails: booking.participantDetails || [],
-          totalPrice: booking.totalPrice || 0,
-          status: booking.status || 'unknown',
-          bookingDate: booking.createdAt || null,
-          adminRemarks: booking.adminRemarks || '',
-          cancellationRequest: booking.cancellationRequest || null,
-          refundStatus: booking.refundStatus || null,
-          refundAmount: booking.refundAmount || 0
-        };
-      }).filter(detail => detail !== null),
+      bookingDetails: (() => {
+        const details = safeBookings
+          .filter(booking => booking && booking.status !== 'pending_payment') // Exclude pending_payment bookings
+          .map(booking => {
+            if (!booking) return null;
+            return {
+              bookingId: booking._id || null,
+              user: {
+                name: booking.user?.name || 'N/A',
+                email: booking.user?.email || 'N/A',
+                phone: booking.user?.phone || 'N/A'
+              },
+              participants: booking.numberOfParticipants || 0,
+              participantDetails: booking.participantDetails || [],
+              totalPrice: booking.totalPrice || 0,
+              status: booking.status || 'unknown',
+              bookingDate: booking.createdAt || null,
+              adminRemarks: booking.adminRemarks || '',
+              cancellationRequest: booking.cancellationRequest || null,
+              refundStatus: booking.refundStatus || null,
+              refundAmount: booking.refundAmount || 0
+            };
+          }).filter(detail => detail !== null);
+        
+        console.log('Booking details count (excluding pending_payment):', details.length);
+        console.log('Booking details statuses:', details.map(d => ({ id: d.bookingId, status: d.status })));
+        
+        return details;
+      })(),
       feedback: batch.feedback || []
     };
 
     console.log('Performance data trek.customFields:', performanceData.trek.customFields);
     console.log('Performance data trek.customFields length:', performanceData.trek.customFields.length);
+    
+    // Log final summary
+    console.log('Final response summary:', {
+      totalBookings: performanceData.bookings.total,
+      bookingDetailsCount: performanceData.bookingDetails.length,
+      bookingStatuses: performanceData.bookings
+    });
 
     res.json(performanceData);
   } catch (error) {
@@ -1716,6 +1739,13 @@ exports.exportBatchParticipants = async (req, res) => {
       return res.status(404).json({ message: 'No participants found for this batch' });
     }
 
+    // Count bookings by status for logging
+    const bookingStatusCounts = {};
+    bookings.forEach(booking => {
+      bookingStatusCounts[booking.status] = (bookingStatusCounts[booking.status] || 0) + 1;
+    });
+    console.log('Booking status distribution:', bookingStatusCounts);
+
     // Parse fields parameter
     const selectedFields = fields ? fields.split(',') : [];
 
@@ -1737,8 +1767,7 @@ exports.exportBatchParticipants = async (req, res) => {
         case 'bookingDate': return 'Booking Date';
         case 'status': return 'Booking Status';
         case 'totalPrice': return 'Total Price';
-        case 'pickupLocation': return 'Pickup Location';
-        case 'dropLocation': return 'Drop Location';
+
         case 'additionalRequests': return 'Additional Requests';
         default:
           // Custom fields - use the field name as header
@@ -1752,14 +1781,34 @@ exports.exportBatchParticipants = async (req, res) => {
     });
 
     const tableData = [headers];
+    
+    let totalParticipantsProcessed = 0;
+    let cancelledBookingsSkipped = 0;
+    let cancelledParticipantsSkipped = 0;
 
     bookings.forEach(booking => {
       console.log('Processing booking:', booking._id);
+      console.log('Booking status:', booking.status);
       console.log('Participant details:', booking.participantDetails);
+      
+      // Booking-level check: Skip cancelled bookings
+      if (booking.status === 'cancelled') {
+        console.log('Skipping cancelled booking:', booking._id);
+        cancelledBookingsSkipped++;
+        return;
+      }
       
       if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
         booking.participantDetails.forEach(participant => {
           console.log('Processing participant:', participant);
+          
+          // Participant-level check: Skip cancelled participants
+          if (participant.isCancelled === true) {
+            console.log('Skipping cancelled participant:', participant.name);
+            cancelledParticipantsSkipped++;
+            return;
+          }
+          
           const row = selectedFields.map(field => {
             switch (field) {
               case 'participantName':
@@ -1799,10 +1848,7 @@ exports.exportBatchParticipants = async (req, res) => {
                 return booking.status || 'N/A';
               case 'totalPrice':
                 return booking.totalPrice || 'N/A';
-              case 'pickupLocation':
-                return booking.pickupLocation || 'N/A';
-              case 'dropLocation':
-                return booking.dropLocation || 'N/A';
+
               case 'additionalRequests':
                 return booking.additionalRequests || 'N/A';
               default:
@@ -1848,9 +1894,12 @@ exports.exportBatchParticipants = async (req, res) => {
             }
           });
           tableData.push(row);
+          totalParticipantsProcessed++;
         });
       } else {
-        // No participants, export booking-level info
+        // No participants, export booking-level info (only for non-cancelled bookings)
+        // Note: This case is already handled by the booking-level check above
+        // But we'll keep this for completeness in case the booking has no participantDetails
         const row = selectedFields.map(field => {
           switch (field) {
             case 'bookingUserName':
@@ -1865,10 +1914,7 @@ exports.exportBatchParticipants = async (req, res) => {
               return booking.status || 'N/A';
             case 'totalPrice':
               return booking.totalPrice || 'N/A';
-            case 'pickupLocation':
-              return booking.pickupLocation || 'N/A';
-            case 'dropLocation':
-              return booking.dropLocation || 'N/A';
+
             case 'additionalRequests':
               return booking.additionalRequests || 'N/A';
             default:
@@ -1878,6 +1924,22 @@ exports.exportBatchParticipants = async (req, res) => {
         tableData.push(row);
       }
     });
+
+    // Log export summary
+    console.log('Export summary:', {
+      totalBookings: bookings.length,
+      cancelledBookingsSkipped,
+      cancelledParticipantsSkipped,
+      totalParticipantsProcessed,
+      totalRowsExported: tableData.length - 1 // Subtract header row
+    });
+
+    // Check if we have any data to export after filtering
+    if (tableData.length <= 1) {
+      return res.status(404).json({ 
+        message: 'No active participants found for this batch after filtering cancelled bookings and participants' 
+      });
+    }
 
     // Generate PDF
     const PDFDocument = require('pdfkit-table');

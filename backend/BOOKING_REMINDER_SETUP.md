@@ -30,7 +30,7 @@ Booking.batch (ID) → Trek.batches.find(batchId) → Batch.startDate → 2-day 
 
 The reminder email includes:
 - Trip details (trek name, dates, booking ID)
-- Pickup and drop locations
+
 - Essential packing list
 - Important reminders
 - Contact information

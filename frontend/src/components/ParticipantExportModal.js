@@ -84,8 +84,7 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
     { key: 'bookingDate', label: 'Booking Date', category: 'Booking Information' },
     { key: 'bookingStatus', label: 'Booking Status', category: 'Booking Information' },
     { key: 'totalPrice', label: 'Total Price', category: 'Booking Information' },
-    { key: 'pickupLocation', label: 'Pickup Location', category: 'Logistics' },
-    { key: 'dropLocation', label: 'Drop Location', category: 'Logistics' },
+
     { key: 'additionalRequests', label: 'Additional Requests', category: 'Logistics' }
   ];
 
@@ -111,8 +110,7 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
           category = 'Emergency Contact';
         } else if (fieldNameLower.includes('medical') || fieldNameLower.includes('health') || fieldNameLower.includes('allergy')) {
           category = 'Health & Safety';
-        } else if (fieldNameLower.includes('pickup') || fieldNameLower.includes('drop') || fieldNameLower.includes('location')) {
-          category = 'Logistics';
+
         } else if (fieldNameLower.includes('booking') || fieldNameLower.includes('user')) {
           category = 'Booking Information';
         }

@@ -89,11 +89,9 @@ const sendEmail = async ({ to, subject, text, html }) => {
  * @param {Object} user - User object
  * @param {Array} participants - Participant details array
  * @param {Object} batch - Batch object (optional)
- * @param {string} pickupLocation - Pickup location
- * @param {string} dropLocation - Drop location
  * @param {string} additionalRequests - Additional requests
  */
-const sendBookingConfirmationEmail = async (booking, trek, user, participants, batch, pickupLocation, dropLocation, additionalRequests) => {
+const sendBookingConfirmationEmail = async (booking, trek, user, participants, batch, additionalRequests) => {
   const participantList = participants.map((p, index) => 
     `${index + 1}. ${p.name} (Age: ${p.age}, Gender: ${p.gender})`
   ).join('\n');
@@ -115,9 +113,7 @@ Payment Status: Confirmed
 👥 PARTICIPANTS:
 ${participantList}
 
-📍 PICKUP & DROP LOCATIONS:
-Pickup: ${pickupLocation || 'To be confirmed'}
-Drop: ${dropLocation || 'To be confirmed'}
+
 
 📝 ADDITIONAL REQUESTS:
 ${additionalRequests || 'None'}
@@ -284,13 +280,7 @@ For support, contact us through our website or mobile app.
             </ul>
         </div>
 
-        <div class="section">
-            <div class="section-title">📍 Pickup & Drop Locations</div>
-            <ul class="info-list">
-                <li><strong>Pickup:</strong> ${pickupLocation || 'To be confirmed'}</li>
-                <li><strong>Drop:</strong> ${dropLocation || 'To be confirmed'}</li>
-            </ul>
-        </div>
+
 
         ${additionalRequests ? `
         <div class="section">
@@ -583,9 +573,7 @@ End Date: ${batch?.endDate ? new Date(batch.endDate).toLocaleDateString() : 'N/A
 Booking ID: ${booking._id}
 Participants: ${booking.numberOfParticipants}
 
-📍 PICKUP & DROP LOCATIONS:
-Pickup: ${booking.pickupLocation || 'To be confirmed'}
-Drop: ${booking.dropLocation || 'To be confirmed'}
+
 
 🎒 ESSENTIAL PACKING LIST:
 • Comfortable trekking shoes with good grip
@@ -764,13 +752,7 @@ For support, contact us through our website or mobile app.
             </ul>
         </div>
 
-        <div class="section">
-            <div class="section-title">📍 Pickup & Drop Locations</div>
-            <ul class="info-list">
-                <li><strong>Pickup:</strong> ${booking.pickupLocation || 'To be confirmed'}</li>
-                <li><strong>Drop:</strong> ${booking.dropLocation || 'To be confirmed'}</li>
-            </ul>
-        </div>
+
 
         <div class="section">
             <div class="section-title">🎒 Essential Packing List</div>
@@ -865,9 +847,7 @@ Total Amount: ₹${booking.totalPrice}
 Previous Batch: ${oldBatch?.startDate ? new Date(oldBatch.startDate).toLocaleDateString() : 'N/A'} to ${oldBatch?.endDate ? new Date(oldBatch.endDate).toLocaleDateString() : 'N/A'}
 New Batch: ${newBatch?.startDate ? new Date(newBatch.startDate).toLocaleDateString() : 'N/A'} to ${newBatch?.endDate ? new Date(newBatch.endDate).toLocaleDateString() : 'N/A'}
 
-📍 PICKUP & DROP LOCATIONS:
-Pickup: ${booking.pickupLocation || 'To be confirmed'}
-Drop: ${booking.dropLocation || 'To be confirmed'}
+
 
 ⚠️ IMPORTANT INFORMATION:
 • Please note the new trek dates
@@ -1029,13 +1009,7 @@ For support, contact us through our website or mobile app.
             </div>
         </div>
 
-        <div class="section">
-            <div class="section-title">📍 Pickup & Drop Locations</div>
-            <ul class="info-list">
-                <li><strong>Pickup:</strong> ${booking.pickupLocation || 'To be confirmed'}</li>
-                <li><strong>Drop:</strong> ${booking.dropLocation || 'To be confirmed'}</li>
-            </ul>
-        </div>
+
 
         <div class="section">
             <div class="section-title">⚠️ Important Information</div>
@@ -1914,9 +1888,7 @@ Total Amount: ₹${booking.totalPrice}
 Previous Batch: ${oldBatch?.startDate ? new Date(oldBatch.startDate).toLocaleDateString() : 'N/A'} to ${oldBatch?.endDate ? new Date(oldBatch.endDate).toLocaleDateString() : 'N/A'}
 New Batch: ${newBatch?.startDate ? new Date(newBatch.startDate).toLocaleDateString() : 'N/A'} to ${newBatch?.endDate ? new Date(newBatch.endDate).toLocaleDateString() : 'N/A'}
 
-📍 PICKUP & DROP LOCATIONS:
-Pickup: ${booking.pickupLocation || 'To be confirmed'}
-Drop: ${booking.dropLocation || 'To be confirmed'}
+
 
 💬 ADMIN RESPONSE:
 ${adminResponse || 'Your reschedule request has been approved.'}
@@ -2088,13 +2060,7 @@ For support, contact us through our website or mobile app.
             </div>
         </div>
 
-        <div class="section">
-            <div class="section-title">📍 Pickup & Drop Locations</div>
-            <ul class="info-list">
-                <li><strong>Pickup:</strong> ${booking.pickupLocation || 'To be confirmed'}</li>
-                <li><strong>Drop:</strong> ${booking.dropLocation || 'To be confirmed'}</li>
-            </ul>
-        </div>
+
 
         ${adminResponse ? `
         <div class="section">
