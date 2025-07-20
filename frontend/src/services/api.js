@@ -170,6 +170,21 @@ export const getEnquiryBannerSettings = async () => {
   return response.data;
 };
 
+export const getLandingPageSettings = async () => {
+  const response = await api.get('/settings/landing-page');
+  return response.data;
+};
+
+export const getBlogPageSettings = async () => {
+  const response = await api.get('/settings/blog-page');
+  return response.data;
+};
+
+export const getWeekendGetawayPageSettings = async () => {
+  const response = await api.get('/settings/weekend-getaway-page');
+  return response.data;
+};
+
 export const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append('file', file);

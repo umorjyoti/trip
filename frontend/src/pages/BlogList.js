@@ -6,7 +6,7 @@ import { debounce } from 'lodash';
 import { Helmet } from 'react-helmet-async';
 import { FaGlobe, FaArrowRight, FaNewspaper, FaSearch } from 'react-icons/fa';
 import api from '../services/api';
-import { getBlogRegions, getBlogsByRegion } from '../services/api';
+import { getBlogRegions, getBlogsByRegion, getBlogPageSettings } from '../services/api';
 
 function BlogList() {
   const [blogs, setBlogs] = useState([]);
@@ -21,9 +21,13 @@ function BlogList() {
   const [isSearching, setIsSearching] = useState(false);
   const [viewMode, setViewMode] = useState('regions'); // 'regions' or 'blogs'
   const [regionBlogCounts, setRegionBlogCounts] = useState({});
+  const [heroImage, setHeroImage] = useState('');
+  const [heroTitle, setHeroTitle] = useState('Adventure Stories');
+  const [heroSubtitle, setHeroSubtitle] = useState('Discover amazing trekking experiences and travel tales');
 
   useEffect(() => {
     fetchBlogRegions();
+    fetchBlogPageSettings();
     if (viewMode === 'blogs') {
       fetchBlogs();
     }
@@ -47,6 +51,23 @@ function BlogList() {
       setRegionBlogCounts(counts);
     } catch (error) {
       console.error('Error fetching blog regions:', error);
+    }
+  };
+
+  const fetchBlogPageSettings = async () => {
+    try {
+      const data = await getBlogPageSettings();
+      if (data.blogPage?.heroImage) {
+        setHeroImage(data.blogPage.heroImage);
+      }
+      if (data.blogPage?.heroTitle) {
+        setHeroTitle(data.blogPage.heroTitle);
+      }
+      if (data.blogPage?.heroSubtitle) {
+        setHeroSubtitle(data.blogPage.heroSubtitle);
+      }
+    } catch (error) {
+      console.error('Error fetching blog page settings:', error);
     }
   };
 
@@ -181,14 +202,28 @@ function BlogList() {
           </div>
         </nav>
 
-        {/* Banner Section */}
-        <div className="relative h-96 bg-emerald-600">
-          <div className="absolute inset-0 bg-black opacity-50"></div>
-          <div className="relative h-full flex items-center justify-center">
-            <div className="text-center text-white">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">Our Blog</h1>
-              <p className="text-xl md:text-2xl">Discover stories, tips, and adventures</p>
-            </div>
+        {/* Hero Section */}
+        <div className="relative h-[65vh] overflow-hidden group">
+          {/* Background Image */}
+          {heroImage ? (
+            <img
+              src={heroImage}
+              alt="Blog Hero"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-600 to-blue-600"></div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>
+          
+          {/* Hero Content */}
+          <div className="relative h-full flex flex-col items-center justify-center text-white text-center px-4 z-10">
+            <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tight text-shadow-lg">
+              {heroTitle}
+            </h1>
+            <p className="text-xl md:text-2xl max-w-2xl text-shadow">
+              {heroSubtitle}
+            </p>
           </div>
         </div>
 
