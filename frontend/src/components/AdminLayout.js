@@ -137,9 +137,9 @@ function AdminLayout({ children }) {
           <div className="flex flex-col h-full flex-1 bg-emerald-700">
             <div className="flex-1 flex flex-col pt-5 pb-4">
               <div className="flex items-center flex-shrink-0 px-4">
-                <Link to="/admin/dashboard" className="text-white text-xl font-bold">
+                {/* <Link to="/admin/dashboard" className="text-white text-xl font-bold">
                   <span className="text-xl font-bold text-gray-800">Bengaluru Trekkers Admin</span>
-                </Link>
+                </Link> */}
               </div>
               <nav className="mt-5 flex-1 px-2 space-y-1">
                 {menuItems.map((item) => (
@@ -196,9 +196,9 @@ function AdminLayout({ children }) {
           </div>
           <div className="flex-1 h-0 pt-5 pb-4 overflow-y-auto">
             <div className="flex-shrink-0 flex items-center px-4">
-              <Link to="/admin/dashboard" className="text-white text-xl font-bold">
+              {/* <Link to="/admin/dashboard" className="text-white text-xl font-bold">
                 <span className="text-xl font-bold text-gray-800">Bengaluru Trekkers Admin</span>
-              </Link>
+              </Link> */}
             </div>
             <nav className="mt-5 px-2 space-y-1">
               {menuItems.map((item) => (
