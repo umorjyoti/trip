@@ -4,7 +4,7 @@ import { getTreks } from '../services/api';
 import TrekCard from './TrekCard';
 import LoadingSpinner from './LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaMountain, FaWater, FaUmbrellaBeach, FaHiking, FaGlassCheers, FaTheaterMasks, FaMusic } from 'react-icons/fa';
+import { FaGlobe, FaCloudRain, FaSun, FaMountain, FaHiking, FaCalendarWeek } from 'react-icons/fa';
 
 // Animation variants
 const containerVariants = {
@@ -34,23 +34,21 @@ const itemVariants = {
 };
 
 const categoryIcons = {
-  mountains: <FaMountain className="mr-2" />,
-  coastal: <FaWater className="mr-2" />,
-  desert: <FaUmbrellaBeach className="mr-2" />,
-  adventure: <FaHiking className="mr-2" />,
-  relaxing: <FaGlassCheers className="mr-2" />,
-  cultural: <FaTheaterMasks className="mr-2" />,
-  party: <FaMusic className="mr-2" />
+  'all-treks': <FaGlobe className="mr-2" />,
+  'monsoon-treks': <FaCloudRain className="mr-2" />,
+  'sunrise-treks': <FaSun className="mr-2" />,
+  'himalayan-treks': <FaMountain className="mr-2" />,
+  'backpacking-trips': <FaHiking className="mr-2" />,
+  'long-weekend': <FaCalendarWeek className="mr-2" />
 };
 
 const categoryNames = {
-  mountains: 'Mountains',
-  coastal: 'Coastal',
-  desert: 'Desert',
-  adventure: 'Adventure',
-  relaxing: 'Relaxing',
-  cultural: 'Cultural',
-  party: 'Party'
+  'all-treks': 'All Treks',
+  'monsoon-treks': 'Monsoon Treks',
+  'sunrise-treks': 'Sunrise Treks',
+  'himalayan-treks': 'Himalayan Treks',
+  'backpacking-trips': 'Backpacking Trips',
+  'long-weekend': 'Long Weekend'
 };
 
 const categories = Object.keys(categoryNames);
@@ -59,7 +57,7 @@ function CategoryTrekSection() {
   const [allTreks, setAllTreks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeCategory, setActiveCategory] = useState(''); // Start with 'all' (empty string)
+  const [activeCategory, setActiveCategory] = useState('all-treks'); // Start with 'all-treks'
 
   useEffect(() => {
     const fetchAllTreks = async () => {
@@ -82,15 +80,15 @@ function CategoryTrekSection() {
   }, []);
 
   const filteredTreks = useMemo(() => {
-    console.log("inside filtered treks",activeCategory,allTreks)
-    if (!activeCategory) {
-      return allTreks; // Show all if no category is selected
+    if (activeCategory === 'all-treks') {
+      return allTreks; // Show all if 'all-treks' is selected
     }
+    
     return allTreks.filter(trek => trek.category === activeCategory);
   }, [activeCategory, allTreks]);
 
   const handleCategoryClick = (category) => {
-    setActiveCategory(prev => prev === category ? '' : category); // Toggle or set category
+    setActiveCategory(prev => prev === category ? 'all-treks' : category); // Toggle or set category
   };
 
   return (
@@ -112,18 +110,6 @@ function CategoryTrekSection() {
           initial="hidden"
           animate="visible"
         >
-          <motion.button
-            key="all"
-            variants={itemVariants}
-            onClick={() => handleCategoryClick('')}
-            className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ease-in-out shadow-sm hover:shadow-md ${
-              !activeCategory ? 'bg-emerald-600 text-white scale-105 shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-100'
-            }`}
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            🌍 All Treks
-          </motion.button>
           {categories.map(category => (
             <motion.button
               key={category}

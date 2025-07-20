@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaMountain, FaWater, FaUmbrellaBeach, FaHiking, FaGlassCheers, FaTheaterMasks, FaMusic, FaGlobe } from 'react-icons/fa';
+import { FaMountain, FaWater, FaUmbrellaBeach, FaHiking, FaGlassCheers, FaTheaterMasks, FaMusic, FaGlobe, FaCloudRain, FaSun, FaCalendarWeek } from 'react-icons/fa';
 
 function About() {
   const navigate = useNavigate();
@@ -48,51 +48,45 @@ function About() {
   const trekCategories = [
     {
       name: "All Treks",
+      value: "all-treks",
       icon: FaGlobe,
       color: "from-blue-500 to-emerald-500",
       description: "Explore all our trekking adventures"
     },
     {
-      name: "Mountains",
+      name: "Monsoon Treks",
+      value: "monsoon-treks",
+      icon: FaCloudRain,
+      color: "from-blue-400 to-blue-600",
+      description: "Rain-soaked trails and lush greenery"
+    },
+    {
+      name: "Sunrise Treks",
+      value: "sunrise-treks",
+      icon: FaSun,
+      color: "from-yellow-500 to-orange-500",
+      description: "Early morning adventures with stunning views"
+    },
+    {
+      name: "Himalayan Treks",
+      value: "himalayan-treks",
       icon: FaMountain,
       color: "from-gray-600 to-gray-700",
       description: "High-altitude mountain expeditions"
     },
     {
-      name: "Coastal",
-      icon: FaWater,
-      color: "from-blue-400 to-blue-600",
-      description: "Scenic coastal and beach treks"
-    },
-    {
-      name: "Desert",
-      icon: FaUmbrellaBeach,
-      color: "from-yellow-500 to-orange-500",
-      description: "Desert and arid landscape adventures"
-    },
-    {
-      name: "Adventure",
+      name: "Backpacking Trips",
+      value: "backpacking-trips",
       icon: FaHiking,
       color: "from-red-500 to-red-600",
-      description: "Thrilling adventure activities"
+      description: "Multi-day adventure expeditions"
     },
     {
-      name: "Relaxing",
-      icon: FaGlassCheers,
+      name: "Long Weekend",
+      value: "long-weekend",
+      icon: FaCalendarWeek,
       color: "from-purple-400 to-purple-600",
-      description: "Peaceful and rejuvenating treks"
-    },
-    {
-      name: "Cultural",
-      icon: FaTheaterMasks,
-      color: "from-indigo-500 to-indigo-600",
-      description: "Cultural and heritage experiences"
-    },
-    {
-      name: "Party",
-      icon: FaMusic,
-      color: "from-pink-500 to-pink-600",
-      description: "Fun and social trekking events"
+      description: "Extended weekend getaways"
     }
   ];
 
@@ -205,7 +199,7 @@ function About() {
               return (
                 <button
                   key={index}
-                  onClick={() => navigate(`/treks?category=${category.name.toLowerCase()}`)}
+                  onClick={() => navigate(`/treks?category=${category.value}`)}
                   className="group bg-white rounded-xl shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 p-4 sm:p-6 text-center border border-gray-100"
                 >
                   <div className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r ${category.color} rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform duration-300`}>

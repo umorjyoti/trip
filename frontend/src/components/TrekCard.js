@@ -14,7 +14,11 @@ import {
   FaHiking,
   FaGlassCheers,
   FaTheaterMasks,
-  FaMusic
+  FaMusic,
+  FaGlobe,
+  FaCloudRain,
+  FaSun,
+  FaCalendarWeek
 } from 'react-icons/fa';
 
 // Helper function for safe formatting
@@ -81,13 +85,12 @@ function TrekCard({ trek, offers = [] }) {
 
   // Category icon mapping
   const categoryIcons = {
-    mountains: <FaMountain className="mr-1" />,
-    coastal: <FaWater className="mr-1" />,
-    desert: <FaUmbrellaBeach className="mr-1" />,
-    adventure: <FaHiking className="mr-1" />,
-    relaxing: <FaGlassCheers className="mr-1" />,
-    cultural: <FaTheaterMasks className="mr-1" />,
-    party: <FaMusic className="mr-1" />
+    'all-treks': <FaGlobe className="mr-1" />,
+    'monsoon-treks': <FaCloudRain className="mr-1" />,
+    'sunrise-treks': <FaSun className="mr-1" />,
+    'himalayan-treks': <FaMountain className="mr-1" />,
+    'backpacking-trips': <FaHiking className="mr-1" />,
+    'long-weekend': <FaCalendarWeek className="mr-1" />
   };
 
   return (

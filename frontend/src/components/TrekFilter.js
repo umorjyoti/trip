@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getRegions } from '../services/api';
-import { FaMountain, FaWater, FaUmbrellaBeach, FaHiking, FaGlassCheers, FaTheaterMasks, FaMusic } from 'react-icons/fa';
+import { FaGlobe, FaCloudRain, FaSun, FaMountain, FaHiking, FaCalendarWeek } from 'react-icons/fa';
 
 function TrekFilter({ filters, setFilters }) {
   const [regions, setRegions] = useState([]);
@@ -30,30 +30,28 @@ function TrekFilter({ filters, setFilters }) {
   const handleCategoryClick = (category) => {
     setFilters(prev => ({
       ...prev,
-      category: prev.category === category ? '' : category
+      category: prev.category === category ? 'all-treks' : category
     }));
   };
 
   // Category icons mapping
   const categoryIcons = {
-    mountains: <FaMountain className="mr-2" />,
-    coastal: <FaWater className="mr-2" />,
-    desert: <FaUmbrellaBeach className="mr-2" />,
-    adventure: <FaHiking className="mr-2" />,
-    relaxing: <FaGlassCheers className="mr-2" />,
-    cultural: <FaTheaterMasks className="mr-2" />,
-    party: <FaMusic className="mr-2" />
+    'all-treks': <FaGlobe className="mr-2" />,
+    'monsoon-treks': <FaCloudRain className="mr-2" />,
+    'sunrise-treks': <FaSun className="mr-2" />,
+    'himalayan-treks': <FaMountain className="mr-2" />,
+    'backpacking-trips': <FaHiking className="mr-2" />,
+    'long-weekend': <FaCalendarWeek className="mr-2" />
   };
 
   // Category display names
   const categoryNames = {
-    mountains: 'Mountains',
-    coastal: 'Coastal',
-    desert: 'Desert',
-    adventure: 'Adventure',
-    relaxing: 'Relaxing',
-    cultural: 'Cultural',
-    party: 'Party'
+    'all-treks': 'All Treks',
+    'monsoon-treks': 'Monsoon Treks',
+    'sunrise-treks': 'Sunrise Treks',
+    'himalayan-treks': 'Himalayan Treks',
+    'backpacking-trips': 'Backpacking Trips',
+    'long-weekend': 'Long Weekend'
   };
 
   return (
@@ -64,9 +62,9 @@ function TrekFilter({ filters, setFilters }) {
       <div className="mb-6">
         <div className="flex flex-wrap gap-2 mb-4">
           <button
-            onClick={() => handleCategoryClick('')}
+            onClick={() => handleCategoryClick('all-treks')}
             className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              !filters.category ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+              !filters.category || filters.category === 'all-treks' ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
             }`}
           >
             🌍 All Treks

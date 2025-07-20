@@ -17,7 +17,7 @@ export const weekendGetawaysData = [
       'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
     ],
     location: 'Near Shimla',
-    category: 'mountains',
+    category: 'himalayan-treks',
     tags: ['relaxing', 'nature', 'hiking'],
     isWeekendGetaway: true,
     weekendHighlights: ['Bonfire Nights Under Stars', 'Guided Nature Walks', 'Local Himachali Cuisine Tasting', 'Panoramic Sunrise Views', 'Stargazing Session'],
@@ -56,7 +56,7 @@ export const weekendGetawaysData = [
       'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
     ],
     location: 'Alibaug - Murud Stretch',
-    category: 'coastal',
+    category: 'long-weekend',
     tags: ['adventure', 'beach', 'road-trip'],
     isWeekendGetaway: true,
     weekendHighlights: ['Beach Camping Experience', 'Scenic Ferry Rides', 'Fresh Seafood Delights', 'Exploration of Sea Forts', 'Sunset at Kihim Beach'],
@@ -95,7 +95,7 @@ export const weekendGetawaysData = [
       'https://images.unsplash.com/photo-1504198453319-5ce911baf5de?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'
     ],
     location: 'Near Jaisalmer',
-    category: 'desert',
+    category: 'backpacking-trips',
     tags: ['cultural', 'unique', 'camping'],
     isWeekendGetaway: true,
     weekendHighlights: ['Sunset Camel Safari on Dunes', 'Thrilling Jeep Safari (Optional)', 'Live Rajasthani Folk Music & Dance', 'Authentic Rajasthani Thali Dinner', 'Camping in Swiss Tents'],
@@ -122,12 +122,12 @@ export const weekendGetawaysData = [
 
 export const sampleCategories = [
   { id: 'all', name: 'All Getaways', icon: '🌍' },
-  { id: 'mountains', name: 'Mountains', icon: '⛰️' },
-  { id: 'coastal', name: 'Coastal', icon: '🌊' },
-  { id: 'desert', name: 'Desert', icon: '🏜️' },
-  { id: 'adventure', name: 'Adventure', icon: '🧗' }, // Using tags now
-  { id: 'relaxing', name: 'Relaxing', icon: '🧘' }, // Using tags now
-  { id: 'cultural', name: 'Cultural', icon: '🎭' }, // Using tags now
+  { id: 'all-treks', name: 'All Treks', icon: '🌍' },
+  { id: 'monsoon-treks', name: 'Monsoon Treks', icon: '🌧️' },
+  { id: 'sunrise-treks', name: 'Sunrise Treks', icon: '🌅' },
+  { id: 'himalayan-treks', name: 'Himalayan Treks', icon: '🏔️' },
+  { id: 'backpacking-trips', name: 'Backpacking Trips', icon: '🎒' },
+  { id: 'long-weekend', name: 'Long Weekend', icon: '📅' },
 ];
 
 // Helper function to get category icon

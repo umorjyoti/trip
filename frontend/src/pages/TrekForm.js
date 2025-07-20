@@ -107,11 +107,15 @@ const Button = ({ children, onClick, type = 'button', variant = 'primary', disab
 
 // Define categories
 const categories = [
-  'mountains', 'coastal', 'desert', 'adventure', 'relaxing', 'cultural', 'party'
+  'all-treks', 'monsoon-treks', 'sunrise-treks', 'himalayan-treks', 'backpacking-trips', 'long-weekend'
 ];
 const categoryNames = {
-  mountains: 'Mountains', coastal: 'Coastal', desert: 'Desert',
-  adventure: 'Adventure', relaxing: 'Relaxing', cultural: 'Cultural', party: 'Party'
+  'all-treks': 'All Treks', 
+  'monsoon-treks': 'Monsoon Treks', 
+  'sunrise-treks': 'Sunrise Treks',
+  'himalayan-treks': 'Himalayan Treks', 
+  'backpacking-trips': 'Backpacking Trips', 
+  'long-weekend': 'Long Weekend'
 };
 
 function TrekForm() {
@@ -134,7 +138,7 @@ function TrekForm() {
     imageUrl: '',
     images: [],
     isEnabled: true,
-    category: '',
+    category: 'all-treks',
     maxAltitude: '',
     distance: '',
     highlights: [''],
@@ -189,7 +193,7 @@ function TrekForm() {
             imageUrl: trekData.imageUrl || '',
             images: trekData.images || [],
             isEnabled: trekData.isEnabled !== undefined ? trekData.isEnabled : true,
-            category: trekData.category || 'mountains',
+            category: trekData.category || 'all-treks',
             maxAltitude: trekData.maxAltitude || '',
             distance: trekData.distance || '',
             highlights: trekData.highlights || [''],

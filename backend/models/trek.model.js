@@ -70,8 +70,8 @@ const trekSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['mountains', 'coastal', 'desert', 'adventure', 'relaxing', 'cultural', 'party'],
-    default: 'mountains'
+    enum: ['all-treks', 'monsoon-treks', 'sunrise-treks', 'himalayan-treks', 'backpacking-trips', 'long-weekend'],
+    default: 'all-treks'
   },
   batches: [{
     startDate: {

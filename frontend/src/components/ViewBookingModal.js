@@ -148,19 +148,36 @@ const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
             </h3>
             <div className="space-y-3">
               {booking.participantDetails.map((participant, index) => (
-                <div key={index} className="bg-white rounded-lg p-3 border border-purple-200">
+                <div key={index} className={`bg-white rounded-lg p-3 border ${
+                  participant.isCancelled ? 'border-red-200 bg-red-50' : 'border-purple-200'
+                }`}>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <p className="text-sm text-gray-500">Name</p>
-                      <p className="font-medium text-gray-900">{participant.name}</p>
+                      <p className={`font-medium ${
+                        participant.isCancelled ? 'line-through text-gray-400' : 'text-gray-900'
+                      }`}>
+                        {participant.name}
+                        {participant.isCancelled && (
+                          <span className="ml-2 text-xs text-red-500 font-normal">(Cancelled)</span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Phone</p>
-                      <p className="font-medium text-gray-900">{participant.phone}</p>
+                      <p className={`font-medium ${
+                        participant.isCancelled ? 'line-through text-gray-400' : 'text-gray-900'
+                      }`}>
+                        {participant.phone}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Email</p>
-                      <p className="font-medium text-gray-900">{participant.email}</p>
+                      <p className={`font-medium ${
+                        participant.isCancelled ? 'line-through text-gray-400' : 'text-gray-900'
+                      }`}>
+                        {participant.email}
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -90,13 +90,12 @@ function WeekendGetaways() {
   // Helper function to get category icons
   const getCategoryIcon = (category) => {
     const iconMap = {
-      mountains: '🏔️',
-      coastal: '🌊',
-      desert: '🏜️',
-      adventure: '🧗',
-      relaxing: '🍹',
-      cultural: '🎭',
-      party: '🎉'
+      'all-treks': '🌍',
+      'monsoon-treks': '🌧️',
+      'sunrise-treks': '🌅',
+      'himalayan-treks': '🏔️',
+      'backpacking-trips': '🎒',
+      'long-weekend': '📅'
     };
     return iconMap[category] || '🏕️';
   };
@@ -106,7 +105,7 @@ function WeekendGetaways() {
     const uniqueCategories = [...new Set(weekendGetaways.map(trek => trek.category).filter(Boolean))];
     return uniqueCategories.map(category => ({
       id: category,
-      name: category.charAt(0).toUpperCase() + category.slice(1),
+      name: category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' '),
       icon: getCategoryIcon(category)
     }));
   }, [weekendGetaways]);

@@ -3,6 +3,7 @@ import { getTreks } from '../services/api';
 import TrekCard from '../components/TrekCard';
 import TrekFilter from '../components/TrekFilter';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 
 // Animation variants
 const containerVariants = {
@@ -21,6 +22,7 @@ const itemVariants = {
 };
 
 function TrekList() {
+  const location = useLocation();
   const [treks, setTreks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -28,10 +30,23 @@ function TrekList() {
     season: '',
     region: '',
     duration: '',
-    category: '',
+    category: 'all-treks',
     sort: 'name-asc'
   });
   const [totalPages, setTotalPages] = useState(1);
+
+  // Initialize filters from URL parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const categoryFromUrl = params.get('category');
+    
+    if (categoryFromUrl) {
+      setFilters(prev => ({
+        ...prev,
+        category: categoryFromUrl
+      }));
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const fetchTreks = async () => {
@@ -127,7 +142,7 @@ function TrekList() {
                       season: '',
                       region: '',
                       duration: '',
-                      category: '',
+                      category: 'all-treks',
                       sort: 'name-asc'
                     })}
                     className="mt-4 px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 transition-colors"
