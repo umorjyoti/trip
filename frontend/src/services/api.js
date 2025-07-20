@@ -1176,12 +1176,13 @@ export const getBatchPerformance = async (trekId, batchId) => {
   }
 };
 
-export const exportBatchParticipants = async (trekId, batchId, fields = []) => {
+export const exportBatchParticipants = async (trekId, batchId, fields = [], fileType = 'pdf') => {
   try {
     const queryParams = new URLSearchParams();
     if (fields.length > 0) {
       queryParams.append('fields', fields.join(','));
     }
+    queryParams.append('fileType', fileType);
 
     const response = await api.get(`/treks/${trekId}/batches/${batchId}/export-participants?${queryParams.toString()}`, {
       responseType: 'blob'

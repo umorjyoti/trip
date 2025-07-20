@@ -1712,7 +1712,7 @@ exports.exportBatchParticipants = async (req, res) => {
     
     const trekId = req.params.id;
     const batchId = req.params.batchId;
-    const { fields } = req.query;
+    const { fields, fileType = 'pdf' } = req.query;
 
     if (!mongoose.Types.ObjectId.isValid(trekId) || !mongoose.Types.ObjectId.isValid(batchId)) {
       return res.status(400).json({ message: 'Invalid trek or batch ID format' });
@@ -1766,6 +1766,7 @@ exports.exportBatchParticipants = async (req, res) => {
         case 'bookingUserPhone': return 'Booking User Phone';
         case 'bookingDate': return 'Booking Date';
         case 'status': return 'Booking Status';
+        case 'bookingStatus': return 'Booking Status';
         case 'totalPrice': return 'Total Price';
 
         case 'additionalRequests': return 'Additional Requests';
@@ -1844,7 +1845,7 @@ exports.exportBatchParticipants = async (req, res) => {
                 return booking.user?.phone || 'N/A';
               case 'bookingDate':
                 return booking.createdAt ? new Date(booking.createdAt).toLocaleDateString() : 'N/A';
-              case 'status':
+              case 'bookingStatus':
                 return booking.status || 'N/A';
               case 'totalPrice':
                 return booking.totalPrice || 'N/A';
@@ -1941,37 +1942,59 @@ exports.exportBatchParticipants = async (req, res) => {
       });
     }
 
-    // Generate PDF
-    const PDFDocument = require('pdfkit-table');
-    const doc = new PDFDocument({ margin: 30 });
+    // Generate file based on fileType
+    if (fileType === 'csv') {
+      // Generate CSV
+      const filename = `batch-participants-${trek.name.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    // Set response headers
-    const filename = `batch-participants-${trek.name.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      // Convert table data to CSV format
+      const csvContent = tableData.map(row => 
+        row.map(cell => {
+          // Escape quotes and wrap in quotes if contains comma, quote, or newline
+          const cellStr = String(cell || '');
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`;
+          }
+          return cellStr;
+        }).join(',')
+      ).join('\n');
 
-    // Pipe PDF to response
-    doc.pipe(res);
+      res.send(csvContent);
+    } else {
+      // Generate PDF (default)
+      const PDFDocument = require('pdfkit-table');
+      const doc = new PDFDocument({ margin: 30 });
 
-    // Add header
-    doc.fontSize(18).text(`${trek.name} - Batch Participants`, { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Batch: ${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`, { align: 'center' });
-    doc.fontSize(10).text(`Generated on: ${new Date().toLocaleDateString()}`, { align: 'center' });
-    doc.moveDown(2);
+      // Set response headers
+      const filename = `batch-participants-${trek.name.replace(/[^a-zA-Z0-9]/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
-    // Add table
-    const table = {
-      headers: headers,
-      rows: tableData.slice(1) // Skip header row
-    };
+      // Pipe PDF to response
+      doc.pipe(res);
 
-    await doc.table(table, {
-      prepareHeader: () => doc.fontSize(8),
-      prepareRow: () => doc.fontSize(7)
-    });
+      // Add header
+      doc.fontSize(18).text(`${trek.name} - Batch Participants`, { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(`Batch: ${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`, { align: 'center' });
+      doc.fontSize(10).text(`Generated on: ${new Date().toLocaleDateString()}`, { align: 'center' });
+      doc.moveDown(2);
 
-    doc.end();
+      // Add table
+      const table = {
+        headers: headers,
+        rows: tableData.slice(1) // Skip header row
+      };
+
+      await doc.table(table, {
+        prepareHeader: () => doc.fontSize(8),
+        prepareRow: () => doc.fontSize(7)
+      });
+
+      doc.end();
+    }
 
   } catch (error) {
     console.error('Error exporting batch participants:', error);
