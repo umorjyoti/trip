@@ -12,6 +12,9 @@ router.post('/create-order', protect, paymentController.createOrder);
 // Verify Razorpay payment
 router.post('/verify', protect, paymentController.verifyPayment);
 
+// Create order for remaining balance payment
+router.post('/create-remaining-balance-order', protect, paymentController.createRemainingBalanceOrder);
+
 // Handle Razorpay webhook events
 router.post('/webhook', paymentController.handleWebhook);
 

@@ -207,20 +207,101 @@ const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500">Payment Status</p>
+              <p className="text-sm text-gray-500">Payment Mode</p>
               <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                booking.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                booking.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800'
+                booking.paymentMode === 'partial' ? 'bg-orange-100 text-orange-800' :
+                'bg-blue-100 text-blue-800'
               }`}>
-                {booking.paymentStatus || 'Not specified'}
+                {booking.paymentMode === 'partial' ? 'Partial Payment' : 'Full Payment'}
               </span>
             </div>
+            <div>
+              <p className="text-sm text-gray-500">Payment Status</p>
+              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                booking.status === 'payment_confirmed_partial' ? 'bg-orange-100 text-orange-800' :
+                booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {booking.status}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Total Amount</p>
+              <p className="font-medium text-gray-900">{formatCurrency(booking.totalPrice)}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Amount Paid</p>
+              <p className="font-medium text-lg text-emerald-600">
+                {formatCurrency(booking.amountPaid || booking.totalPrice)}
+              </p>
+            </div>
+            
+            {/* Partial Payment Details */}
+            {booking.paymentMode === 'partial' && booking.partialPaymentDetails && (
+              <>
+                <div>
+                  <p className="text-sm text-gray-500">Initial Payment</p>
+                  <p className="font-medium text-gray-900">
+                    {formatCurrency(booking.partialPaymentDetails.initialAmount || 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Remaining Balance</p>
+                  <p className="font-medium text-orange-600">
+                    {formatCurrency(booking.partialPaymentDetails.remainingAmount || 0)}
+                  </p>
+                </div>
+                {booking.partialPaymentDetails.finalPaymentDueDate && (
+                  <div>
+                    <p className="text-sm text-gray-500">Final Payment Due Date</p>
+                    <p className="font-medium text-red-600">
+                      {formatDate(booking.partialPaymentDetails.finalPaymentDueDate)}
+                    </p>
+                  </div>
+                )}
+                {booking.partialPaymentDetails.finalPaymentDate && (
+                  <div>
+                    <p className="text-sm text-gray-500">Final Payment Date</p>
+                    <p className="font-medium text-green-600">
+                      {formatDate(booking.partialPaymentDetails.finalPaymentDate)}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+            
             <div>
               <p className="text-sm text-gray-500">Payment Method</p>
               <p className="font-medium text-gray-900">{booking.paymentMethod || 'Not specified'}</p>
             </div>
           </div>
+          
+          {/* Refund Information */}
+          {(() => {
+            // Calculate total refunded amount (booking-level + participant-level)
+            let refunded = 0;
+            if (booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            if (Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            
+            if (refunded > 0) {
+              return (
+                <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                  <p className="text-sm text-red-600 font-medium">Refunded Amount: {formatCurrency(refunded)}</p>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
 
         {/* Footer Actions */}

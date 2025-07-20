@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllBookings, updateBookingStatus, getAllTreks, exportBookings, adminCancelBooking, sendReminderEmail, sendConfirmationEmail, sendInvoiceEmail, cancelBooking } from '../services/api';
+import { getAllBookings, updateBookingStatus, getAllTreks, exportBookings, adminCancelBooking, sendReminderEmail, sendConfirmationEmail, sendInvoiceEmail, cancelBooking, sendPartialPaymentReminder, markPartialPaymentComplete } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DatePicker from 'react-datepicker';
@@ -21,6 +21,7 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
   { value: 'pending', label: 'Pending' },
   { value: 'pending_payment', label: 'Pending Payment' },
+  { value: 'payment_confirmed_partial', label: 'Partial Payment Confirmed' },
   { value: 'payment_completed', label: 'Payment Completed' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'trek_completed', label: 'Trek Completed' },
@@ -245,21 +246,44 @@ function AdminBookings() {
   const closeCancelModal = () => setCancelModal({ open: false, booking: null, refundType: 'auto' });
 
   const handleCancelBooking = async () => {
-    setCancelLoading(true);
     try {
+      setCancelLoading(true);
       await adminCancelBooking({
         bookingId: cancelModal.booking._id,
-        refund: true,
+        refund: calculateRefund(cancelModal.booking, cancelModal.refundType),
         refundType: cancelModal.refundType,
-        reason: 'Admin cancelled booking',
+        reason: 'Admin cancellation'
       });
-      toast.success('Booking cancelled and refund processed (if applicable)');
+      toast.success('Booking cancelled successfully');
       closeCancelModal();
       fetchBookings();
-    } catch (err) {
-      toast.error(err.message || 'Failed to cancel booking');
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast.error(error.message || 'Failed to cancel booking');
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  const handleSendPartialReminder = async (bookingId) => {
+    try {
+      await sendPartialPaymentReminder(bookingId);
+      toast.success('Partial payment reminder sent successfully');
+      fetchBookings(); // Refresh to update reminder status
+    } catch (error) {
+      console.error('Error sending partial payment reminder:', error);
+      toast.error(error.message || 'Failed to send partial payment reminder');
+    }
+  };
+
+  const handleMarkPartialComplete = async (bookingId) => {
+    try {
+      await markPartialPaymentComplete(bookingId);
+      toast.success('Partial payment marked as complete successfully');
+      fetchBookings(); // Refresh to update booking status
+    } catch (error) {
+      console.error('Error marking partial payment as complete:', error);
+      toast.error(error.message || 'Failed to mark partial payment as complete');
     }
   };
 
@@ -306,7 +330,7 @@ function AdminBookings() {
     setSelectedBooking(booking);
     
     switch (action) {
-      case 'view':       
+      case 'view':
         setShowViewModal(true);
         break;
         
@@ -317,6 +341,28 @@ function AdminBookings() {
         } catch (error) {
           console.error('Error sending reminder email:', error);
           toast.error(error.response?.data?.message || 'Failed to send reminder email');
+        }
+        break;
+        
+      case 'partial-reminder':
+        try {
+          await sendPartialPaymentReminder(booking._id);
+          toast.success('Partial payment reminder sent successfully');
+          fetchBookings(); // Refresh to update reminder status
+        } catch (error) {
+          console.error('Error sending partial payment reminder:', error);
+          toast.error(error.message || 'Failed to send partial payment reminder');
+        }
+        break;
+        
+      case 'mark-partial-complete':
+        try {
+          await markPartialPaymentComplete(booking._id);
+          toast.success('Partial payment marked as complete successfully');
+          fetchBookings(); // Refresh to update booking status
+        } catch (error) {
+          console.error('Error marking partial payment as complete:', error);
+          toast.error(error.message || 'Failed to mark partial payment as complete');
         }
         break;
         
@@ -340,12 +386,17 @@ function AdminBookings() {
         }
         break;
         
-      case 'edit':       
+      case 'edit':
         setShowEditModal(true);
         break;
         
-      case 'cancel':       
+      case 'cancel':
         setShowCancellationModal(true);
+        break;
+        
+      case 'shift':
+        // Handle shift action if needed
+        toast.info('Shift functionality not implemented yet');
         break;
         
       case 'respond-request':

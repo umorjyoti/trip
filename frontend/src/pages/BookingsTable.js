@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 
-function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal, closeCancelModal, handleCancelBooking, cancelLoading, calculateRefund }) {
+function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal, closeCancelModal, handleCancelBooking, cancelLoading, calculateRefund, onSendPartialReminder, onMarkPartialComplete }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[200px]">
@@ -33,6 +33,9 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Participants
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Payment Mode
               </th>
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Total Price (INR)
@@ -72,6 +75,22 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
                     {booking.participants}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div className="text-sm font-medium text-gray-900">
+                      {booking.paymentMode === 'partial' ? 'Partial' : 'Full'}
+                    </div>
+                    {booking.paymentMode === 'partial' && booking.partialPaymentDetails && (
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <div>₹{booking.partialPaymentDetails.initialAmount?.toFixed(2) || '0'} / ₹{booking.totalPrice?.toFixed(2) || '0'}</div>
+                        {booking.status === 'payment_confirmed_partial' && (
+                          <div className="text-orange-600 font-medium">Awaiting Final Payment</div>
+                        )}
+                        {booking.partialPaymentDetails.reminderSent && (
+                          <div className="text-yellow-600 text-xs">Reminder Sent</div>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {(() => {
                       const paid = booking.totalPrice;
                       // Calculate total refunded amount (booking-level + participant-level)
@@ -86,6 +105,23 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
                           }
                           return rSum;
                         }, 0);
+                      }
+                      
+                      // Show partial payment details if applicable
+                      if (booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+                        const initialAmount = booking.partialPaymentDetails.initialAmount || 0;
+                        const remainingAmount = booking.partialPaymentDetails.remainingAmount || 0;
+                        
+                        return (
+                          <div>
+                            <div className="font-medium text-emerald-600">₹{initialAmount.toFixed(2)}</div>
+                            <div className="text-xs text-gray-500">Total: ₹{paid.toFixed(2)}</div>
+                            <div className="text-xs text-red-600 font-medium">Remaining: ₹{remainingAmount.toFixed(2)}</div>
+                            {booking.partialPaymentDetails.finalPaymentDueDate && (
+                              <div className="text-xs text-red-600">Due: {new Date(booking.partialPaymentDetails.finalPaymentDueDate).toLocaleDateString()}</div>
+                            )}
+                          </div>
+                        );
                       }
                       
                       // Show refunded amount for any booking that has refunds, not just cancelled ones
@@ -104,10 +140,31 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       booking.status === 'confirmed' 
                         ? 'bg-green-100 text-green-800' 
+                        : booking.status === 'payment_confirmed_partial'
+                        ? 'bg-orange-100 text-orange-800'
+                        : booking.status === 'payment_completed'
+                        ? 'bg-blue-100 text-blue-800'
+                        : booking.status === 'pending_payment'
+                        ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-red-100 text-red-800'
                     }`}>
                       {booking.status}
                     </span>
+                    {booking.paymentMode === 'partial' && booking.partialPaymentDetails && (
+                      <div className="text-xs text-gray-600 mt-1 space-y-1">
+                        {booking.status === 'payment_confirmed_partial' && (
+                          <>
+                            <div className="text-orange-600 font-medium">Partial Payment Confirmed</div>
+                            {booking.partialPaymentDetails.finalPaymentDueDate && (
+                              <div className="text-red-600">Due: {new Date(booking.partialPaymentDetails.finalPaymentDueDate).toLocaleDateString()}</div>
+                            )}
+                          </>
+                        )}
+                        {booking.status === 'confirmed' && booking.paymentMode === 'partial' && (
+                          <div className="text-green-600 font-medium">Full Payment Complete</div>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(booking.createdAt).toLocaleDateString()}
@@ -127,6 +184,31 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
                         Edit
                       </Link>
                     )}
+                    
+                    {/* Partial Payment Actions */}
+                    {booking.status === 'payment_confirmed_partial' && booking.paymentMode === 'partial' && (
+                      <>
+                        {onSendPartialReminder && !booking.partialPaymentDetails?.reminderSent && (
+                          <button
+                            onClick={() => onSendPartialReminder(booking._id)}
+                            className="text-yellow-600 hover:text-yellow-800 text-sm font-medium mr-3"
+                            title="Send Partial Payment Reminder"
+                          >
+                            Send Reminder
+                          </button>
+                        )}
+                        {onMarkPartialComplete && (
+                          <button
+                            onClick={() => onMarkPartialComplete(booking._id)}
+                            className="text-green-600 hover:text-green-800 text-sm font-medium mr-3"
+                            title="Mark Partial Payment Complete"
+                          >
+                            Mark Complete
+                          </button>
+                        )}
+                      </>
+                    )}
+                    
                     <button
                       onClick={() => openCancelModal(booking)}
                       className="text-red-600 hover:text-red-800 text-sm font-medium"
@@ -139,7 +221,7 @@ function BookingsTable({ bookings, loading, error, openCancelModal, cancelModal,
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="px-6 py-4 text-center text-sm text-gray-500">
+                <td colSpan="9" className="px-6 py-4 text-center text-sm text-gray-500">
                   No bookings found
                 </td>
               </tr>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import LoadingSpinner from './LoadingSpinner';
+import Modal from './Modal';
 
-function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = false }) {
+function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = false, isRemainingBalance = false }) {
   const [loading, setLoading] = useState(false);
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const [razorpayKey, setRazorpayKey] = useState(null);
@@ -81,17 +82,22 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
       }
 
       // Create order on backend
-      const response = await fetch('/payments/create-order', {
+      const endpoint = isRemainingBalance ? '/payments/create-remaining-balance-order' : '/payments/create-order';
+      const requestBody = isRemainingBalance 
+        ? { bookingId }
+        : {
+            amount: amount, // Send exact amount
+            bookingId,
+            partial_payment: allowPartialPayment,
+          };
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          amount: amount, // Send exact amount
-          bookingId,
-          partial_payment: allowPartialPayment,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -99,7 +105,9 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         throw new Error(errorData.message || 'Failed to create payment order');
       }
 
-      const { order } = await response.json();
+      const data = await response.json();
+      const order = data.order;
+      const actualAmount = isRemainingBalance ? data.remainingAmount : amount;
 
       // Initialize Razorpay
 
@@ -110,7 +118,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         amount: order.amount,
         currency: order.currency,
         name: 'Trek Booking',
-        description: 'Trek Booking Payment',
+        description: isRemainingBalance ? 'Remaining Balance Payment' : 'Trek Booking Payment',
         order_id: order.id,
         handler: async function (response) {
           try {
@@ -187,18 +195,23 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         disabled={loading || !razorpayKey || !scriptLoaded}
         className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${loading || !razorpayKey || !scriptLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        {loading ? 'Processing...' : !scriptLoaded ? 'Loading Payment System...' : !razorpayKey ? 'Initializing...' : 'Proceed to Payment'}
+        {loading ? 'Processing...' : !scriptLoaded ? 'Loading Payment System...' : !razorpayKey ? 'Initializing...' : isRemainingBalance ? 'Pay Remaining Balance' : 'Proceed to Payment'}
       </button>
 
       {/* Payment Verification Loading Overlay */}
       {verifyingPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4">
+        <Modal
+          isOpen={verifyingPayment}
+          onClose={() => setVerifyingPayment(false)}
+          title="Verifying Payment..."
+          size="small"
+        >
+          <div className="flex flex-col items-center space-y-4">
             <LoadingSpinner />
             <p className="text-lg font-medium text-gray-900">Verifying Payment...</p>
             <p className="text-sm text-gray-600">Please wait while we verify your payment</p>
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

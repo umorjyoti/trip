@@ -31,7 +31,7 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       label: 'View Booking',
       icon: <FaEye className="w-4 h-4" />,
       color: 'text-gray-600 hover:bg-gray-50',
-      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled']
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'payment_confirmed_partial', 'confirmed', 'trek_completed', 'cancelled']
     },
     {
       id: 'reminder',
@@ -39,6 +39,22 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       icon: <FaEnvelope className="w-4 h-4" />,
       color: 'text-blue-600 hover:bg-blue-50',
       showFor: ['confirmed']
+    },
+    {
+      id: 'partial-reminder',
+      label: 'Send Partial Payment Reminder',
+      icon: <FaEnvelope className="w-4 h-4" />,
+      color: 'text-yellow-600 hover:bg-yellow-50',
+      showFor: ['payment_confirmed_partial'],
+      showCondition: (booking) => booking.paymentMode === 'partial' && !booking.partialPaymentDetails?.reminderSent
+    },
+    {
+      id: 'mark-partial-complete',
+      label: 'Mark Partial Payment Complete',
+      icon: <FaCheck className="w-4 h-4" />,
+      color: 'text-green-600 hover:bg-green-50',
+      showFor: ['payment_confirmed_partial'],
+      showCondition: (booking) => booking.paymentMode === 'partial'
     },
     {
       id: 'confirmation',
@@ -59,14 +75,14 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       label: 'Edit Booking Data',
       icon: <FaEdit className="w-4 h-4" />,
       color: 'text-orange-600 hover:bg-orange-50',
-      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed']
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'payment_confirmed_partial', 'confirmed']
     },
     {
       id: 'cancel',
       label: 'Cancel Booking',
       icon: <FaTimes className="w-4 h-4" />,
       color: 'text-red-600 hover:bg-red-50',
-      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed']
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'payment_confirmed_partial', 'confirmed']
     },
     {
       id: 'shift',
@@ -80,7 +96,7 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       label: 'Respond to Request',
       icon: <FaComment className="w-4 h-4" />,
       color: 'text-teal-600 hover:bg-teal-50',
-      showFor: ['pending', 'pending_payment', 'payment_completed', 'confirmed', 'trek_completed', 'cancelled'],
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'payment_confirmed_partial', 'confirmed', 'trek_completed', 'cancelled'],
       showCondition: (booking) => booking.cancellationRequest && booking.cancellationRequest.status === 'pending'
     }
   ];

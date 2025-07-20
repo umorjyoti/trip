@@ -94,6 +94,14 @@ function ParticipantDetailsPage() {
       getBookingById(bookingId).then(data => {
         if (data && data.batch) setBatch(data.batch);
         if (data && data.trek) setTrek(data.trek);
+        
+        // Check if participant details already exist - redirect if they do
+        if (data && data.participantDetails && data.participantDetails.length > 0) {
+          toast.info("Participant details already exist for this booking");
+          navigate(`/booking-confirmation/${bookingId}`);
+          return;
+        }
+        
         // Ensure correct number of participant forms
         if (data && data.participants && participants.length !== data.participants) {
           setParticipants(Array.from({ length: data.participants }, (_, i) => participants[i] || {
@@ -109,7 +117,7 @@ function ParticipantDetailsPage() {
         }
       });
     }
-  }, [bookingId]);
+  }, [bookingId, navigate]);
 
   const handleChange = (idx, e) => {
     const { name, value } = e.target;

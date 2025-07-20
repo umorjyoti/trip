@@ -413,7 +413,33 @@ const TrekSchema = new mongoose.Schema({
       required: true,
       trim: true
     }
-  }]
+  }],
+  // Partial payment configuration
+  partialPayment: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    amount: {
+      type: Number,
+      min: 0,
+      default: 0
+    },
+    amountType: {
+      type: String,
+      enum: ['fixed', 'percentage'],
+      default: 'fixed'
+    },
+    finalPaymentDueDays: {
+      type: Number,
+      min: 1,
+      default: 3
+    },
+    autoCancelOnDueDate: {
+      type: Boolean,
+      default: true
+    }
+  }
 });
 
 // Pre-save middleware to generate slug from name
