@@ -455,18 +455,22 @@ function AdminLeads() {
           <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex space-x-4">
             <button
               type="button"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200 ${
+                showFilters
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              <FaFilter className="mr-2" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
+            <button
+              type="button"
               onClick={() => setShowExportModal(true)}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
             >
               Export
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowFilters(!showFilters)}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-            >
-              <FaFilter className="mr-2" />
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
             </button>
             <button
               type="button"
@@ -478,53 +482,111 @@ function AdminLeads() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Enhanced Filters Section */}
         {showFilters && (
-          <div className="mt-4 bg-white shadow rounded-lg p-4">
-            <form onSubmit={handleSearch}>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-3">
+                <div className="bg-emerald-100 p-2 rounded-lg">
+                  <FaFilter className="h-5 w-5 text-emerald-600" />
+                </div>
                 <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700">
-                    Status
+                  <h3 className="text-lg font-semibold text-gray-900">Filter Leads</h3>
+                  <p className="text-sm text-gray-600">Refine your search to find specific leads</p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors duration-200"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Clear All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowFilters(false)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors duration-200"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Hide Filters
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSearch} className="space-y-6">
+              {/* Search Bar */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FaSearch className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  name="search"
+                  id="search"
+                  value={filters.search}
+                  onChange={handleFilterChange}
+                  className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm placeholder-gray-500 transition-all duration-200"
+                  placeholder="Search leads by name, email, or phone number..."
+                />
+              </div>
+
+              {/* Main Filters Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Status Filter */}
+                <div className="space-y-2">
+                  <label htmlFor="status" className="block text-sm font-semibold text-gray-700 flex items-center">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mr-2"></div>
+                    Lead Status
                   </label>
                   <select
                     id="status"
                     name="status"
                     value={filters.status}
                     onChange={handleFilterChange}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white transition-all duration-200"
                   >
                     <option value="">All Statuses</option>
-                    <option value="New">New</option>
-                    <option value="Contacted">Contacted</option>
-                    <option value="Qualified">Qualified</option>
-                    <option value="Converted">Converted</option>
-                    <option value="Lost">Lost</option>
+                    <option value="New">🆕 New</option>
+                    <option value="Contacted">📞 Contacted</option>
+                    <option value="Qualified">✅ Qualified</option>
+                    <option value="Converted">💰 Converted</option>
+                    <option value="Lost">❌ Lost</option>
                   </select>
                 </div>
                 
-                <div>
-                  <label htmlFor="source" className="block text-sm font-medium text-gray-700">
-                    Source
+                {/* Source Filter */}
+                <div className="space-y-2">
+                  <label htmlFor="source" className="block text-sm font-semibold text-gray-700 flex items-center">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full mr-2"></div>
+                    Lead Source
                   </label>
                   <select
                     id="source"
                     name="source"
                     value={filters.source}
                     onChange={handleFilterChange}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white transition-all duration-200"
                   >
                     <option value="">All Sources</option>
-                    <option value="Trek Detail Page">Trek Detail Page</option>
-                    <option value="Newsletter">Newsletter</option>
-                    <option value="Referral">Referral</option>
-                    <option value="Other">Other</option>
+                    <option value="Trek Detail Page">🏔️ Trek Detail Page</option>
+                    <option value="Newsletter">📧 Newsletter</option>
+                    <option value="Referral">👥 Referral</option>
+                    <option value="Social Media">📱 Social Media</option>
+                    <option value="Other">🔗 Other</option>
                   </select>
                 </div>
                 
-                <div>
-                  <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
-                    Start Date
+                {/* Date Range */}
+                <div className="space-y-2">
+                  <label htmlFor="startDate" className="block text-sm font-semibold text-gray-700 flex items-center">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                    From Date
                   </label>
                   <input
                     type="date"
@@ -532,13 +594,14 @@ function AdminLeads() {
                     name="startDate"
                     value={filters.startDate}
                     onChange={handleFilterChange}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white transition-all duration-200"
                   />
                 </div>
                 
-                <div>
-                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">
-                    End Date
+                <div className="space-y-2">
+                  <label htmlFor="endDate" className="block text-sm font-semibold text-gray-700 flex items-center">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full mr-2"></div>
+                    To Date
                   </label>
                   <input
                     type="date"
@@ -546,41 +609,71 @@ function AdminLeads() {
                     name="endDate"
                     value={filters.endDate}
                     onChange={handleFilterChange}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+                    className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white transition-all duration-200"
                   />
                 </div>
               </div>
-              
-              <div className="mt-4 flex items-center">
-                <div className="flex-1">
-                  <div className="relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <FaSearch className="text-gray-400" />
-                    </div>
-                    <input
-                      type="text"
-                      name="search"
-                      id="search"
-                      value={filters.search}
-                      onChange={handleFilterChange}
-                      className="focus:ring-emerald-500 focus:border-emerald-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md"
-                      placeholder="Search by name, email or phone"
-                    />
-                  </div>
-                </div>
-                <div className="ml-4 flex space-x-2">
-                  <button
-                    type="submit"
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                  >
-                    Apply Filters
-                  </button>
+
+              {/* Quick Action Filters */}
+              <div className="border-t border-gray-200 pt-6">
+                <h4 className="text-sm font-semibold text-gray-700 mb-4 flex items-center">
+                  <FaFilter className="mr-2 text-emerald-600" />
+                  Quick Filters
+                </h4>
+                <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={handleResetFilters}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                    onClick={() => setFilters(prev => ({ ...prev, requestCallback: !prev.requestCallback }))}
+                    className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      filters.requestCallback
+                        ? 'bg-emerald-100 text-emerald-800 border-2 border-emerald-200 shadow-sm'
+                        : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-emerald-300 hover:bg-emerald-50'
+                    }`}
                   >
-                    Reset
+                    <FaPhone className="mr-2" />
+                    Call Requested
+                    {filters.requestCallback && (
+                      <span className="ml-2 bg-emerald-200 text-emerald-800 text-xs px-2 py-1 rounded-full">Active</span>
+                    )}
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setFilters(prev => ({ ...prev, assignedToMe: !prev.assignedToMe }))}
+                    className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      filters.assignedToMe
+                        ? 'bg-blue-100 text-blue-800 border-2 border-blue-200 shadow-sm'
+                        : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    }`}
+                  >
+                    <FaUser className="mr-2" />
+                    Assigned to Me
+                    {filters.assignedToMe && (
+                      <span className="ml-2 bg-blue-200 text-blue-800 text-xs px-2 py-1 rounded-full">Active</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                <div className="text-sm text-gray-500">
+                  {filters.search || filters.status || filters.source || filters.startDate || filters.endDate || filters.requestCallback || filters.assignedToMe ? (
+                    <span className="flex items-center">
+                      <FaFilter className="mr-1" />
+                      Filters applied
+                    </span>
+                  ) : (
+                    <span>No filters applied</span>
+                  )}
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center px-6 py-3 border border-transparent rounded-lg text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200 shadow-sm"
+                  >
+                    <FaSearch className="mr-2" />
+                    Apply Filters
                   </button>
                 </div>
               </div>
@@ -588,36 +681,10 @@ function AdminLeads() {
           </div>
         )}
 
-        {/* Additional Filters */}
-        <div className="flex space-x-2 mb-4">
-          <button
-            type="button"
-            onClick={() => setFilters(prev => ({ ...prev, requestCallback: !prev.requestCallback }))}
-            className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium ${
-              filters.requestCallback
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <FaPhone className="mr-2" />
-            Call Requested
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilters(prev => ({ ...prev, assignedToMe: !prev.assignedToMe }))}
-            className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium ${
-              filters.assignedToMe
-                ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            <FaUser className="mr-2" />
-            Assigned to Me
-          </button>
-        </div>
+
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8 mt-8">
           <div className="bg-white rounded-lg shadow p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-gray-100 rounded-md p-3">
@@ -1203,6 +1270,7 @@ function AdminLeads() {
                 <option value="Trek Detail Page">Trek Detail Page</option>
                 <option value="Newsletter">Newsletter</option>
                 <option value="Referral">Referral</option>
+                <option value="Social Media">Social Media</option>
                 <option value="Other">Other</option>
               </select>
             </div>

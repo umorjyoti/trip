@@ -87,10 +87,11 @@ const LeadList = () => {
             className="px-4 py-2 border rounded-md"
           >
             <option value="all">All Sources</option>
-            <option value="website">Website</option>
-            <option value="social">Social Media</option>
-            <option value="referral">Referral</option>
-            <option value="other">Other</option>
+            <option value="Trek Detail Page">Trek Detail Page</option>
+            <option value="Newsletter">Newsletter</option>
+            <option value="Referral">Referral</option>
+            <option value="Social Media">Social Media</option>
+            <option value="Other">Other</option>
           </select>
         </div>
       </div>

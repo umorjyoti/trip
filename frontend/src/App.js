@@ -78,6 +78,7 @@ import ResetPassword from './pages/ResetPassword';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsConditions from './pages/TermsConditions';
 import ComingSoon from './pages/ComingSoon';
+import SocialMediaLeads from './pages/SocialMediaLeads';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -158,6 +159,7 @@ function App() {
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsConditions />} />
               <Route path="/coming-soon" element={<ComingSoon />} />
+              <Route path="/social-media-leads" element={<SocialMediaLeads />} />
               <Route path="/treks" element={<SearchResults />} />
               <Route path="/treks/:name" element={<TrekDetail />} />
               <Route path="/treks/:name/book" element={<BookingPage />} />

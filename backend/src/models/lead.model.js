@@ -20,8 +20,8 @@ const leadSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['new', 'contacted', 'qualified', 'converted', 'lost'],
-    default: 'new'
+    enum: ['New', 'Contacted', 'Qualified', 'Converted', 'Lost'],
+    default: 'New'
   },
   requestCallback: {
     type: Boolean,
@@ -29,7 +29,7 @@ const leadSchema = new mongoose.Schema({
   },
   callbackStatus: {
     type: String,
-    enum: ['pending', 'in_progress', 'completed'],
+    enum: ['pending', 'in-progress', 'completed'],
     default: 'pending'
   },
   assignedTo: {
@@ -42,8 +42,8 @@ const leadSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['website', 'referral', 'social_media', 'other'],
-    default: 'website'
+    enum: ['Trek Detail Page', 'Newsletter', 'Referral', 'Social Media', 'Other'],
+    default: 'Trek Detail Page'
   },
   createdAt: {
     type: Date,
