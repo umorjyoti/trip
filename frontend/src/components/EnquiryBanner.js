@@ -18,7 +18,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
   const [loading, setLoading] = useState(false);
   const [bannerSettings, setBannerSettings] = useState(null);
   const [bannerLoading, setBannerLoading] = useState(true);
-  const [isClosed, setIsClosed] = useState(false);
+  const [isLocallyClosed, setIsLocallyClosed] = useState(false);
 
   // Fetch global banner settings
   useEffect(() => {
@@ -102,7 +102,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
   };
 
   // Determine if banner should be displayed automatically
-  const shouldDisplayAuto = shouldShowBanner() && !isClosed;
+  const shouldDisplayAuto = shouldShowBanner() && !isLocallyClosed;
   
   // If banner is not active, already shown, or still loading, don't render
   if (bannerLoading || (!isOpen && !shouldDisplayAuto)) {
@@ -110,16 +110,14 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
   }
 
   const handleClose = () => {
-    // Mark as closed locally
-    setIsClosed(true);
+    // First, set session storage to true
+    sessionStorage.setItem('enquiryBannerShown', 'true');
     
-    // If banner was shown automatically, mark it as shown in session storage
-    if (shouldDisplayAuto && !isOpen) {
-      sessionStorage.setItem('enquiryBannerShown', 'true');
-    }
-    
-    // Call the parent's onClose function
-    onClose();
+    // After 1 millisecond, close the banner
+    setTimeout(() => {
+      setIsLocallyClosed(true);
+      onClose();
+    }, 1);
   };
 
   return (
@@ -128,6 +126,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
       onClose={handleClose}
       title="Plan Your Next Trip"
       size="large"
+      showBackdrop={source !== 'Landing Page'}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2">
         {/* Left Side - Banner Content */}
