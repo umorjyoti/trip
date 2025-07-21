@@ -150,7 +150,7 @@ function CreateTicketModal({ bookingId, onClose, onSuccess }) {
       title={getModalTitle()}
       isOpen={true}
       onClose={onClose}
-      size="large"
+      size="default"
     >
       <p className="text-gray-600 mb-6">
         {ticketType === 'general' 
@@ -302,11 +302,11 @@ function CreateTicketModal({ bookingId, onClose, onSuccess }) {
           </div>
         </div>
         
-        <div className="flex justify-end space-x-3 pt-4">
+        <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
             disabled={loading}
           >
             Cancel
@@ -314,7 +314,7 @@ function CreateTicketModal({ bookingId, onClose, onSuccess }) {
           <button
             type="submit"
             disabled={loading || (ticketType === 'reschedule' && availableBatches.length === 0)}
-            className="px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 flex items-center disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 flex items-center justify-center disabled:opacity-50"
           >
             {loading ? (
               <>

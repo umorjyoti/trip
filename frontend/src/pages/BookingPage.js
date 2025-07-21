@@ -42,6 +42,21 @@ function BookingPage() {
   const [showExistingBookingModal, setShowExistingBookingModal] = useState(false);
   const [existingBooking, setExistingBooking] = useState(null);
   const [deletingBooking, setDeletingBooking] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+
+  // Ensure body scrolling is restored when component unmounts or when payment processing ends
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
+  // Restore body scrolling when payment processing ends
+  useEffect(() => {
+    if (!processingPayment && !verifyingPayment) {
+      document.body.style.overflow = 'auto';
+    }
+  }, [processingPayment, verifyingPayment]);
 
   useEffect(() => {
     const fetchRazorpayKey = async () => {
@@ -236,6 +251,12 @@ function BookingPage() {
       return false;
     }
 
+    // Validate terms agreement
+    if (!agreeToTerms) {
+      toast.error("Please agree to the Terms & Conditions to proceed");
+      return false;
+    }
+
     return true;
   };
 
@@ -348,6 +369,8 @@ function BookingPage() {
         modal: {
           ondismiss: function() {
             toast.info('Payment cancelled. You can try again.');
+            // Restore body scrolling when payment is dismissed
+            document.body.style.overflow = 'auto';
           },
           escape: false,
         },
@@ -380,6 +403,8 @@ function BookingPage() {
       console.error("Error creating booking:", error);
       toast.error(error.message || "Failed to create booking");
       setProcessingPayment(false);
+      // Restore body scrolling on error
+      document.body.style.overflow = 'auto';
     }
   };
 
@@ -764,12 +789,52 @@ function BookingPage() {
                 </div>
               )}
 
+              {/* Terms & Conditions Checkbox */}
+              <div className="mt-6 mb-4">
+                <div className="flex items-start">
+                  <input
+                    type="checkbox"
+                    id="agreeToTerms"
+                    checked={agreeToTerms}
+                    onChange={(e) => setAgreeToTerms(e.target.checked)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded mt-1"
+                    required
+                  />
+                  <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-900">
+                    I agree to the{' '}
+                    <a 
+                      href="/terms" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-emerald-600 hover:text-emerald-500 underline"
+                    >
+                      Terms & Conditions
+                    </a>
+                    {' '}and{' '}
+                    <a 
+                      href="/privacy" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-emerald-600 hover:text-emerald-500 underline"
+                    >
+                      Privacy Policy
+                    </a>
+                    {' '}*
+                  </label>
+                </div>
+                {!agreeToTerms && (
+                  <p className="mt-1 text-sm text-red-600">
+                    You must agree to the Terms & Conditions to proceed with the booking.
+                  </p>
+                )}
+              </div>
+
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={processingPayment}
+                  disabled={processingPayment || !agreeToTerms}
                   className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
-                    processingPayment ? 'opacity-50 cursor-not-allowed' : ''
+                    processingPayment || !agreeToTerms ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
                   {processingPayment ? (
