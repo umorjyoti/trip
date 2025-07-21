@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import WeekendGetawayCard from "../components/WeekendGetawayCard";
-import { getWeekendGetaways } from "../services/api";
+import { getWeekendGetaways, getWeekendGetawayPageSettings } from "../services/api";
 import { FaFilter, FaSearch, FaTimes, FaUmbrellaBeach } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -31,18 +31,40 @@ function WeekendGetaways() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState("");
+  const [heroImage, setHeroImage] = useState('');
+  const [heroTitle, setHeroTitle] = useState('Weekend Escapes');
+  const [heroSubtitle, setHeroSubtitle] = useState('Discover curated short trips designed for maximum refreshment');
 
   // Fetch weekend getaways from API
   useEffect(() => {
-    const fetchWeekendGetaways = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
+        
+        // Fetch weekend getaways
         const response = await getWeekendGetaways();
         if (response && response.weekendGetaways) {
           setWeekendGetaways(response.weekendGetaways);
         } else {
           setWeekendGetaways([]);
         }
+        
+        // Fetch weekend getaway page settings
+        try {
+          const settingsData = await getWeekendGetawayPageSettings();
+          if (settingsData.weekendGetawayPage?.heroImage) {
+            setHeroImage(settingsData.weekendGetawayPage.heroImage);
+          }
+          if (settingsData.weekendGetawayPage?.heroTitle) {
+            setHeroTitle(settingsData.weekendGetawayPage.heroTitle);
+          }
+          if (settingsData.weekendGetawayPage?.heroSubtitle) {
+            setHeroSubtitle(settingsData.weekendGetawayPage.heroSubtitle);
+          }
+        } catch (error) {
+          console.error('Error fetching weekend getaway page settings:', error);
+        }
+        
         setError(null);
       } catch (err) {
         console.error('Error fetching weekend getaways:', err);
@@ -53,7 +75,7 @@ function WeekendGetaways() {
       }
     };
 
-    fetchWeekendGetaways();
+    fetchData();
   }, []);
 
   // Filter logic based on category and search query
@@ -141,7 +163,11 @@ function WeekendGetaways() {
          {/* Parallax Background Image */}
         <motion.div
           className="absolute inset-0 bg-fixed bg-center bg-cover"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1533240332313-0db49b459ad6?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80)' }}
+          style={{ 
+            backgroundImage: heroImage 
+              ? `url(${heroImage})` 
+              : 'url(https://images.unsplash.com/photo-1533240332313-0db49b459ad6?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80)'
+          }}
           initial={{ scale: 1.1 }}
           animate={{ scale: 1 }}
           transition={{ duration: 10, ease: "linear", repeat: Infinity, repeatType: "mirror" }} // Slow continuous zoom
@@ -156,7 +182,7 @@ function WeekendGetaways() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="text-5xl md:text-7xl font-bold mb-4 tracking-tight text-shadow-lg" // Added text shadow
           >
-            Weekend Escapes
+            {heroTitle}
           </motion.h1>
           <motion.p
             initial={{ y: 30, opacity: 0 }}
@@ -164,7 +190,7 @@ function WeekendGetaways() {
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
             className="text-xl md:text-2xl max-w-2xl text-shadow" // Added text shadow
           >
-            Discover curated short trips designed for maximum refreshment.
+            {heroSubtitle}
           </motion.p>
         </div>
       </div>

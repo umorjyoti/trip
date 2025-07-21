@@ -10,4 +10,13 @@ router.put('/', [protect, admin], settingsController.updateSettings);
 // Public route for enquiry banner settings
 router.get('/enquiry-banner', settingsController.getEnquiryBannerSettings);
 
+// Public route for landing page settings
+router.get('/landing-page', settingsController.getLandingPageSettings);
+
+// Public route for blog page settings
+router.get('/blog-page', settingsController.getBlogPageSettings);
+
+// Public route for weekend getaway page settings
+router.get('/weekend-getaway-page', settingsController.getWeekendGetawayPageSettings);
+
 module.exports = router; 
