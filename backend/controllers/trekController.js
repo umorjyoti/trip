@@ -2228,3 +2228,56 @@ exports.recalculateBatchParticipants = async (req, res) => {
   }
 }; 
 
+// Get batch by ID (searches all treks' embedded batches)
+exports.getBatchById = async (req, res) => {
+  try {
+    let { batchId } = req.params;
+    if (!batchId) {
+      return res.status(400).json({ message: 'Batch ID is required' });
+    }
+
+    // Try to convert to ObjectId if possible
+    let objectId;
+    try {
+      objectId = new mongoose.Types.ObjectId(batchId);
+    } catch (e) {
+      objectId = null;
+    }
+
+    // Find the trek that contains this batch (try both ObjectId and string)
+    const trek = await require('../models/Trek').findOne({
+      'batches._id': objectId || batchId
+    });
+
+    if (!trek) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
+
+    // Find the batch by string comparison as fallback
+    let batch = trek.batches.id(batchId);
+    if (!batch && objectId) {
+      batch = trek.batches.id(objectId);
+    }
+
+    if (!batch) {
+      // Try manual search as last resort
+      batch = trek.batches.find(
+        b => b._id.toString() === batchId || (objectId && b._id.equals(objectId))
+      );
+    }
+
+    if (!batch) {
+      return res.status(404).json({ message: 'Batch not found in trek' });
+    }
+
+    // Attach trek name/id for context
+    const batchObj = batch.toObject();
+    batchObj.trekId = trek._id;
+    batchObj.trekName = trek.name;
+    res.json(batchObj);
+  } catch (error) {
+    console.error('Error fetching batch by ID:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
