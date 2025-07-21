@@ -2693,6 +2693,295 @@ For support, contact us through our website or mobile app.
   }
 };
 
+/**
+ * Send booking confirmation email to all participants
+ * @param {Object} booking - Booking object with populated trek and user
+ * @param {Object} trek - Trek object
+ * @param {Object} user - User object (booking owner)
+ * @param {Array} participants - Participant details array
+ * @param {Object} batch - Batch object
+ * @param {string} additionalRequests - Additional requests
+ * @param {Object} payment - Payment details (optional)
+ */
+const sendConfirmationEmailToAllParticipants = async (booking, trek, user, participants, batch, additionalRequests, payment = null) => {
+  const participantList = participants.map((p, index) => 
+    `${index + 1}. ${p.name} (Age: ${p.age}, Gender: ${p.gender})`
+  ).join('\n');
+
+  const emailSubject = `🎉 Booking Confirmed - ${trek?.name || 'Trek Booking'}`;
+  
+  const emailContent = `
+Dear Participant,
+
+🎉 Congratulations! Your trek booking has been fully confirmed! 
+
+📋 BOOKING CONFIRMATION:
+Booking ID: ${booking._id}
+Trek: ${trek?.name || 'N/A'}
+Dates: ${batch?.startDate ? new Date(batch.startDate).toLocaleDateString() : 'N/A'} to ${batch?.endDate ? new Date(batch.endDate).toLocaleDateString() : 'N/A'}
+Total Amount: ₹${booking.totalPrice}
+Payment Status: Confirmed
+${payment ? `Payment Method: ${payment.method}` : ''}
+
+👥 PARTICIPANTS:
+${participantList}
+
+📝 ADDITIONAL REQUESTS:
+${additionalRequests || 'None'}
+
+⚠️ IMPORTANT INFORMATION:
+• Please arrive 15 minutes before the scheduled pickup time
+• Bring comfortable trekking shoes and weather-appropriate clothing
+• Carry a water bottle and snacks
+• Don't forget your ID proof
+
+📞 NEXT STEPS:
+Our team will contact you 24-48 hours before the trek with final instructions and pickup details.
+
+❓ NEED HELP?
+If you have any questions or need to make changes, please contact us immediately.
+
+🏔️ We look forward to an amazing trek with you!
+
+Best regards,
+The Trek Team
+Your Adventure Awaits!
+
+---
+This is an automated message. Please do not reply to this email.
+For support, contact us through our website or mobile app.
+  `;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${emailSubject}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .confirmation-container {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .booking-id {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .booking-id {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+
+        <h2>Dear Participant,</h2>
+        
+        <div class="confirmation-container">
+            <div class="section-title">🎉 Booking Confirmed!</div>
+            <p>Your trek booking has been fully confirmed!</p>
+            <div class="booking-id">${booking._id}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📋 Booking Details</div>
+            <ul class="info-list">
+                <li><strong>Booking ID:</strong> ${booking._id}</li>
+                <li><strong>Trek:</strong> ${trek?.name || 'N/A'}</li>
+                <li><strong>Dates:</strong> ${batch?.startDate ? new Date(batch.startDate).toLocaleDateString() : 'N/A'} to ${batch?.endDate ? new Date(batch.endDate).toLocaleDateString() : 'N/A'}</li>
+                <li><strong>Total Amount:</strong> ₹${booking.totalPrice}</li>
+                <li><strong>Payment Status:</strong> Confirmed</li>
+                ${payment ? `<li><strong>Payment Method:</strong> ${payment.method}</li>` : ''}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">👥 Participants</div>
+            <ul class="info-list">
+                ${participants.map((p, index) => `<li><strong>${index + 1}.</strong> ${p.name} (Age: ${p.age}, Gender: ${p.gender})</li>`).join('')}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📝 Additional Requests</div>
+            <p>${additionalRequests || 'None'}</p>
+        </div>
+
+        <div class="warning">
+            <div class="section-title">⚠️ Important Information</div>
+            <ul class="info-list">
+                <li>Please arrive 15 minutes before the scheduled pickup time</li>
+                <li>Bring comfortable trekking shoes and weather-appropriate clothing</li>
+                <li>Carry a water bottle and snacks</li>
+                <li>Don't forget your ID proof</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📞 Next Steps</div>
+            <p>Our team will contact you 24-48 hours before the trek with final instructions and pickup details.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">❓ Need Help?</div>
+            <p>If you have any questions or need to make changes, please contact us immediately.</p>
+        </div>
+
+        <p style="text-align: center; font-size: 18px; color: #10b981; margin: 30px 0;">
+            🏔️ We look forward to an amazing trek with you!
+        </p>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Trek Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+  `;
+
+  // Send email to all participants
+  const emailPromises = [];
+  
+  // Send to booking owner
+  emailPromises.push(
+    sendEmail({
+      to: user.email,
+      subject: emailSubject,
+      text: emailContent,
+      html: htmlContent
+    })
+  );
+  
+  // Send to all participants who have email addresses
+  participants.forEach(participant => {
+    if (participant.email && participant.email !== user.email) {
+      emailPromises.push(
+        sendEmail({
+          to: participant.email,
+          subject: emailSubject,
+          text: emailContent,
+          html: htmlContent
+        })
+      );
+    }
+  });
+  
+  // Wait for all emails to be sent
+  const results = await Promise.allSettled(emailPromises);
+  
+  // Log results
+  const successful = results.filter(result => result.status === 'fulfilled').length;
+  const failed = results.filter(result => result.status === 'rejected').length;
+  
+  console.log(`Sent confirmation emails to ${successful} participants (${failed} failed)`);
+  
+  return {
+    totalSent: successful,
+    totalFailed: failed,
+    results
+  };
+};
+
 module.exports = { 
   sendEmail, 
   sendBookingConfirmationEmail, 
@@ -2705,5 +2994,6 @@ module.exports = {
   sendRescheduleApprovalEmail,
   sendPartialPaymentReminderEmail,
   sendPartialPaymentConfirmationEmail,
-  sendEmailWithAttachment
+  sendEmailWithAttachment,
+  sendConfirmationEmailToAllParticipants
 };

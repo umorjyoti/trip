@@ -98,17 +98,23 @@ const generateInvoicePDF = async (booking, payment) => {
       currentY += 20;
 
       // Batch Details
-      if (booking.batch) {
-        doc.text('Trek Dates', col1, currentY);
-        let startDate = booking.batch.startDate ? new Date(booking.batch.startDate).toLocaleDateString('en-IN') : 'N/A';
-        let endDate = booking.batch.endDate ? new Date(booking.batch.endDate).toLocaleDateString('en-IN') : 'N/A';
-        if (startDate === 'Invalid Date') startDate = 'N/A';
-        if (endDate === 'Invalid Date') endDate = 'N/A';
-        doc.text(`${startDate} to ${endDate}`, col2, currentY);
-        doc.text('-', col3, currentY);
-        doc.text('-', col4, currentY);
-        currentY += 20;
+      let startDate = 'N/A';
+      let endDate = 'N/A';
+      if (booking.trek && booking.trek.batches && booking.batch) {
+        // booking.batch may be an ObjectId or string, so compare as strings
+        const batchObj = booking.trek.batches.find(
+          b => b._id.toString() === booking.batch.toString()
+        );
+        if (batchObj) {
+          startDate = batchObj.startDate ? new Date(batchObj.startDate).toLocaleDateString('en-IN') : 'N/A';
+          endDate = batchObj.endDate ? new Date(batchObj.endDate).toLocaleDateString('en-IN') : 'N/A';
+        }
       }
+      doc.text('Trek Dates', col1, currentY);
+      doc.text(`${startDate} to ${endDate}`, col2, currentY);
+      doc.text('-', col3, currentY);
+      doc.text('-', col4, currentY);
+      currentY += 20;
 
       // Add-ons if any
       if (booking.addOns && booking.addOns.length > 0) {

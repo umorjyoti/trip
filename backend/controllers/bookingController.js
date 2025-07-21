@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail, sendPartialPaymentReminderEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail, sendPartialPaymentReminderEmail, sendConfirmationEmailToAllParticipants } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
@@ -116,7 +116,17 @@ const createCustomTrekBooking = async (req, res) => {
 
     // Send confirmation email
     try {
-      await sendBookingConfirmationEmail(booking, trek, customBatch);
+      // If participant details are available, send to all participants
+      if (booking.participantDetails && booking.participantDetails.length > 0) {
+        await sendConfirmationEmailToAllParticipants(booking, trek, booking.user, booking.participantDetails, customBatch, booking.additionalRequests);
+      } else {
+        // Fallback: send to booking user only
+        await sendEmail({
+          to: booking.userDetails.email,
+          subject: `Booking Confirmed - ${trek?.name || 'Trek Booking'}`,
+          text: `Dear ${booking.userDetails.name},\n\nYour booking is confirmed!\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+        });
+      }
       // Generate and send invoice for direct confirmation
       await booking.populate('trek').populate('user');
       const paymentDetails = booking.paymentDetails || {
@@ -1539,20 +1549,20 @@ const updateParticipantDetails = async (req, res) => {
 
     console.log('Booking updated successfully, status:', booking.status);
 
-    // Send booking confirmation email only if booking is fully confirmed
+    // Send booking confirmation email to all participants only if booking is fully confirmed
     if (booking.status === 'confirmed') {
       try {
         const trek = booking.trek;
         const user = booking.user;
         const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
         
-        console.log('Sending booking confirmation email to:', user.email);
+        console.log('Sending booking confirmation email to all participants');
 
-        await sendBookingConfirmationEmail(booking, trek, user, formattedParticipants, batch, additionalRequests);
+        await sendConfirmationEmailToAllParticipants(booking, trek, user, formattedParticipants, batch, additionalRequests);
         
-        console.log('Booking confirmation email sent successfully');
+        console.log('Booking confirmation emails sent successfully to all participants');
       } catch (emailError) {
-        console.error('Error sending booking confirmation email:', emailError);
+        console.error('Error sending booking confirmation emails to all participants:', emailError);
         // Don't fail the participant details update if email fails
       }
     } else {
@@ -1722,8 +1732,8 @@ const sendConfirmationEmail = async (req, res) => {
       gender: 'N/A'
     }];
 
-    // Send confirmation email using the proper template
-    await sendBookingConfirmationEmail(
+    // Send confirmation email to all participants using the proper template
+    await sendConfirmationEmailToAllParticipants(
       booking, 
       booking.trek, 
       booking.user, 

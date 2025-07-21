@@ -2,7 +2,7 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const PromoCode = require('../models/PromoCode');
-const { sendEmail, sendPaymentReceivedEmail, sendPartialPaymentConfirmationEmail, sendEmailWithAttachment, sendBookingConfirmationEmail } = require('../utils/email');
+const { sendEmail, sendPaymentReceivedEmail, sendPartialPaymentConfirmationEmail, sendEmailWithAttachment, sendBookingConfirmationEmail, sendConfirmationEmailToAllParticipants } = require('../utils/email');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 
 // Initialize Razorpay instance
@@ -180,17 +180,17 @@ exports.verifyPayment = async (req, res) => {
             // Send partial payment confirmation email with invoice attachment (initial payment)
             await sendPartialPaymentConfirmationEmail(booking, trek, user, paymentDetails, booking.batch);
           } else if (isRemainingBalancePayment) {
-            // For remaining balance payment, send booking confirmation email if status is confirmed
+            // For remaining balance payment, send booking confirmation email to all participants if status is confirmed
             if (booking.status === 'confirmed') {
               try {
                 const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
                 const participants = booking.participantDetails || [];
                 
-                console.log('Sending booking confirmation email for remaining balance payment to:', user.email);
-                await sendBookingConfirmationEmail(booking, trek, user, participants, batch, booking.additionalRequests);
-                console.log('Booking confirmation email sent successfully');
+                console.log('Sending booking confirmation email to all participants for remaining balance payment');
+                await sendConfirmationEmailToAllParticipants(booking, trek, user, participants, batch, booking.additionalRequests, paymentDetails);
+                console.log('Booking confirmation emails sent successfully to all participants');
               } catch (bookingEmailError) {
-                console.error('Error sending booking confirmation email:', bookingEmailError);
+                console.error('Error sending booking confirmation emails to all participants:', bookingEmailError);
               }
             }
             
@@ -540,6 +540,20 @@ exports.verifyPayment = async (req, res) => {
                 attachmentBuffer: invoiceBuffer,
                 attachmentFilename: `Invoice-${booking._id}.pdf`
               });
+              
+              // If booking is confirmed and has participant details, send confirmation emails to all participants
+              if (booking.status === 'confirmed' && booking.participantDetails && booking.participantDetails.length > 0) {
+                try {
+                  const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+                  const participants = booking.participantDetails || [];
+                  
+                  console.log('Sending booking confirmation email to all participants for full payment');
+                  await sendConfirmationEmailToAllParticipants(booking, trek, user, participants, batch, booking.additionalRequests, paymentDetails);
+                  console.log('Booking confirmation emails sent successfully to all participants');
+                } catch (participantEmailError) {
+                  console.error('Error sending booking confirmation emails to all participants:', participantEmailError);
+                }
+              }
             } catch (invoiceError) {
               console.error('Error generating or sending invoice PDF:', invoiceError);
               // Fallback to sending payment confirmation email without invoice
