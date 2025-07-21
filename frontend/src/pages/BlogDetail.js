@@ -68,10 +68,10 @@ function BlogDetail() {
       },
       "publisher": {
         "@type": "Organization",
-        "name": "Trek Adventures",
+        "name": "Bengaluru Trekkers",
         "logo": {
           "@type": "ImageObject",
-          "url": `${window.location.origin}/logo.png`
+          "url": `${window.location.origin}/bt-logo.png`
         }
       },
       "datePublished": blog.publishedAt,

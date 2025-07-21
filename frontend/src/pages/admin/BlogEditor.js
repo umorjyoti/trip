@@ -100,17 +100,18 @@ function BlogEditor() {
   const fetchBlog = async () => {
     try {
       setLoading(true);
-      const blog = await api.get(`/blogs/admin/${id}`);
+      const response = await api.get(`/blogs/admin/${id}`);
+      const blog = response.data;
       setFormData({
-        title: blog.title,
-        content: blog.content,
-        excerpt: blog.excerpt,
-        bannerImage: blog.bannerImage,
+        title: blog.title || '',
+        content: blog.content || '',
+        excerpt: blog.excerpt || '',
+        bannerImage: blog.bannerImage || '',
         region: blog.region || '',
-        metaTitle: blog.metaTitle,
-        metaDescription: blog.metaDescription,
-        keywords: blog.keywords.join(', '),
-        status: blog.status
+        metaTitle: blog.metaTitle || '',
+        metaDescription: blog.metaDescription || '',
+        keywords: Array.isArray(blog.keywords) ? blog.keywords.join(', ') : '',
+        status: blog.status || 'draft'
       });
     } catch (error) {
       toast.error('Failed to fetch blog');
