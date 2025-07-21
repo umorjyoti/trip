@@ -132,7 +132,7 @@ function HeroSection() {
                 >
                   <option value="" className="text-gray-800">All Destinations</option>
                   {regions.map(region => (
-                    <option key={region._id} value={region._id} className="text-gray-800">
+                    <option key={region._id} value={region.name} className="text-gray-800">
                       {region.name}
                     </option>
                   ))}
@@ -149,11 +149,12 @@ function HeroSection() {
                   onChange={(e) => setSeason(e.target.value)}
                 >
                   <option value="" className="text-gray-800">All Seasons</option>
-                  <option value="summer" className="text-gray-800">Summer</option>
-                  <option value="spring" className="text-gray-800">Spring</option>
-                  <option value="monsoon" className="text-gray-800">Monsoon</option>
-                  <option value="autumn" className="text-gray-800">Autumn</option>
-                  <option value="winter" className="text-gray-800">Winter</option>
+                  <option value="Summer" className="text-gray-800">Summer</option>
+                  <option value="Spring" className="text-gray-800">Spring</option>
+                  <option value="Monsoon" className="text-gray-800">Monsoon</option>
+                  <option value="Autumn" className="text-gray-800">Autumn</option>
+                  <option value="Winter" className="text-gray-800">Winter</option>
+                  <option value="Year-round" className="text-gray-800">Year-round</option>
                 </select>
               </div>
             </div>

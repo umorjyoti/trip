@@ -171,7 +171,7 @@ function SearchResults() {
                 >
                   <option value="">All Destinations</option>
                   {regions.map(region => (
-                    <option key={region._id} value={region._id}>
+                    <option key={region._id} value={region.name}>
                       {region.name}
                     </option>
                   ))}
@@ -189,11 +189,12 @@ function SearchResults() {
                   onChange={handleFilterChange}
                 >
                   <option value="">All Seasons</option>
-                  <option value="summer">Summer</option>
-                  <option value="spring">Spring</option>
-                  <option value="monsoon">Monsoon</option>
-                  <option value="autumn">Autumn</option>
-                  <option value="winter">Winter</option>
+                  <option value="Summer">Summer</option>
+                  <option value="Spring">Spring</option>
+                  <option value="Monsoon">Monsoon</option>
+                  <option value="Autumn">Autumn</option>
+                  <option value="Winter">Winter</option>
+                  <option value="Year-round">Year-round</option>
                 </select>
               </div>
             </div>
@@ -242,7 +243,7 @@ function SearchResults() {
               <div className="mb-4">
                 <p className="text-gray-600">
                   Showing {treks.length} {treks.length === 1 ? 'trek' : 'treks'}
-                  {filters.region && ` in ${regions.find(r => r._id === filters.region)?.name || filters.region}`}
+                  {filters.region && ` in ${filters.region}`}
                   {filters.season && ` during ${filters.season}`}
                   {filters.duration && ` of ${filters.duration} duration`}
                 </p>

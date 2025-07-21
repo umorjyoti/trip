@@ -122,6 +122,7 @@ function TrekFilter({ filters, setFilters }) {
             <option value="Monsoon">Monsoon</option>
             <option value="Autumn">Autumn</option>
             <option value="Winter">Winter</option>
+            <option value="Year-round">Year-round</option>
           </select>
         </div>
         
