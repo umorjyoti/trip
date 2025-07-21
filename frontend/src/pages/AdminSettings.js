@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { FaCog, FaImage, FaSave, FaTimes, FaEye, FaEyeSlash, FaHome, FaBlog, FaUmbrellaBeach } from 'react-icons/fa';
+import { FaCog, FaImage, FaSave, FaTimes, FaEye, FaEyeSlash, FaHome, FaBlog, FaUmbrellaBeach, FaHiking, FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import { getSettings, updateSettings, uploadImage as uploadImageAPI } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
@@ -11,6 +11,10 @@ function AdminSettings() {
   const [showLandingPageModal, setShowLandingPageModal] = useState(false);
   const [showBlogPageModal, setShowBlogPageModal] = useState(false);
   const [showWeekendGetawayModal, setShowWeekendGetawayModal] = useState(false);
+  const [showAddStatModal, setShowAddStatModal] = useState(false);
+  const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
+  const [showEditStatModal, setShowEditStatModal] = useState(false);
+  const [showEditCompanyModal, setShowEditCompanyModal] = useState(false);
   const [bannerConfig, setBannerConfig] = useState({
     isActive: false,
     title: '',
@@ -40,6 +44,25 @@ function AdminSettings() {
   const [blogPageImageFile, setBlogPageImageFile] = useState(null);
   const [weekendGetawayImageFile, setWeekendGetawayImageFile] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [newCompanyLogoFile, setNewCompanyLogoFile] = useState(null);
+  const [editingCompanyLogoFile, setEditingCompanyLogoFile] = useState(null);
+  
+  // About page management states
+  const [aboutPageConfig, setAboutPageConfig] = useState({
+    stats: [],
+    companyProfiles: []
+  });
+  const [editingStat, setEditingStat] = useState(null);
+  const [editingCompany, setEditingCompany] = useState(null);
+  const [newStat, setNewStat] = useState({ value: '', label: '', isActive: true });
+  const [newCompany, setNewCompany] = useState({ 
+    company: '', 
+    logo: '🏢', 
+    logoImage: '', 
+    description: '', 
+    details: '', 
+    isActive: true 
+  });
 
   useEffect(() => {
     fetchSettings();
@@ -72,6 +95,10 @@ function AdminSettings() {
         heroImage: '',
         heroTitle: 'Weekend Escapes',
         heroSubtitle: 'Discover curated short trips designed for maximum refreshment'
+      });
+      setAboutPageConfig(data.aboutPage || {
+        stats: [],
+        companyProfiles: []
       });
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -174,6 +201,54 @@ function AdminSettings() {
       // Create a preview URL
       const previewUrl = URL.createObjectURL(file);
       setWeekendGetawayConfig(prev => ({ ...prev, heroImage: previewUrl }));
+    }
+  };
+
+  const handleNewCompanyLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        return;
+      }
+
+      // Validate file size (2MB max for logos)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        toast.error('File size too large. Maximum size is 2MB.');
+        return;
+      }
+
+      setNewCompanyLogoFile(file);
+      // Create a preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setNewCompany(prev => ({ ...prev, logoImage: previewUrl }));
+    }
+  };
+
+  const handleEditingCompanyLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        return;
+      }
+
+      // Validate file size (2MB max for logos)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        toast.error('File size too large. Maximum size is 2MB.');
+        return;
+      }
+
+      setEditingCompanyLogoFile(file);
+      // Create a preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setEditingCompany(prev => ({ ...prev, logoImage: previewUrl }));
     }
   };
 
@@ -349,6 +424,127 @@ function AdminSettings() {
     setWeekendGetawayImageFile(null);
     // Reset to current settings
     fetchSettings();
+  };
+
+  // About page management functions
+  const addStat = () => {
+    if (!newStat.value || !newStat.label) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    setAboutPageConfig(prev => ({
+      ...prev,
+      stats: [...prev.stats, { ...newStat }]
+    }));
+    setNewStat({ value: '', label: '', isActive: true });
+    setShowAddStatModal(false);
+  };
+
+  const updateStat = (index) => {
+    if (!editingStat.value || !editingStat.label) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    const updatedStats = [...aboutPageConfig.stats];
+    updatedStats[index] = editingStat;
+    setAboutPageConfig(prev => ({ ...prev, stats: updatedStats }));
+    setEditingStat(null);
+    setShowEditStatModal(false);
+  };
+
+  const deleteStat = (index) => {
+    const updatedStats = aboutPageConfig.stats.filter((_, i) => i !== index);
+    setAboutPageConfig(prev => ({ ...prev, stats: updatedStats }));
+  };
+
+  const toggleStatActive = (index) => {
+    const updatedStats = [...aboutPageConfig.stats];
+    updatedStats[index].isActive = !updatedStats[index].isActive;
+    setAboutPageConfig(prev => ({ ...prev, stats: updatedStats }));
+  };
+
+  const addCompany = async () => {
+    if (!newCompany.company || !newCompany.description || !newCompany.details) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    let logoImageUrl = newCompany.logoImage;
+
+    // If there's a new logo file, upload it first
+    if (newCompanyLogoFile) {
+      logoImageUrl = await uploadImage(newCompanyLogoFile);
+      if (!logoImageUrl) {
+        return;
+      }
+    }
+
+    const companyData = {
+      ...newCompany,
+      logoImage: logoImageUrl
+    };
+
+    setAboutPageConfig(prev => ({
+      ...prev,
+      companyProfiles: [...prev.companyProfiles, companyData]
+    }));
+    setNewCompany({ company: '', logo: '🏢', logoImage: '', description: '', details: '', isActive: true });
+    setNewCompanyLogoFile(null);
+    setShowAddCompanyModal(false);
+  };
+
+  const updateCompany = async (index) => {
+    if (!editingCompany.company || !editingCompany.description || !editingCompany.details) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    let logoImageUrl = editingCompany.logoImage;
+
+    // If there's a new logo file, upload it first
+    if (editingCompanyLogoFile) {
+      logoImageUrl = await uploadImage(editingCompanyLogoFile);
+      if (!logoImageUrl) {
+        return;
+      }
+    }
+
+    const updatedCompanyData = {
+      ...editingCompany,
+      logoImage: logoImageUrl
+    };
+
+    const updatedCompanies = [...aboutPageConfig.companyProfiles];
+    updatedCompanies[index] = updatedCompanyData;
+    setAboutPageConfig(prev => ({ ...prev, companyProfiles: updatedCompanies }));
+    setEditingCompany(null);
+    setEditingCompanyLogoFile(null);
+    setShowEditCompanyModal(false);
+  };
+
+  const deleteCompany = (index) => {
+    const updatedCompanies = aboutPageConfig.companyProfiles.filter((_, i) => i !== index);
+    setAboutPageConfig(prev => ({ ...prev, companyProfiles: updatedCompanies }));
+  };
+
+  const toggleCompanyActive = (index) => {
+    const updatedCompanies = [...aboutPageConfig.companyProfiles];
+    updatedCompanies[index].isActive = !updatedCompanies[index].isActive;
+    setAboutPageConfig(prev => ({ ...prev, companyProfiles: updatedCompanies }));
+  };
+
+  const saveAboutPageSettings = async () => {
+    try {
+      const updatedSettings = {
+        aboutPage: aboutPageConfig
+      };
+      await updateSettings(updatedSettings);
+      toast.success('About page settings saved successfully!');
+      await fetchSettings();
+    } catch (error) {
+      console.error('Error saving about page settings:', error);
+      toast.error('Failed to save about page settings');
+    }
   };
 
   if (loading) {
@@ -582,6 +778,150 @@ function AdminSettings() {
           <FaImage className="text-sm" />
           <span>Update Hero Image</span>
         </button>
+      </div>
+
+      {/* About Page Management Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">About Page Management</h2>
+            <p className="text-sm text-gray-600">Manage statistics and company profiles displayed on the About page</p>
+          </div>
+          <FaHiking className="text-emerald-600 text-xl" />
+        </div>
+
+        {/* Stats Section */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Statistics</h3>
+            <button
+              onClick={() => setShowAddStatModal(true)}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm"
+            >
+              <FaPlus className="h-3 w-3" />
+              Add Stat
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aboutPageConfig.stats.map((stat, index) => (
+              <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleStatActive(index)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {stat.isActive ? <FaEye className="h-4 w-4" /> : <FaEyeSlash className="h-4 w-4" />}
+                    </button>
+                    <span className={`font-semibold ${stat.isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {stat.value}
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingStat({ ...stat, index });
+                        setShowEditStatModal(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <FaEdit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteStat(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <FaTrash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <p className={`text-sm ${stat.isActive ? 'text-gray-700' : 'text-gray-400'}`}>
+                  {stat.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Company Profiles Section */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Company Profiles</h3>
+            <button
+              onClick={() => setShowAddCompanyModal(true)}
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm"
+            >
+              <FaPlus className="h-3 w-3" />
+              Add Company
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aboutPageConfig.companyProfiles.map((company, index) => (
+              <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleCompanyActive(index)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      {company.isActive ? <FaEye className="h-4 w-4" /> : <FaEyeSlash className="h-4 w-4" />}
+                    </button>
+                    {company.logoImage ? (
+                      <img
+                        src={company.logoImage}
+                        alt={`${company.company} logo`}
+                        className="w-8 h-8 object-contain rounded"
+                      />
+                    ) : (
+                      <span className="text-2xl">{company.logo}</span>
+                    )}
+                    <span className={`font-semibold ${company.isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+                      {company.company}
+                    </span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => {
+                        setEditingCompany({ ...company, index });
+                        setShowEditCompanyModal(true);
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <FaEdit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => deleteCompany(index)}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      <FaTrash className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <p className={`text-sm mb-2 ${company.isActive ? 'text-gray-700' : 'text-gray-400'}`}>
+                  {company.description}
+                </p>
+                <div className="bg-emerald-50 rounded p-2">
+                  <p className={`text-xs font-semibold ${company.isActive ? 'text-emerald-700' : 'text-gray-400'}`}>
+                    {company.details}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end">
+          <button
+            onClick={saveAboutPageSettings}
+            className="bg-emerald-600 text-white px-6 py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+          >
+            <FaSave className="h-4 w-4" />
+            Save About Page Settings
+          </button>
+        </div>
       </div>
 
       {/* Banner Configuration Modal */}
@@ -1128,6 +1468,344 @@ function AdminSettings() {
               <span>Save Image</span>
             </button>
           </div>
+        </div>
+      </Modal>
+
+      {/* Add Stat Modal */}
+      <Modal
+        isOpen={showAddStatModal}
+        onClose={() => setShowAddStatModal(false)}
+        title="Add New Stat"
+        size="medium"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+            <input
+              type="text"
+              value={newStat.value}
+              onChange={(e) => setNewStat(prev => ({ ...prev, value: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="e.g., 500+"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+            <input
+              type="text"
+              value={newStat.label}
+              onChange={(e) => setNewStat(prev => ({ ...prev, label: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="e.g., Treks Completed"
+            />
+          </div>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => setShowAddStatModal(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+          >
+            <FaTimes className="text-sm" />
+            <span>Cancel</span>
+          </button>
+          <button
+            onClick={addStat}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <FaSave className="text-sm" />
+            <span>Add Stat</span>
+          </button>
+        </div>
+      </Modal>
+
+      {/* Add Company Modal */}
+      <Modal
+        isOpen={showAddCompanyModal}
+        onClose={() => setShowAddCompanyModal(false)}
+        title="Add New Company"
+        size="large"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+            <input
+              type="text"
+              value={newCompany.company}
+              onChange={(e) => setNewCompany(prev => ({ ...prev, company: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="e.g., Infosys"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+            <div className="space-y-2">
+              {/* Logo Preview */}
+              <div className="flex items-center gap-3">
+                {newCompany.logoImage ? (
+                  <img
+                    src={newCompany.logoImage}
+                    alt="Logo preview"
+                    className="w-12 h-12 object-contain border rounded-lg bg-white"
+                  />
+                ) : (
+                  <span className="text-3xl">{newCompany.logo}</span>
+                )}
+                <div className="text-sm text-gray-600">
+                  {newCompany.logoImage ? 'Uploaded logo will be used' : 'Emoji will be used as placeholder'}
+                </div>
+              </div>
+              
+              {/* Logo Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Logo Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleNewCompanyLogoChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                />
+                {uploadingImage && (
+                  <div className="mt-2 flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-2"></div>
+                    <span className="text-sm text-gray-600">Uploading logo...</span>
+                  </div>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Recommended size: 200x200px. Max file size: 2MB. Leave empty to use emoji.
+                </p>
+              </div>
+              
+              {/* Emoji Fallback */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Emoji (Fallback)</label>
+                <input
+                  type="text"
+                  value={newCompany.logo}
+                  onChange={(e) => setNewCompany(prev => ({ ...prev, logo: e.target.value }))}
+                  className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="🏢"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Used as fallback if no logo image is uploaded
+                </p>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <input
+              type="text"
+              value={newCompany.description}
+              onChange={(e) => setNewCompany(prev => ({ ...prev, description: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="e.g., Team building trek to Kudremukh"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Details</label>
+            <input
+              type="text"
+              value={newCompany.details}
+              onChange={(e) => setNewCompany(prev => ({ ...prev, details: e.target.value }))}
+              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              placeholder="e.g., 50+ employees, 3-day adventure"
+            />
+          </div>
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => setShowAddCompanyModal(false)}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+          >
+            <FaTimes className="text-sm" />
+            <span>Cancel</span>
+          </button>
+          <button
+            onClick={addCompany}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <FaSave className="text-sm" />
+            <span>Add Company</span>
+          </button>
+        </div>
+      </Modal>
+
+      {/* Edit Stat Modal */}
+      <Modal
+        isOpen={showEditStatModal}
+        onClose={() => {
+          setShowEditStatModal(false);
+          setEditingStat(null);
+        }}
+        title="Edit Stat"
+        size="medium"
+      >
+        {editingStat && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+              <input
+                type="text"
+                value={editingStat.value}
+                onChange={(e) => setEditingStat(prev => ({ ...prev, value: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Label</label>
+              <input
+                type="text"
+                value={editingStat.label}
+                onChange={(e) => setEditingStat(prev => ({ ...prev, label: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => {
+              setShowEditStatModal(false);
+              setEditingStat(null);
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+          >
+            <FaTimes className="text-sm" />
+            <span>Cancel</span>
+          </button>
+          <button
+            onClick={() => editingStat && updateStat(editingStat.index)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <FaSave className="text-sm" />
+            <span>Update Stat</span>
+          </button>
+        </div>
+      </Modal>
+
+      {/* Edit Company Modal */}
+      <Modal
+        isOpen={showEditCompanyModal}
+        onClose={() => {
+          setShowEditCompanyModal(false);
+          setEditingCompany(null);
+          setEditingCompanyLogoFile(null);
+        }}
+        title="Edit Company"
+        size="medium"
+      >
+        {editingCompany && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+              <input
+                type="text"
+                value={editingCompany.company}
+                onChange={(e) => setEditingCompany(prev => ({ ...prev, company: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+              <div className="space-y-2">
+                {/* Logo Preview */}
+                <div className="flex items-center gap-3">
+                  {editingCompany.logoImage ? (
+                    <img
+                      src={editingCompany.logoImage}
+                      alt="Logo preview"
+                      className="w-12 h-12 object-contain border rounded-lg bg-white"
+                    />
+                  ) : (
+                    <span className="text-3xl">{editingCompany.logo}</span>
+                  )}
+                  <div className="text-sm text-gray-600">
+                    {editingCompany.logoImage ? 'Uploaded logo will be used' : 'Emoji will be used as placeholder'}
+                  </div>
+                </div>
+                
+                {/* Logo Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Logo Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditingCompanyLogoChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                  {uploadingImage && (
+                    <div className="mt-2 flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-2"></div>
+                      <span className="text-sm text-gray-600">Uploading logo...</span>
+                    </div>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    Recommended size: 200x200px. Max file size: 2MB. Leave empty to use emoji.
+                  </p>
+                </div>
+                
+                {/* Emoji Fallback */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Emoji (Fallback)</label>
+                  <input
+                    type="text"
+                    value={editingCompany.logo}
+                    onChange={(e) => setEditingCompany(prev => ({ ...prev, logo: e.target.value }))}
+                    className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Used as fallback if no logo image is uploaded
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <input
+                type="text"
+                value={editingCompany.description}
+                onChange={(e) => setEditingCompany(prev => ({ ...prev, description: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Details</label>
+              <input
+                type="text"
+                value={editingCompany.details}
+                onChange={(e) => setEditingCompany(prev => ({ ...prev, details: e.target.value }))}
+                className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Action Buttons */}
+        <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => {
+              setShowEditCompanyModal(false);
+              setEditingCompany(null);
+              setEditingCompanyLogoFile(null);
+            }}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+          >
+            <FaTimes className="text-sm" />
+            <span>Cancel</span>
+          </button>
+          <button
+            onClick={() => editingCompany && updateCompany(editingCompany.index)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+          >
+            <FaSave className="text-sm" />
+            <span>Update Company</span>
+          </button>
         </div>
       </Modal>
     </div>

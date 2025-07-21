@@ -32,6 +32,7 @@ function AdminLayout({ children }) {
     'User Groups': 'manageUserGroups',
     'Leads': 'manageLeads',
     'Settings': null,
+
     'Careers': 'manageCareers'
   };
 
@@ -107,6 +108,7 @@ function AdminLayout({ children }) {
       path: '/admin/settings',
       icon: FaCog
     },
+
     {
       name: 'Careers',
       path: '/admin/careers',

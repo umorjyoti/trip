@@ -88,6 +88,7 @@ import UnauthorizedPage from "./pages/UnauthorizedPage";
 import FailedBookings from "./pages/admin/FailedBookings";
 import AdminSettings from "./pages/AdminSettings";
 
+
 function App() {
   const { currentUser, loading, refreshUser } = useAuth();
   const permissions = currentUser?.group?.permissions;
@@ -567,6 +568,8 @@ function App() {
                           path="settings"
                           element={<AdminSettings />}
                         />
+
+
                       </Routes>
                     </AdminLayout>
                   </AdminRoute>

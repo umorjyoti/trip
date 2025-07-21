@@ -48,6 +48,16 @@ exports.updateSettings = async (req, res) => {
       };
     }
     
+    // Update about page settings
+    if (req.body.aboutPage) {
+      if (req.body.aboutPage.stats) {
+        settings.aboutPage.stats = req.body.aboutPage.stats;
+      }
+      if (req.body.aboutPage.companyProfiles) {
+        settings.aboutPage.companyProfiles = req.body.aboutPage.companyProfiles;
+      }
+    }
+    
     // Add other settings updates here in the future
     
     const updatedSettings = await settings.save();
@@ -106,6 +116,19 @@ exports.getWeekendGetawayPageSettings = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching weekend getaway page settings:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Get about page settings (public endpoint)
+exports.getAboutPageSettings = async (req, res) => {
+  try {
+    const settings = await Settings.getInstance();
+    res.json({
+      aboutPage: settings.aboutPage
+    });
+  } catch (error) {
+    console.error('Error fetching about page settings:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 }; 

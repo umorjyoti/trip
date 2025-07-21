@@ -111,6 +111,65 @@ const SettingsSchema = new mongoose.Schema({
       maxlength: [200, 'Weekend getaway hero subtitle cannot exceed 200 characters']
     }
   },
+  // About Page Configuration
+  aboutPage: {
+    stats: [
+      {
+        value: {
+          type: String,
+          trim: true,
+          maxlength: [20, 'Stat value cannot exceed 20 characters']
+        },
+        label: {
+          type: String,
+          trim: true,
+          maxlength: [50, 'Stat label cannot exceed 50 characters']
+        },
+        isActive: {
+          type: Boolean,
+          default: true
+        }
+      }
+    ],
+    companyProfiles: [
+      {
+        company: {
+          type: String,
+          trim: true,
+          maxlength: [100, 'Company name cannot exceed 100 characters']
+        },
+        logo: {
+          type: String,
+          trim: true,
+          maxlength: [10, 'Logo emoji cannot exceed 10 characters']
+        },
+        logoImage: {
+          type: String,
+          validate: {
+            validator: function(v) {
+              if (!v) return true; // Allow empty
+              return /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i.test(v);
+            },
+            message: 'Logo image must be a valid image URL'
+          }
+        },
+        description: {
+          type: String,
+          trim: true,
+          maxlength: [200, 'Description cannot exceed 200 characters']
+        },
+        details: {
+          type: String,
+          trim: true,
+          maxlength: [100, 'Details cannot exceed 100 characters']
+        },
+        isActive: {
+          type: Boolean,
+          default: true
+        }
+      }
+    ]
+  },
   // Add other global settings here in the future
   createdAt: {
     type: Date,
@@ -152,6 +211,69 @@ SettingsSchema.statics.getInstance = async function() {
         heroImage: '',
         heroTitle: 'Weekend Escapes',
         heroSubtitle: 'Discover curated short trips designed for maximum refreshment'
+      },
+      aboutPage: {
+        stats: [
+          {
+            value: '500+',
+            label: 'Treks Completed',
+            isActive: true
+          },
+          {
+            value: '10K+',
+            label: 'Happy Trekkers',
+            isActive: true
+          },
+          {
+            value: '50+',
+            label: 'Destinations',
+            isActive: true
+          }
+        ],
+        companyProfiles: [
+          {
+            company: 'Infosys',
+            logo: '🏢',
+            description: 'Team building trek to Kudremukh',
+            details: '50+ employees, 3-day adventure',
+            isActive: true
+          },
+          {
+            company: 'Wipro',
+            logo: '🏢',
+            description: 'Corporate retreat to Coorg',
+            details: '75+ participants, weekend getaway',
+            isActive: true
+          },
+          {
+            company: 'TCS',
+            logo: '🏢',
+            description: 'Leadership trek to Kodachadri',
+            details: '30+ managers, team bonding',
+            isActive: true
+          },
+          {
+            company: 'Accenture',
+            logo: '🏢',
+            description: 'Adventure challenge in Sakleshpur',
+            details: '40+ employees, outdoor training',
+            isActive: true
+          },
+          {
+            company: 'Cognizant',
+            logo: '🏢',
+            description: 'Wellness trek to Chikmagalur',
+            details: '60+ staff, health & fitness focus',
+            isActive: true
+          },
+          {
+            company: 'Tech Mahindra',
+            logo: '🏢',
+            description: 'Corporate expedition to Mullayanagiri',
+            details: '45+ team members, peak climbing',
+            isActive: true
+          }
+        ]
       }
     });
     await settings.save();

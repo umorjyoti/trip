@@ -19,4 +19,7 @@ router.get('/blog-page', settingsController.getBlogPageSettings);
 // Public route for weekend getaway page settings
 router.get('/weekend-getaway-page', settingsController.getWeekendGetawayPageSettings);
 
+// Public route for about page settings
+router.get('/about-page', settingsController.getAboutPageSettings);
+
 module.exports = router; 
