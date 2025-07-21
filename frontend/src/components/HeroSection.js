@@ -20,7 +20,7 @@ function HeroSection() {
       try {
         // Fetch regions
         const regionsData = await getRegions();
-        const activeRegions = regionsData.filter(region => region.isActive);
+        const activeRegions = regionsData.filter(region => region.isEnabled);
         setRegions(activeRegions);
 
         // Fetch landing page settings

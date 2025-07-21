@@ -43,7 +43,7 @@ function SearchResults() {
       try {
         const data = await getRegions();
         // Only show active regions
-        const activeRegions = data.filter(region => region.isActive);
+        const activeRegions = data.filter(region => region.isEnabled);
         setRegions(activeRegions);
       } catch (error) {
         console.error('Error fetching regions:', error);
