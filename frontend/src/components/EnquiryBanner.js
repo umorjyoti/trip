@@ -18,6 +18,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
   const [loading, setLoading] = useState(false);
   const [bannerSettings, setBannerSettings] = useState(null);
   const [bannerLoading, setBannerLoading] = useState(true);
+  const [isClosed, setIsClosed] = useState(false);
 
   // Fetch global banner settings
   useEffect(() => {
@@ -100,18 +101,31 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
     return !bannerShown;
   };
 
-  // Determine if banner should be displayed
-  const shouldDisplay = isOpen || shouldShowBanner();
-
+  // Determine if banner should be displayed automatically
+  const shouldDisplayAuto = shouldShowBanner() && !isClosed;
+  
   // If banner is not active, already shown, or still loading, don't render
-  if (bannerLoading || !shouldDisplay) {
+  if (bannerLoading || (!isOpen && !shouldDisplayAuto)) {
     return null;
   }
 
+  const handleClose = () => {
+    // Mark as closed locally
+    setIsClosed(true);
+    
+    // If banner was shown automatically, mark it as shown in session storage
+    if (shouldDisplayAuto && !isOpen) {
+      sessionStorage.setItem('enquiryBannerShown', 'true');
+    }
+    
+    // Call the parent's onClose function
+    onClose();
+  };
+
   return (
     <Modal
-      isOpen={isOpen}
-      onClose={onClose}
+      isOpen={isOpen || shouldDisplayAuto}
+      onClose={handleClose}
       title="Plan Your Next Trip"
       size="large"
     >
@@ -243,7 +257,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
                     name="tripType"
                     value={formData.tripType}
                     onChange={handleChange}
-                    className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
+                    className="pl-10 pr-10 w-full py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
                     required
                   >
                     <option value="Backpacking Trips">Backpacking Trips</option>

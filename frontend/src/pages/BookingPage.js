@@ -877,9 +877,9 @@ function BookingPage() {
                     <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                       <dt className="text-sm font-medium text-gray-500">Remaining Balance</dt>
                       <dd className="mt-1 text-sm text-gray-800 font-medium sm:mt-0 sm:col-span-2">
-                        ₹{trek.partialPayment.amountType === 'percentage' 
+                        ₹{(trek.partialPayment.amountType === 'percentage' 
                           ? calculateTotalPrice() - Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                          : calculateTotalPrice() - trek.partialPayment.amount}
+                          : calculateTotalPrice() - trek.partialPayment.amount).toFixed(2)}
                       </dd>
                     </div>
                     <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
