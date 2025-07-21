@@ -3,7 +3,8 @@ import { useParams } from 'react-router-dom';
 import { getBatchPerformance } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from './LoadingSpinner';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatCurrencyWithSuffix, formatNumberWithSuffix, formatDate } from '../utils/formatters';
+import CustomTooltip from './CustomTooltip';
 
 function BatchPerformance() {
   const { trekId, batchId } = useParams();
@@ -87,19 +88,47 @@ function BatchPerformance() {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Total</span>
-              <span className="font-medium">{performanceData.bookings.total}</span>
+              <CustomTooltip 
+                content={performanceData.bookings.total?.toLocaleString('en-IN') || '0'}
+                position="top"
+              >
+                <span className="font-medium cursor-help">
+                  {formatNumberWithSuffix(performanceData.bookings.total)}
+                </span>
+              </CustomTooltip>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Confirmed</span>
-              <span className="font-medium text-green-600">{performanceData.bookings.confirmed}</span>
+              <CustomTooltip 
+                content={performanceData.bookings.confirmed?.toLocaleString('en-IN') || '0'}
+                position="top"
+              >
+                <span className="font-medium text-green-600 cursor-help">
+                  {formatNumberWithSuffix(performanceData.bookings.confirmed)}
+                </span>
+              </CustomTooltip>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Cancelled</span>
-              <span className="font-medium text-red-600">{performanceData.bookings.cancelled}</span>
+              <CustomTooltip 
+                content={performanceData.bookings.cancelled?.toLocaleString('en-IN') || '0'}
+                position="top"
+              >
+                <span className="font-medium text-red-600 cursor-help">
+                  {formatNumberWithSuffix(performanceData.bookings.cancelled)}
+                </span>
+              </CustomTooltip>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Completed</span>
-              <span className="font-medium text-blue-600">{performanceData.bookings.completed}</span>
+              <CustomTooltip 
+                content={performanceData.bookings.completed?.toLocaleString('en-IN') || '0'}
+                position="top"
+              >
+                <span className="font-medium text-blue-600 cursor-help">
+                  {formatNumberWithSuffix(performanceData.bookings.completed)}
+                </span>
+              </CustomTooltip>
             </div>
           </div>
         </div>
@@ -110,15 +139,36 @@ function BatchPerformance() {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Total</span>
-              <span className="font-medium">{formatCurrency(performanceData.revenue.total)}</span>
+              <CustomTooltip 
+                content={`₹${performanceData.revenue.total?.toLocaleString('en-IN') || '0'}`}
+                position="top"
+              >
+                <span className="font-medium cursor-help">
+                  {formatCurrencyWithSuffix(performanceData.revenue.total)}
+                </span>
+              </CustomTooltip>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Confirmed</span>
-              <span className="font-medium text-green-600">{formatCurrency(performanceData.revenue.confirmed)}</span>
+              <CustomTooltip 
+                content={`₹${performanceData.revenue.confirmed?.toLocaleString('en-IN') || '0'}`}
+                position="top"
+              >
+                <span className="font-medium text-green-600 cursor-help">
+                  {formatCurrencyWithSuffix(performanceData.revenue.confirmed)}
+                </span>
+              </CustomTooltip>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Cancelled</span>
-              <span className="font-medium text-red-600">{formatCurrency(performanceData.revenue.cancelled)}</span>
+              <CustomTooltip 
+                content={`₹${performanceData.revenue.cancelled?.toLocaleString('en-IN') || '0'}`}
+                position="top"
+              >
+                <span className="font-medium text-red-600 cursor-help">
+                  {formatCurrencyWithSuffix(performanceData.revenue.cancelled)}
+                </span>
+              </CustomTooltip>
             </div>
           </div>
         </div>
@@ -129,15 +179,36 @@ function BatchPerformance() {
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-500">Total</span>
-              <span className="font-medium">{performanceData.participants.total}</span>
+              <CustomTooltip 
+                content={performanceData.participants.total?.toLocaleString('en-IN') || '0'}
+                position="top"
+              >
+                <span className="font-medium cursor-help">
+                  {formatNumberWithSuffix(performanceData.participants.total)}
+                </span>
+              </CustomTooltip>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Confirmed</span>
-              <span className="font-medium text-green-600">{performanceData.participants.confirmed}</span>
+              <CustomTooltip 
+                content={performanceData.participants.confirmed?.toLocaleString('en-IN') || '0'}
+                position="top"
+              >
+                <span className="font-medium text-green-600 cursor-help">
+                  {formatNumberWithSuffix(performanceData.participants.confirmed)}
+                </span>
+              </CustomTooltip>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Cancelled</span>
-              <span className="font-medium text-red-600">{performanceData.participants.cancelled}</span>
+              <CustomTooltip 
+                content={performanceData.participants.cancelled?.toLocaleString('en-IN') || '0'}
+                position="top"
+              >
+                <span className="font-medium text-red-600 cursor-help">
+                  {formatNumberWithSuffix(performanceData.participants.cancelled)}
+                </span>
+              </CustomTooltip>
             </div>
           </div>
         </div>

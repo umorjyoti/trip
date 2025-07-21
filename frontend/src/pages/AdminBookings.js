@@ -15,7 +15,10 @@ import EditBookingModal from '../components/EditBookingModal';
 import ViewBookingModal from '../components/ViewBookingModal';
 import CancellationModal from '../components/CancellationModal';
 import RequestResponseModal from '../components/RequestResponseModal';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatCurrencyWithSuffix, formatNumberWithSuffix, formatDate } from '../utils/formatters';
+import CustomTooltip from '../components/CustomTooltip';
+import MetricTooltip from '../components/MetricTooltip';
+import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
@@ -395,33 +398,65 @@ function AdminBookings() {
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Revenue</h3>
-          <p className="text-3xl font-bold text-emerald-600">
-            {formatCurrency(performanceMetrics.totalRevenue)}
-          </p>
+          <MetricTooltip 
+            value={performanceMetrics.totalRevenue}
+            type="currency"
+            theme="success"
+          >
+            <p className="text-3xl font-bold text-emerald-600 cursor-help">
+              {formatCurrencyWithSuffix(performanceMetrics.totalRevenue)}
+            </p>
+          </MetricTooltip>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Bookings</h3>
-          <p className="text-3xl font-bold text-blue-600">
-            {performanceMetrics.totalBookings}
-          </p>
+          <MetricTooltip 
+            value={performanceMetrics.totalBookings}
+            type="number"
+            theme="dark"
+          >
+            <p className="text-3xl font-bold text-blue-600 cursor-help">
+              {formatNumberWithSuffix(performanceMetrics.totalBookings)}
+            </p>
+          </MetricTooltip>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmed Bookings</h3>
-          <p className="text-3xl font-bold text-green-600">
-            {performanceMetrics.confirmedBookings}
-          </p>
+          <MetricTooltip 
+            value={performanceMetrics.confirmedBookings}
+            type="number"
+            icon={<FaCheckCircle className="w-4 h-4" />}
+            theme="success"
+          >
+            <p className="text-3xl font-bold text-green-600 cursor-help">
+              {formatNumberWithSuffix(performanceMetrics.confirmedBookings)}
+            </p>
+          </MetricTooltip>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Cancelled Bookings</h3>
-          <p className="text-3xl font-bold text-red-600">
-            {performanceMetrics.cancelledBookings}
-          </p>
+          <MetricTooltip 
+            value={performanceMetrics.cancelledBookings}
+            type="number"
+            icon={<FaTimesCircle className="w-4 h-4" />}
+            theme="error"
+          >
+            <p className="text-3xl font-bold text-red-600 cursor-help">
+              {formatNumberWithSuffix(performanceMetrics.cancelledBookings)}
+            </p>
+          </MetricTooltip>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Avg. Booking</h3>
-          <p className="text-3xl font-bold text-yellow-600">
-            {formatCurrency(performanceMetrics.averageBookingValue)}
-          </p>
+          <MetricTooltip 
+            value={performanceMetrics.averageBookingValue}
+            type="currency"
+            theme="warning"
+          >
+            <p className="text-3xl font-bold text-yellow-600 cursor-help">
+              {formatCurrencyWithSuffix(performanceMetrics.averageBookingValue)}
+            </p>
+          </MetricTooltip>
         </div>
       </div>
 

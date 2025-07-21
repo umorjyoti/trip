@@ -12,6 +12,8 @@ import {
   formatCurrency,
   cleanupExpiredBookings,
 } from "../services/api";
+import { formatCurrencyWithSuffix, formatNumberWithSuffix } from "../utils/formatters";
+import CustomTooltip from "../components/CustomTooltip";
 import TrekForm from "../components/TrekForm";
 import TrekList from "../components/TrekList";
 import {
@@ -69,6 +71,7 @@ ChartJS.register(
 const StatCard = ({
   title,
   value,
+  rawValue,
   icon: Icon,
   color = "emerald",
   link,
@@ -97,7 +100,14 @@ const StatCard = ({
       {loading ? (
         <div className="h-6 sm:h-8 w-16 sm:w-20 bg-gray-200 rounded animate-pulse mt-1"></div>
       ) : (
-        <p className="mt-1 text-2xl sm:text-3xl font-semibold text-gray-900">{value}</p>
+        <CustomTooltip 
+          content={rawValue !== undefined ? (typeof rawValue === 'number' ? rawValue.toLocaleString('en-IN') : rawValue) : value}
+          position="top"
+        >
+          <p className="mt-1 text-2xl sm:text-3xl font-semibold text-gray-900 cursor-help">
+            {value}
+          </p>
+        </CustomTooltip>
       )}
     </>
   );
@@ -478,7 +488,8 @@ function Dashboard() {
   const statsConfig = [
     {
       title: "Total Treks",
-      value: stats?.totalTreks || 0,
+      value: formatNumberWithSuffix(stats?.totalTreks || 0),
+      rawValue: stats?.totalTreks || 0,
       icon: FaHiking,
       color: "emerald",
       link: "/admin/treks",
@@ -486,7 +497,8 @@ function Dashboard() {
     },
     {
       title: "Total Bookings",
-      value: stats?.totalBookings || 0,
+      value: formatNumberWithSuffix(stats?.totalBookings || 0),
+      rawValue: stats?.totalBookings || 0,
       icon: FaCalendarAlt,
       color: "yellow",
       link: "/admin/bookings",
@@ -494,7 +506,8 @@ function Dashboard() {
     },
     {
       title: "Total Regions",
-      value: regions?.length || 0,
+      value: formatNumberWithSuffix(regions?.length || 0),
+      rawValue: regions?.length || 0,
       icon: FaGlobe,
       color: "purple",
       link: "/admin/regions",
@@ -502,16 +515,16 @@ function Dashboard() {
     },
     {
       title: "Total Sales",
-      value: formatCurrency(
-        salesStats.totalSales.toFixed(2).toLocaleString("en-IN")
-      ),
+      value: formatCurrencyWithSuffix(salesStats.totalSales),
+      rawValue: salesStats.totalSales,
       icon: FaChartLine,
       color: "emerald",
       permissionKey: "sales",
     },
     {
       title: "Active Users",
-      value: users.length,
+      value: formatNumberWithSuffix(users.length),
+      rawValue: users.length,
       icon: FaUsers,
       color: "purple",
       link: "/admin/users",
@@ -519,7 +532,8 @@ function Dashboard() {
     },
     {
       title: "Ongoing Treks",
-      value: ongoingTreks,
+      value: formatNumberWithSuffix(ongoingTreks),
+      rawValue: ongoingTreks,
       icon: FaHiking,
       color: "emerald",
       permissionKey: "ongoingTreks",
@@ -706,6 +720,7 @@ function Dashboard() {
                 key={idx}
                 title={stat.title}
                 value={stat.value}
+                rawValue={stat.rawValue}
                 icon={stat.icon}
                 color={stat.color}
                 link={stat.link}
