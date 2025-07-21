@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getSalesStats, getSalesTreks, getSalesBatches } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { formatCurrencyWithSuffix, formatNumberWithSuffix } from '../utils/formatters';
+import CustomTooltip from '../components/CustomTooltip';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title, PointElement, LineElement } from 'chart.js';
 import { Bar, Pie, Line } from 'react-chartjs-2';
 import PromoCodeManager from '../components/PromoCodeManager';
@@ -331,9 +333,14 @@ function SalesDashboard() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       Total Revenue
                     </dt>
-                    <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {formatCurrency(stats.totalRevenue || 0)}
-                    </dd>
+                    <CustomTooltip 
+                      content={`₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
+                      position="top"
+                    >
+                      <dd className="mt-1 text-3xl font-semibold text-gray-900 cursor-help">
+                        {formatCurrencyWithSuffix(stats.totalRevenue || 0)}
+                      </dd>
+                    </CustomTooltip>
                   </div>
                 </div>
                 
@@ -342,9 +349,14 @@ function SalesDashboard() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       Total Bookings
                     </dt>
-                    <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {stats.totalBookings || 0}
-                    </dd>
+                    <CustomTooltip 
+                      content={(stats.totalBookings || 0).toLocaleString('en-IN')}
+                      position="top"
+                    >
+                      <dd className="mt-1 text-3xl font-semibold text-gray-900 cursor-help">
+                        {formatNumberWithSuffix(stats.totalBookings || 0)}
+                      </dd>
+                    </CustomTooltip>
                   </div>
                 </div>
                 
@@ -353,9 +365,14 @@ function SalesDashboard() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       Average Booking Value
                     </dt>
-                    <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {formatCurrency(stats.avgBookingValue || 0)}
-                    </dd>
+                    <CustomTooltip 
+                      content={`₹${(stats.avgBookingValue || 0).toLocaleString('en-IN')}`}
+                      position="top"
+                    >
+                      <dd className="mt-1 text-3xl font-semibold text-gray-900 cursor-help">
+                        {formatCurrencyWithSuffix(stats.avgBookingValue || 0)}
+                      </dd>
+                    </CustomTooltip>
                   </div>
                 </div>
                 
@@ -364,9 +381,14 @@ function SalesDashboard() {
                     <dt className="text-sm font-medium text-gray-500 truncate">
                       Average Participants
                     </dt>
-                    <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                      {(stats.avgParticipants || 0).toFixed(1)}
-                    </dd>
+                    <CustomTooltip 
+                      content={(stats.avgParticipants || 0).toFixed(1)}
+                      position="top"
+                    >
+                      <dd className="mt-1 text-3xl font-semibold text-gray-900 cursor-help">
+                        {(stats.avgParticipants || 0).toFixed(1)}
+                      </dd>
+                    </CustomTooltip>
                   </div>
                 </div>
               </div>

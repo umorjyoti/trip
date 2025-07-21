@@ -20,7 +20,8 @@ import ShiftBookingModal from '../components/ShiftBookingModal';
 import ViewBookingModal from '../components/ViewBookingModal';
 import CancellationModal from '../components/CancellationModal';
 import RequestResponseModal from '../components/RequestResponseModal';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatCurrencyWithSuffix, formatNumberWithSuffix, formatDate } from '../utils/formatters';
+import CustomTooltip from '../components/CustomTooltip';
 
 const TrekPerformance = () => {
   const { trekId } = useParams();
@@ -280,15 +281,25 @@ const TrekPerformance = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Revenue</h3>
-          <p className="text-3xl font-bold text-emerald-600">
-            {formatCurrency(performanceData.totalRevenue)}
-          </p>
+          <CustomTooltip 
+            content={`₹${performanceData.totalRevenue?.toLocaleString('en-IN') || '0'}`}
+            position="top"
+          >
+            <p className="text-3xl font-bold text-emerald-600 cursor-help">
+              {formatCurrencyWithSuffix(performanceData.totalRevenue)}
+            </p>
+          </CustomTooltip>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Bookings</h3>
-          <p className="text-3xl font-bold text-blue-600">
-            {performanceData.totalBookings}
-          </p>
+          <CustomTooltip 
+            content={performanceData.totalBookings?.toLocaleString('en-IN') || '0'}
+            position="top"
+          >
+            <p className="text-3xl font-bold text-blue-600 cursor-help">
+              {formatNumberWithSuffix(performanceData.totalBookings)}
+            </p>
+          </CustomTooltip>
         </div>
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Average Rating</h3>

@@ -4,7 +4,8 @@ import { getBatchPerformance, getTrekByIdForAdmin } from '../services/api';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ParticipantExportModal from '../components/ParticipantExportModal';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatCurrencyWithSuffix, formatNumberWithSuffix, formatDate } from '../utils/formatters';
+import CustomTooltip from '../components/CustomTooltip';
 
 const BatchPerformance = () => {
   const { trekId, batchId } = useParams();
@@ -101,11 +102,25 @@ const BatchPerformance = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-emerald-50 p-4 rounded-lg">
             <p className="text-gray-600">Total Bookings</p>
-            <p className="text-2xl font-bold text-emerald-600">{performanceData.bookings.total}</p>
+            <CustomTooltip 
+              content={performanceData.bookings.total?.toLocaleString('en-IN') || '0'}
+              position="top"
+            >
+              <p className="text-2xl font-bold text-emerald-600 cursor-help">
+                {formatNumberWithSuffix(performanceData.bookings.total)}
+              </p>
+            </CustomTooltip>
           </div>
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-gray-600">Total Revenue</p>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrency(performanceData.revenue.total)}</p>
+            <CustomTooltip 
+              content={`₹${performanceData.revenue.total?.toLocaleString('en-IN') || '0'}`}
+              position="top"
+            >
+              <p className="text-2xl font-bold text-blue-600 cursor-help">
+                {formatCurrencyWithSuffix(performanceData.revenue.total)}
+              </p>
+            </CustomTooltip>
           </div>
           <div className="bg-purple-50 p-4 rounded-lg">
             <p className="text-gray-600">Occupancy Rate</p>

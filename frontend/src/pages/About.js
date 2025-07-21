@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaMountain,
@@ -20,45 +20,30 @@ import karthikImage from "../assets/karthik.png";
 
 function About() {
   const navigate = useNavigate();
-  // Corporate treks data
-  const corporateTreks = [
-    {
-      company: "Infosys",
-      logo: "🏢",
-      description: "Team building trek to Kudremukh",
-      details: "50+ employees, 3-day adventure",
-    },
-    {
-      company: "Wipro",
-      logo: "🏢",
-      description: "Corporate retreat to Coorg",
-      details: "75+ participants, weekend getaway",
-    },
-    {
-      company: "TCS",
-      logo: "🏢",
-      description: "Leadership trek to Kodachadri",
-      details: "30+ managers, team bonding",
-    },
-    {
-      company: "Accenture",
-      logo: "🏢",
-      description: "Adventure challenge in Sakleshpur",
-      details: "40+ employees, outdoor training",
-    },
-    {
-      company: "Cognizant",
-      logo: "🏢",
-      description: "Wellness trek to Chikmagalur",
-      details: "60+ staff, health & fitness focus",
-    },
-    {
-      company: "Tech Mahindra",
-      logo: "🏢",
-      description: "Corporate expedition to Mullayanagiri",
-      details: "45+ team members, peak climbing",
-    },
-  ];
+  const [aboutSettings, setAboutSettings] = useState({
+    stats: [],
+    companyProfiles: []
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAboutSettings();
+  }, []);
+
+  const fetchAboutSettings = async () => {
+    try {
+      const response = await fetch('/settings/about-page');
+      const data = await response.json();
+      setAboutSettings(data.aboutPage || { stats: [], companyProfiles: [] });
+    } catch (error) {
+      console.error('Error fetching about page settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Corporate treks data - now using dynamic data from settings
+  const corporateTreks = aboutSettings.companyProfiles || [];
 
   // Trek categories data
   const trekCategories = [
@@ -134,6 +119,14 @@ function About() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50">
       {/* Hero Section */}
@@ -149,18 +142,18 @@ function About() {
               breathtaking trails since 2022
             </p>
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row justify-center gap-4 sm:space-x-4">
-              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 sm:px-6 py-2 sm:py-3">
-                <span className="text-xl sm:text-2xl font-bold">500+</span>
-                <p className="text-xs sm:text-sm">Treks Completed</p>
-              </div>
-              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 sm:px-6 py-2 sm:py-3">
-                <span className="text-xl sm:text-2xl font-bold">10K+</span>
-                <p className="text-xs sm:text-sm">Happy Trekkers</p>
-              </div>
-              <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 sm:px-6 py-2 sm:py-3">
-                <span className="text-xl sm:text-2xl font-bold">50+</span>
-                <p className="text-xs sm:text-sm">Destinations</p>
-              </div>
+              {!aboutSettings.stats || aboutSettings.stats.length === 0 ? (
+                <div className="text-center">
+                  <p className="text-emerald-100">Loading stats...</p>
+                </div>
+              ) : (
+                aboutSettings.stats.filter(stat => stat.isActive).map((stat, index) => (
+                                  <div key={index} className="bg-white bg-opacity-20 backdrop-blur-sm rounded-full px-4 sm:px-6 py-2 sm:py-3">
+                    <span className="text-xl sm:text-2xl font-bold">{stat.value}</span>
+                    <p className="text-xs sm:text-sm">{stat.label}</p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -384,29 +377,43 @@ function About() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {corporateTreks.map((trek, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-4 sm:p-6 border border-gray-100"
-              >
-                <div className="text-center mb-4">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-emerald-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 text-lg sm:text-2xl">
-                    {trek.logo}
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
-                    {trek.company}
-                  </h3>
-                  <p className="text-gray-600 text-xs sm:text-sm mb-3">
-                    {trek.description}
-                  </p>
-                  <div className="bg-emerald-50 rounded-lg p-2 sm:p-3">
-                    <p className="text-emerald-700 text-xs font-semibold">
-                      {trek.details}
+            {corporateTreks.length === 0 ? (
+              <div className="col-span-full text-center py-8">
+                <p className="text-gray-500">No corporate treks available at the moment.</p>
+              </div>
+            ) : (
+              corporateTreks.filter(company => company.isActive).map((trek, index) => (
+                              <div
+                  key={index}
+                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300 p-4 sm:p-6 border border-gray-100"
+                >
+                  <div className="text-center mb-4">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-emerald-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                      {trek.logoImage ? (
+                        <img
+                          src={trek.logoImage}
+                          alt={`${trek.company} logo`}
+                          className="w-8 h-8 sm:w-12 sm:h-12 object-contain"
+                        />
+                      ) : (
+                        <span className="text-lg sm:text-2xl">{trek.logo}</span>
+                      )}
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
+                      {trek.company}
+                    </h3>
+                    <p className="text-gray-600 text-xs sm:text-sm mb-3">
+                      {trek.description}
                     </p>
+                    <div className="bg-emerald-50 rounded-lg p-2 sm:p-3">
+                      <p className="text-emerald-700 text-xs font-semibold">
+                        {trek.details}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
