@@ -16,6 +16,7 @@ import {
 import chanduImage from "../assets/chandu.png";
 import sureshImage from "../assets/suresh.png";
 import vraunImage from "../assets/vraun.png";
+import karthikImage from "../assets/karthik.png";
 
 function About() {
   const navigate = useNavigate();
@@ -128,8 +129,8 @@ function About() {
     {
       name: "Karthik Bhatta",
       role: "Chief Marketing Officer (CMO)",
-      image: "👨‍💼",
-      hasImage: false,
+      image: karthikImage,
+      hasImage: true,
     },
   ];
 
