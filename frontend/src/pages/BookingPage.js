@@ -282,6 +282,16 @@ function BookingPage() {
         .filter(({ key, isEnabled }) => isEnabled && formData.addOns.includes(key))
         .map(({ _id, name, price }) => ({ _id, name, price }));
 
+      // Calculate the frontend initial partial payment amount for backend validation
+      let frontendInitialAmount = undefined;
+      if (paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled) {
+        if (trek.partialPayment.amountType === 'percentage') {
+          frontendInitialAmount = Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100);
+        } else {
+          frontendInitialAmount = trek.partialPayment.amount * formData.numberOfParticipants;
+        }
+      }
+
       const bookingData = {
         trekId: location?.state?.trekId || trek?._id,
         batchId: selectedBatch._id,
@@ -293,7 +303,8 @@ function BookingPage() {
         couponCode: appliedCoupon?.promoCode || null,
         discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.promoCode.discountValue / 100) : 0,
         originalPrice: calculateBasePrice(),
-        sessionId: sessionId // Add session ID to prevent duplicate bookings
+        sessionId: sessionId, // Add session ID to prevent duplicate bookings
+        frontendInitialAmount // Add for backend validation
       };
 
       const booking = await createBooking(bookingData);
@@ -756,7 +767,7 @@ function BookingPage() {
                         <span className="text-gray-500 ml-2">
                           - Pay ₹{trek.partialPayment.amountType === 'percentage' 
                             ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                            : trek.partialPayment.amount} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
+                            : trek.partialPayment.amount * formData.numberOfParticipants} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
                         </span>
                       </label>
                     </div>
@@ -871,7 +882,7 @@ function BookingPage() {
                       <dd className="mt-1 text-sm text-emerald-600 font-medium sm:mt-0 sm:col-span-2">
                         ₹{trek.partialPayment.amountType === 'percentage' 
                           ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                          : trek.partialPayment.amount}
+                          : trek.partialPayment.amount * formData.numberOfParticipants}
                       </dd>
                     </div>
                     <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -879,7 +890,7 @@ function BookingPage() {
                       <dd className="mt-1 text-sm text-gray-800 font-medium sm:mt-0 sm:col-span-2">
                         ₹{trek.partialPayment.amountType === 'percentage' 
                           ? calculateTotalPrice() - Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                          : calculateTotalPrice() - trek.partialPayment.amount}
+                          : calculateTotalPrice() - (trek.partialPayment.amount * formData.numberOfParticipants)}
                       </dd>
                     </div>
                     <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">

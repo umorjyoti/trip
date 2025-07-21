@@ -1677,3 +1677,9 @@ export const calculateRefund = async (refundData) => {
     throw error;
   }
 };
+
+// Fetch a batch by its ID (requires backend endpoint to exist)
+export const getBatchById = async (batchId) => {
+  const response = await api.get(`/batches/${batchId}`);
+  return response.data;
+};

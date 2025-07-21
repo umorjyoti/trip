@@ -13,6 +13,9 @@ router.use((req, res, next) => {
 router.get('/stats', trekController.getTrekStats);
 router.get('/all', trekController.getAllTreks);
 
+// Public batch details route (must come before :id route)
+router.get('/batches/:batchId', trekController.getBatchById);
+
 // Weekend getaway routes - MUST come before general :id route
 router.get('/weekend-getaways', (req, res, next) => {
   console.log('Weekend getaways route matched!');

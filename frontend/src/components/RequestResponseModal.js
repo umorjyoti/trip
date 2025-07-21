@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { updateCancellationRequest, adminCancelBooking, calculateRefund } from '../services/api';
+import { updateCancellationRequest, adminCancelBooking, calculateRefund, getBatchById } from '../services/api';
 import { toast } from 'react-toastify';
 import Modal from './Modal';
 import { FaCheck, FaTimes, FaComment, FaCalculator, FaUser, FaUsers, FaRupeeSign } from 'react-icons/fa';
@@ -22,24 +22,40 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
     policyColor: '',
     daysUntilTrek: 0
   });
+  const [fallbackBatch, setFallbackBatch] = useState(null);
 
   // Calculate refund using backend API
   const calculateTotalRefund = async () => {
     if (!booking) return 0;
-    
+    console.log(booking);
+    // Build payload based on cancellationType and refundType
+    const bookingId = booking._id || booking.id || booking.bookingId;
+    const payload = {
+      bookingId,
+      cancellationType,
+      refundType,
+    };
+
+    if (cancellationType === 'individual') {
+      payload.selectedParticipants = selectedParticipants;
+    }
+
+    if (refundType === 'custom') {
+      payload.customRefundAmount = customRefundAmount;
+    }
+
     try {
-      const response = await calculateRefund({
-        bookingId: booking._id,
-        cancellationType,
-        selectedParticipants,
-        refundType,
-        customRefundAmount: refundType === 'custom' ? customRefundAmount : null
-      });
-      
+      const response = await calculateRefund(payload);
       setRefundCalculation(response);
       return response.totalRefund;
     } catch (error) {
       console.error('Error calculating refund:', error);
+      setRefundCalculation({
+        totalRefund: 0,
+        policyDescription: 'Failed to calculate refund',
+        policyColor: 'text-red-600',
+        daysUntilTrek: 0
+      });
       return 0;
     }
   };
@@ -87,7 +103,7 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
 
         // Call admin cancel booking API
         await adminCancelBooking({
-          bookingId: booking._id,
+          bookingId: booking._id || booking.id || booking.bookingId,
           cancellationType,
           selectedParticipants,
           refundType,
@@ -97,7 +113,7 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
         });
 
         // Update the cancellation request status
-        await updateCancellationRequest(booking._id, {
+        await updateCancellationRequest(booking._id || booking.id || booking.bookingId, {
           status: 'approved',
           adminResponse: adminResponse.trim() || 'Cancellation approved and processed'
         });
@@ -105,7 +121,7 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
         toast.success('Cancellation request approved and booking cancelled successfully');
       } else {
         // For reschedule requests or rejections, use the normal flow
-        const response = await updateCancellationRequest(booking._id, {
+        const response = await updateCancellationRequest(booking._id || booking.id || booking.bookingId, {
           status,
           adminResponse: adminResponse.trim()
         });
@@ -151,6 +167,23 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
       });
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (
+      isOpen &&
+      booking &&
+      booking.cancellationRequest &&
+      booking.cancellationRequest.type === 'reschedule' &&
+      booking.cancellationRequest.preferredBatch &&
+      (!booking.trek || !booking.trek.batches || !booking.trek.batches.find(b => b._id.toString() === booking.cancellationRequest.preferredBatch.toString()))
+    ) {
+      getBatchById(booking.cancellationRequest.preferredBatch)
+        .then(setFallbackBatch)
+        .catch(() => setFallbackBatch(null));
+    } else {
+      setFallbackBatch(null);
+    }
+  }, [isOpen, booking]);
 
   // Early return if no booking or cancellation request
   if (!booking || !booking.cancellationRequest) {
@@ -231,6 +264,10 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
                       if (preferredBatch) {
                         return `${formatDate(preferredBatch.startDate)} - ${formatDate(preferredBatch.endDate)} (₹${preferredBatch.price})`;
                       }
+                    }
+                    // Fallback: show batch dates if fetched
+                    if (fallbackBatch) {
+                      return `${formatDate(fallbackBatch.startDate)} - ${formatDate(fallbackBatch.endDate)} (₹${fallbackBatch.price})`;
                     }
                     return 'Batch details not available';
                   })()}
