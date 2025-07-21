@@ -185,6 +185,11 @@ export const getWeekendGetawayPageSettings = async () => {
   return response.data;
 };
 
+export const getAboutPageSettings = async () => {
+  const response = await api.get('/settings/about-page');
+  return response.data;
+};
+
 export const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append('file', file);

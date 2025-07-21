@@ -13,6 +13,7 @@ import {
   FaSun,
   FaCalendarWeek,
 } from "react-icons/fa";
+import { getAboutPageSettings } from "../services/api";
 import chanduImage from "../assets/chandu.png";
 import sureshImage from "../assets/suresh.png";
 import vraunImage from "../assets/vraun.png";
@@ -32,8 +33,7 @@ function About() {
 
   const fetchAboutSettings = async () => {
     try {
-      const response = await fetch('/settings/about-page');
-      const data = await response.json();
+      const data = await getAboutPageSettings();
       setAboutSettings(data.aboutPage || { stats: [], companyProfiles: [] });
     } catch (error) {
       console.error('Error fetching about page settings:', error);
