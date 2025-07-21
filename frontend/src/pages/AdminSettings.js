@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { FaCog, FaImage, FaSave, FaTimes, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaCog, FaImage, FaSave, FaTimes, FaEye, FaEyeSlash, FaHome, FaBlog, FaUmbrellaBeach } from 'react-icons/fa';
 import { getSettings, updateSettings, uploadImage as uploadImageAPI } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
@@ -8,6 +8,9 @@ import Modal from '../components/Modal';
 function AdminSettings() {
   const [loading, setLoading] = useState(false);
   const [showBannerModal, setShowBannerModal] = useState(false);
+  const [showLandingPageModal, setShowLandingPageModal] = useState(false);
+  const [showBlogPageModal, setShowBlogPageModal] = useState(false);
+  const [showWeekendGetawayModal, setShowWeekendGetawayModal] = useState(false);
   const [bannerConfig, setBannerConfig] = useState({
     isActive: false,
     title: '',
@@ -17,7 +20,25 @@ function AdminSettings() {
     discountText: '',
     showOverlay: true
   });
+  const [landingPageConfig, setLandingPageConfig] = useState({
+    heroImage: '',
+    heroTitle: '',
+    heroSubtitle: ''
+  });
+  const [blogPageConfig, setBlogPageConfig] = useState({
+    heroImage: '',
+    heroTitle: '',
+    heroSubtitle: ''
+  });
+  const [weekendGetawayConfig, setWeekendGetawayConfig] = useState({
+    heroImage: '',
+    heroTitle: '',
+    heroSubtitle: ''
+  });
   const [imageFile, setImageFile] = useState(null);
+  const [landingPageImageFile, setLandingPageImageFile] = useState(null);
+  const [blogPageImageFile, setBlogPageImageFile] = useState(null);
+  const [weekendGetawayImageFile, setWeekendGetawayImageFile] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
@@ -36,6 +57,21 @@ function AdminSettings() {
         header: '',
         discountText: '',
         showOverlay: true
+      });
+      setLandingPageConfig(data.landingPage || {
+        heroImage: '',
+        heroTitle: 'Discover Your Next Adventure',
+        heroSubtitle: 'Explore breathtaking trails and create unforgettable memories with Bengaluru Trekkers'
+      });
+      setBlogPageConfig(data.blogPage || {
+        heroImage: '',
+        heroTitle: 'Adventure Stories',
+        heroSubtitle: 'Discover amazing trekking experiences and travel tales'
+      });
+      setWeekendGetawayConfig(data.weekendGetawayPage || {
+        heroImage: '',
+        heroTitle: 'Weekend Escapes',
+        heroSubtitle: 'Discover curated short trips designed for maximum refreshment'
       });
     } catch (error) {
       console.error('Error fetching settings:', error);
@@ -66,6 +102,78 @@ function AdminSettings() {
       // Create a preview URL
       const previewUrl = URL.createObjectURL(file);
       setBannerConfig(prev => ({ ...prev, image: previewUrl }));
+    }
+  };
+
+  const handleLandingPageImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        toast.error('File size too large. Maximum size is 5MB.');
+        return;
+      }
+
+      setLandingPageImageFile(file);
+      // Create a preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setLandingPageConfig(prev => ({ ...prev, heroImage: previewUrl }));
+    }
+  };
+
+  const handleBlogPageImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        toast.error('File size too large. Maximum size is 5MB.');
+        return;
+      }
+
+      setBlogPageImageFile(file);
+      // Create a preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setBlogPageConfig(prev => ({ ...prev, heroImage: previewUrl }));
+    }
+  };
+
+  const handleWeekendGetawayImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        toast.error('File size too large. Maximum size is 5MB.');
+        return;
+      }
+
+      setWeekendGetawayImageFile(file);
+      // Create a preview URL
+      const previewUrl = URL.createObjectURL(file);
+      setWeekendGetawayConfig(prev => ({ ...prev, heroImage: previewUrl }));
     }
   };
 
@@ -116,9 +224,129 @@ function AdminSettings() {
     }
   };
 
+  const handleSaveLandingPage = async () => {
+    try {
+      let imageUrl = landingPageConfig.heroImage;
+
+      // If there's a new image file, upload it first
+      if (landingPageImageFile) {
+        imageUrl = await uploadImage(landingPageImageFile);
+        if (!imageUrl) {
+          return;
+        }
+      }
+
+      const updatedSettings = {
+        landingPage: {
+          ...landingPageConfig,
+          heroImage: imageUrl
+        }
+      };
+
+      await updateSettings(updatedSettings);
+      
+      toast.success('Landing page image updated successfully');
+      setShowLandingPageModal(false);
+      setLandingPageImageFile(null);
+      
+      // Refresh settings
+      await fetchSettings();
+    } catch (error) {
+      console.error('Error saving landing page:', error);
+      toast.error('Failed to save landing page configuration');
+    }
+  };
+
+  const handleSaveBlogPage = async () => {
+    try {
+      let imageUrl = blogPageConfig.heroImage;
+
+      // If there's a new image file, upload it first
+      if (blogPageImageFile) {
+        imageUrl = await uploadImage(blogPageImageFile);
+        if (!imageUrl) {
+          return;
+        }
+      }
+
+      const updatedSettings = {
+        blogPage: {
+          ...blogPageConfig,
+          heroImage: imageUrl
+        }
+      };
+
+      await updateSettings(updatedSettings);
+      
+      toast.success('Blog page image updated successfully');
+      setShowBlogPageModal(false);
+      setBlogPageImageFile(null);
+      
+      // Refresh settings
+      await fetchSettings();
+    } catch (error) {
+      console.error('Error saving blog page:', error);
+      toast.error('Failed to save blog page configuration');
+    }
+  };
+
+  const handleSaveWeekendGetaway = async () => {
+    try {
+      let imageUrl = weekendGetawayConfig.heroImage;
+
+      // If there's a new image file, upload it first
+      if (weekendGetawayImageFile) {
+        imageUrl = await uploadImage(weekendGetawayImageFile);
+        if (!imageUrl) {
+          return;
+        }
+      }
+
+      const updatedSettings = {
+        weekendGetawayPage: {
+          ...weekendGetawayConfig,
+          heroImage: imageUrl
+        }
+      };
+
+      await updateSettings(updatedSettings);
+      
+      toast.success('Weekend getaway page image updated successfully');
+      setShowWeekendGetawayModal(false);
+      setWeekendGetawayImageFile(null);
+      
+      // Refresh settings
+      await fetchSettings();
+    } catch (error) {
+      console.error('Error saving weekend getaway page:', error);
+      toast.error('Failed to save weekend getaway page configuration');
+    }
+  };
+
   const handleCloseModal = () => {
     setShowBannerModal(false);
     setImageFile(null);
+    // Reset to current settings
+    fetchSettings();
+  };
+
+  const handleCloseLandingPageModal = () => {
+    setShowLandingPageModal(false);
+    setLandingPageImageFile(null);
+    // Reset to current settings
+    fetchSettings();
+  };
+
+  const handleCloseBlogPageModal = () => {
+    setShowBlogPageModal(false);
+    setBlogPageImageFile(null);
+    // Reset to current settings
+    fetchSettings();
+  };
+
+  const handleCloseWeekendGetawayModal = () => {
+    setShowWeekendGetawayModal(false);
+    setWeekendGetawayImageFile(null);
     // Reset to current settings
     fetchSettings();
   };
@@ -200,6 +428,159 @@ function AdminSettings() {
         >
           <FaCog className="text-sm" />
           <span>Configure Banner</span>
+        </button>
+      </div>
+
+      {/* Landing Page Image Configuration Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Landing Page Hero Image</h2>
+            <p className="text-sm text-gray-600">Configure the hero image displayed on the landing page</p>
+          </div>
+          <FaHome className="text-emerald-600 text-xl" />
+        </div>
+
+        {/* Current Hero Image Status */}
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Current Hero Image</h3>
+              <div className="flex items-center mt-2">
+                {landingPageConfig.heroImage ? (
+                  <>
+                    <FaEye className="text-green-500 mr-2" />
+                    <span className="text-green-700 font-medium">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <FaEyeSlash className="text-gray-400 mr-2" />
+                    <span className="text-gray-600 font-medium">No image set</span>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {landingPageConfig.heroImage && (
+              <div className="flex-shrink-0">
+                <img
+                  src={landingPageConfig.heroImage}
+                  alt="Current hero image"
+                  className="w-32 h-20 object-cover rounded-md border border-gray-200"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowLandingPageModal(true)}
+          className="bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+        >
+          <FaImage className="text-sm" />
+          <span>Update Hero Image</span>
+        </button>
+      </div>
+
+      {/* Blog Page Image Configuration Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Blog Page Hero Image</h2>
+            <p className="text-sm text-gray-600">Configure the hero image displayed on the blog listing page</p>
+          </div>
+          <FaBlog className="text-emerald-600 text-xl" />
+        </div>
+
+        {/* Current Hero Image Status */}
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Current Hero Image</h3>
+              <div className="flex items-center mt-2">
+                {blogPageConfig.heroImage ? (
+                  <>
+                    <FaEye className="text-green-500 mr-2" />
+                    <span className="text-green-700 font-medium">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <FaEyeSlash className="text-gray-400 mr-2" />
+                    <span className="text-gray-600 font-medium">No image set</span>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {blogPageConfig.heroImage && (
+              <div className="flex-shrink-0">
+                <img
+                  src={blogPageConfig.heroImage}
+                  alt="Current blog hero image"
+                  className="w-32 h-20 object-cover rounded-md border border-gray-200"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowBlogPageModal(true)}
+          className="bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+        >
+          <FaImage className="text-sm" />
+          <span>Update Hero Image</span>
+        </button>
+      </div>
+
+      {/* Weekend Getaway Page Image Configuration Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Weekend Getaway Page Hero Image</h2>
+            <p className="text-sm text-gray-600">Configure the hero image displayed on the weekend getaway page</p>
+          </div>
+          <FaUmbrellaBeach className="text-emerald-600 text-xl" />
+        </div>
+
+        {/* Current Hero Image Status */}
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-medium text-gray-900">Current Hero Image</h3>
+              <div className="flex items-center mt-2">
+                {weekendGetawayConfig.heroImage ? (
+                  <>
+                    <FaEye className="text-green-500 mr-2" />
+                    <span className="text-green-700 font-medium">Active</span>
+                  </>
+                ) : (
+                  <>
+                    <FaEyeSlash className="text-gray-400 mr-2" />
+                    <span className="text-gray-600 font-medium">No image set</span>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {weekendGetawayConfig.heroImage && (
+              <div className="flex-shrink-0">
+                <img
+                  src={weekendGetawayConfig.heroImage}
+                  alt="Current weekend getaway hero image"
+                  className="w-32 h-20 object-cover rounded-md border border-gray-200"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowWeekendGetawayModal(true)}
+          className="bg-emerald-600 text-white py-3 px-6 rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+        >
+          <FaImage className="text-sm" />
+          <span>Update Hero Image</span>
         </button>
       </div>
 
@@ -391,6 +772,360 @@ function AdminSettings() {
             >
               <FaSave className="text-sm" />
               <span>Save Banner</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Landing Page Image Configuration Modal */}
+      <Modal
+        isOpen={showLandingPageModal}
+        onClose={handleCloseLandingPageModal}
+        title="Update Landing Page Hero Image"
+        size="medium"
+      >
+        <div className="space-y-6">
+          {/* Hero Image Preview */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Hero Image Preview</h3>
+            <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+              <div className="relative h-64 bg-gradient-to-br from-emerald-500 to-blue-600">
+                {landingPageConfig.heroImage ? (
+                  <img
+                    src={landingPageConfig.heroImage}
+                    alt="Hero"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-emerald-600 to-blue-600"></div>
+                )}
+                <div className="absolute inset-0 bg-black opacity-30"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <h2 className="text-3xl font-bold mb-2">
+                      {landingPageConfig.heroTitle || 'Discover Your Next Adventure'}
+                    </h2>
+                    <p className="text-lg opacity-90">
+                      {landingPageConfig.heroSubtitle || 'Explore breathtaking trails and create unforgettable memories'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Image Upload Form */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Hero Image
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLandingPageImageChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+              />
+              {uploadingImage && (
+                <div className="mt-2 flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-2"></div>
+                  <span className="text-sm text-gray-600">Uploading image...</span>
+                </div>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Recommended size: 1920x1080px or higher. Max file size: 5MB
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hero Title
+                </label>
+                <input
+                  type="text"
+                  value={landingPageConfig.heroTitle || ''}
+                  onChange={(e) => setLandingPageConfig(prev => ({ ...prev, heroTitle: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., Discover Your Next Adventure"
+                  maxLength={100}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum 100 characters
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hero Subtitle
+                </label>
+                <textarea
+                  value={landingPageConfig.heroSubtitle || ''}
+                  onChange={(e) => setLandingPageConfig(prev => ({ ...prev, heroSubtitle: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., Explore breathtaking trails and create unforgettable memories"
+                  maxLength={200}
+                  rows={3}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum 200 characters
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleCloseLandingPageModal}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+            >
+              <FaTimes className="text-sm" />
+              <span>Cancel</span>
+            </button>
+            <button
+              onClick={handleSaveLandingPage}
+              disabled={uploadingImage}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
+            >
+              <FaSave className="text-sm" />
+              <span>Save Image</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Blog Page Image Configuration Modal */}
+      <Modal
+        isOpen={showBlogPageModal}
+        onClose={handleCloseBlogPageModal}
+        title="Update Blog Page Hero Image"
+        size="medium"
+      >
+        <div className="space-y-6">
+          {/* Hero Image Preview */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Blog Page Hero Image Preview</h3>
+            <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+              <div className="relative h-64 bg-gradient-to-br from-emerald-500 to-blue-600">
+                {blogPageConfig.heroImage ? (
+                  <img
+                    src={blogPageConfig.heroImage}
+                    alt="Blog Hero"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-emerald-600 to-blue-600"></div>
+                )}
+                <div className="absolute inset-0 bg-black opacity-30"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <h2 className="text-3xl font-bold mb-2">
+                      {blogPageConfig.heroTitle || 'Adventure Stories'}
+                    </h2>
+                    <p className="text-lg opacity-90">
+                      {blogPageConfig.heroSubtitle || 'Discover amazing trekking experiences and travel tales'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Image Upload Form */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Hero Image
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleBlogPageImageChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+              />
+              {uploadingImage && (
+                <div className="mt-2 flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-2"></div>
+                  <span className="text-sm text-gray-600">Uploading image...</span>
+                </div>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Recommended size: 1920x1080px or higher. Max file size: 5MB
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hero Title
+                </label>
+                <input
+                  type="text"
+                  value={blogPageConfig.heroTitle || ''}
+                  onChange={(e) => setBlogPageConfig(prev => ({ ...prev, heroTitle: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., Adventure Stories"
+                  maxLength={100}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum 100 characters
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hero Subtitle
+                </label>
+                <textarea
+                  value={blogPageConfig.heroSubtitle || ''}
+                  onChange={(e) => setBlogPageConfig(prev => ({ ...prev, heroSubtitle: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., Discover amazing trekking experiences and travel tales"
+                  maxLength={200}
+                  rows={3}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum 200 characters
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleCloseBlogPageModal}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+            >
+              <FaTimes className="text-sm" />
+              <span>Cancel</span>
+            </button>
+            <button
+              onClick={handleSaveBlogPage}
+              disabled={uploadingImage}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
+            >
+              <FaSave className="text-sm" />
+              <span>Save Image</span>
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Weekend Getaway Page Image Configuration Modal */}
+      <Modal
+        isOpen={showWeekendGetawayModal}
+        onClose={handleCloseWeekendGetawayModal}
+        title="Update Weekend Getaway Page Hero Image"
+        size="medium"
+      >
+        <div className="space-y-6">
+          {/* Hero Image Preview */}
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Weekend Getaway Hero Image Preview</h3>
+            <div className="bg-white rounded-lg overflow-hidden shadow-sm">
+              <div className="relative h-64 bg-gradient-to-br from-emerald-500 to-blue-600">
+                {weekendGetawayConfig.heroImage ? (
+                  <img
+                    src={weekendGetawayConfig.heroImage}
+                    alt="Weekend Getaway Hero"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-emerald-600 to-blue-600"></div>
+                )}
+                <div className="absolute inset-0 bg-black opacity-30"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <h2 className="text-3xl font-bold mb-2">
+                      {weekendGetawayConfig.heroTitle || 'Weekend Escapes'}
+                    </h2>
+                    <p className="text-lg opacity-90">
+                      {weekendGetawayConfig.heroSubtitle || 'Discover curated short trips designed for maximum refreshment'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Image Upload Form */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Hero Image
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleWeekendGetawayImageChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+              />
+              {uploadingImage && (
+                <div className="mt-2 flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-600 mr-2"></div>
+                  <span className="text-sm text-gray-600">Uploading image...</span>
+                </div>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Recommended size: 1920x1080px or higher. Max file size: 5MB
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hero Title
+                </label>
+                <input
+                  type="text"
+                  value={weekendGetawayConfig.heroTitle || ''}
+                  onChange={(e) => setWeekendGetawayConfig(prev => ({ ...prev, heroTitle: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., Weekend Escapes"
+                  maxLength={100}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum 100 characters
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hero Subtitle
+                </label>
+                <textarea
+                  value={weekendGetawayConfig.heroSubtitle || ''}
+                  onChange={(e) => setWeekendGetawayConfig(prev => ({ ...prev, heroSubtitle: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="e.g., Discover curated short trips designed for maximum refreshment"
+                  maxLength={200}
+                  rows={3}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Maximum 200 characters
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              onClick={handleCloseWeekendGetawayModal}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2"
+            >
+              <FaTimes className="text-sm" />
+              <span>Cancel</span>
+            </button>
+            <button
+              onClick={handleSaveWeekendGetaway}
+              disabled={uploadingImage}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
+            >
+              <FaSave className="text-sm" />
+              <span>Save Image</span>
             </button>
           </div>
         </div>

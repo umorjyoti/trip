@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaMapMarkerAlt, FaCalendarAlt } from 'react-icons/fa';
-import { getRegions } from '../services/api';
+import { getRegions, getLandingPageSettings } from '../services/api';
 
 function HeroSection() {
   const navigate = useNavigate();
@@ -11,14 +11,34 @@ function HeroSection() {
   const [season, setSeason] = useState('');
   const [regions, setRegions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [heroImage, setHeroImage] = useState('');
+  const [heroTitle, setHeroTitle] = useState('Discover Your Next Adventure');
+  const [heroSubtitle, setHeroSubtitle] = useState('Explore breathtaking trails and create unforgettable memories with Bengaluru Trekkers');
   
   useEffect(() => {
-    const fetchRegions = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getRegions();
-        // Only show active regions
-        const activeRegions = data.filter(region => region.isActive);
+        // Fetch regions
+        const regionsData = await getRegions();
+        const activeRegions = regionsData.filter(region => region.isActive);
         setRegions(activeRegions);
+
+        // Fetch landing page settings
+        try {
+          const landingPageData = await getLandingPageSettings();
+          if (landingPageData.landingPage?.heroImage) {
+            setHeroImage(landingPageData.landingPage.heroImage);
+          }
+          if (landingPageData.landingPage?.heroTitle) {
+            setHeroTitle(landingPageData.landingPage.heroTitle);
+          }
+          if (landingPageData.landingPage?.heroSubtitle) {
+            setHeroSubtitle(landingPageData.landingPage.heroSubtitle);
+          }
+        } catch (error) {
+          console.error('Error fetching landing page settings:', error);
+          // Keep using the default image if settings fetch fails
+        }
       } catch (error) {
         console.error('Error fetching regions:', error);
       } finally {
@@ -26,7 +46,7 @@ function HeroSection() {
       }
     };
     
-    fetchRegions();
+    fetchData();
   }, []);
   
   const handleSearch = (e) => {
@@ -44,16 +64,20 @@ function HeroSection() {
     <div className="relative h-[calc(100vh-64px)]">
       {/* Background Video or Image */}
       <div className="absolute inset-0 z-0">
-        <video
-          className="w-full h-full object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-          poster="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b"
-        >
-          <source src="/videos/hero-background.mp4" type="video/mp4" />
-        </video>
+        {heroImage ? (
+          <video
+            className="w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster={heroImage}
+          >
+            <source src="/videos/hero-background.mp4" type="video/mp4" />
+          </video>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-emerald-600 to-blue-600"></div>
+        )}
         <div className="absolute inset-0 bg-black opacity-50"></div>
       </div>
       
@@ -65,7 +89,7 @@ function HeroSection() {
           transition={{ duration: 0.8 }}
           className="text-4xl md:text-6xl font-bold text-center mb-6"
         >
-          Discover Your Next Adventure
+          {heroTitle}
         </motion.h1>
         
         <motion.p
@@ -74,7 +98,7 @@ function HeroSection() {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="text-xl md:text-2xl text-center max-w-3xl mb-12"
         >
-          Explore breathtaking trails and create unforgettable memories with Bengaluru Trekkers
+          {heroSubtitle}
         </motion.p>
         
         {/* Search Form */}

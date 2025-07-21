@@ -170,6 +170,21 @@ export const getEnquiryBannerSettings = async () => {
   return response.data;
 };
 
+export const getLandingPageSettings = async () => {
+  const response = await api.get('/settings/landing-page');
+  return response.data;
+};
+
+export const getBlogPageSettings = async () => {
+  const response = await api.get('/settings/blog-page');
+  return response.data;
+};
+
+export const getWeekendGetawayPageSettings = async () => {
+  const response = await api.get('/settings/weekend-getaway-page');
+  return response.data;
+};
+
 export const uploadImage = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -1219,12 +1234,13 @@ export const getBatchPerformance = async (trekId, batchId) => {
   }
 };
 
-export const exportBatchParticipants = async (trekId, batchId, fields = []) => {
+export const exportBatchParticipants = async (trekId, batchId, fields = [], fileType = 'pdf') => {
   try {
     const queryParams = new URLSearchParams();
     if (fields.length > 0) {
       queryParams.append('fields', fields.join(','));
     }
+    queryParams.append('fileType', fileType);
 
     const response = await api.get(`/treks/${trekId}/batches/${batchId}/export-participants?${queryParams.toString()}`, {
       responseType: 'blob'
