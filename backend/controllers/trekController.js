@@ -552,7 +552,7 @@ exports.updateTrek = async (req, res) => {
 
     // Extract fields from req.body
     const {
-      name, description, region, regionName, difficulty, duration, distance, maxAltitude,
+      name, description, region, regionName, difficulty, duration, season, distance, maxAltitude,
       displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns, highlights, batches, faqs, thingsToPack,
@@ -585,7 +585,7 @@ exports.updateTrek = async (req, res) => {
     // Prepare the update data object
     const updateData = {
       name, description, region, regionName: finalRegionName,
-      difficulty, duration, distance, maxAltitude,
+      difficulty, duration, season, distance, maxAltitude,
       displayPrice, images, itinerary, includes, excludes, mapUrl,
       isEnabled, isFeatured, isWeekendGetaway,
       category, addOns,
