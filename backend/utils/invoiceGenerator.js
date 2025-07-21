@@ -42,7 +42,18 @@ const generateInvoicePDF = async (booking, payment) => {
       // Left Column - Invoice Info
       doc.fontSize(10).font('Helvetica-Bold').text('Invoice Details:', leftColumn, invoiceTableTop);
       doc.fontSize(9).font('Helvetica');
-      doc.text(`Invoice No: INV-${booking._id.toString().slice(-8).toUpperCase()}`, leftColumn, invoiceTableTop + 20);
+      
+      // Generate invoice number with payment type prefix
+      let invoicePrefix = 'INV';
+      if (booking.paymentMode === 'partial') {
+        if (booking.status === 'payment_confirmed_partial') {
+          invoicePrefix = 'PP-INV'; // Partial Payment Invoice
+        } else if (booking.status === 'confirmed') {
+          invoicePrefix = 'FP-INV'; // Final Payment Invoice
+        }
+      }
+      
+      doc.text(`Invoice No: ${invoicePrefix}-${booking._id.toString().slice(-8).toUpperCase()}`, leftColumn, invoiceTableTop + 20);
       doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, leftColumn, invoiceTableTop + 35);
       doc.text(`Due Date: ${new Date().toLocaleDateString('en-IN')}`, leftColumn, invoiceTableTop + 50);
       doc.text(`Payment ID: ${payment.id ? payment.id : 'N/A'}`, leftColumn, invoiceTableTop + 65);
@@ -87,17 +98,23 @@ const generateInvoicePDF = async (booking, payment) => {
       currentY += 20;
 
       // Batch Details
-      if (booking.batch) {
-        doc.text('Trek Dates', col1, currentY);
-        let startDate = booking.batch.startDate ? new Date(booking.batch.startDate).toLocaleDateString('en-IN') : 'N/A';
-        let endDate = booking.batch.endDate ? new Date(booking.batch.endDate).toLocaleDateString('en-IN') : 'N/A';
-        if (startDate === 'Invalid Date') startDate = 'N/A';
-        if (endDate === 'Invalid Date') endDate = 'N/A';
-        doc.text(`${startDate} to ${endDate}`, col2, currentY);
-        doc.text('-', col3, currentY);
-        doc.text('-', col4, currentY);
-        currentY += 20;
+      let startDate = 'N/A';
+      let endDate = 'N/A';
+      if (booking.trek && booking.trek.batches && booking.batch) {
+        // booking.batch may be an ObjectId or string, so compare as strings
+        const batchObj = booking.trek.batches.find(
+          b => b._id.toString() === booking.batch.toString()
+        );
+        if (batchObj) {
+          startDate = batchObj.startDate ? new Date(batchObj.startDate).toLocaleDateString('en-IN') : 'N/A';
+          endDate = batchObj.endDate ? new Date(batchObj.endDate).toLocaleDateString('en-IN') : 'N/A';
+        }
       }
+      doc.text('Trek Dates', col1, currentY);
+      doc.text(`${startDate} to ${endDate}`, col2, currentY);
+      doc.text('-', col3, currentY);
+      doc.text('-', col4, currentY);
+      currentY += 20;
 
       // Add-ons if any
       if (booking.addOns && booking.addOns.length > 0) {
@@ -152,13 +169,60 @@ const generateInvoicePDF = async (booking, payment) => {
       // Total
       doc.fontSize(11).font('Helvetica-Bold');
       doc.text('Total Amount:', summaryX1, summaryY);
-      doc.text(`Rs. ${(payment.amount ? payment.amount : baseAmount).toFixed(2)}`, summaryX2, summaryY);
+      
+      // Show appropriate amount based on payment mode
+      let displayAmount = booking.totalPrice;
+      if (booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+        if (booking.status === 'payment_confirmed_partial') {
+          // Show initial payment amount for partial payments
+          displayAmount = booking.partialPaymentDetails.initialAmount || booking.totalPrice;
+        } else if (booking.status === 'confirmed') {
+          // Show total amount for completed partial payments
+          displayAmount = booking.totalPrice;
+        }
+      }
+      
+      doc.text(`Rs. ${displayAmount.toFixed(2)}`, summaryX2, summaryY);
       summaryY += 22;
 
-      // Payment Status
-      doc.fontSize(10).font('Helvetica-Bold').text('Payment Status:', summaryX1, summaryY);
-      doc.font('Helvetica').fontSize(10).text('PAID', summaryX2, summaryY);
-      summaryY += 18;
+      // Partial Payment Information
+      if (booking.paymentMode === 'partial' && booking.partialPaymentDetails && 
+          booking.status !== 'confirmed' && booking.status !== 'payment_completed') {
+        doc.fontSize(10).font('Helvetica-Bold').text('Payment Mode: PARTIAL PAYMENT', summaryX1, summaryY);
+        summaryY += 18;
+        
+        // Initial Payment
+        doc.fontSize(10).font('Helvetica');
+        doc.text('Initial Payment:', summaryX1, summaryY);
+        doc.text(`Rs. ${booking.partialPaymentDetails.initialAmount?.toFixed(2) || '0.00'}`, summaryX2, summaryY);
+        summaryY += 18;
+        
+        // Remaining Balance
+        doc.text('Remaining Balance:', summaryX1, summaryY);
+        doc.text(`Rs. ${booking.partialPaymentDetails.remainingAmount?.toFixed(2) || '0.00'}`, summaryX2, summaryY);
+        summaryY += 18;
+        
+        // Due Date
+        if (booking.partialPaymentDetails.finalPaymentDueDate) {
+          doc.text('Final Payment Due Date:', summaryX1, summaryY);
+          doc.text(new Date(booking.partialPaymentDetails.finalPaymentDueDate).toLocaleDateString('en-IN'), summaryX2, summaryY);
+          summaryY += 18;
+        }
+        
+        // Payment Status based on booking status
+        doc.fontSize(10).font('Helvetica-Bold');
+        if (booking.status === 'payment_confirmed_partial') {
+          doc.text('Payment Status: PARTIAL PAYMENT RECEIVED', summaryX1, summaryY);
+          summaryY += 18;
+          doc.fontSize(9).font('Helvetica').text('Remaining balance pending', summaryX1, summaryY);
+        }
+        summaryY += 18;
+      } else {
+        // Full Payment Information
+        doc.fontSize(10).font('Helvetica-Bold').text('Payment Status: FULL PAYMENT', summaryX1, summaryY);
+        summaryY += 18;
+      }
+      
       doc.fontSize(9).font('Helvetica').text(`Payment Method: ${payment.method || 'N/A'}`, summaryX1, summaryY);
       summaryY += 14;
       doc.text(`Payment Date: ${new Date().toLocaleDateString('en-IN')}`, summaryX1, summaryY);
@@ -174,6 +238,17 @@ const generateInvoicePDF = async (booking, payment) => {
       doc.text('• Payment is non-refundable unless specified in our cancellation policy.');
       doc.text('• Please keep this invoice for your records.');
       doc.text('• For any queries, please contact us at support@bengalurutrekkers.com');
+      
+      // Partial Payment Terms
+      if (booking.paymentMode === 'partial' && booking.partialPaymentDetails && 
+          booking.status !== 'confirmed' && booking.status !== 'payment_completed') {
+        doc.moveDown(0.5);
+        doc.fontSize(9).font('Helvetica-Bold').text('Partial Payment Terms:');
+        doc.fontSize(8).font('Helvetica');
+        doc.text('• Remaining balance must be paid before the due date specified above.');
+        doc.text('• Failure to pay the remaining amount may result in booking cancellation.');
+        doc.text('• Partial payments are non-refundable once the initial payment is processed.');
+      }
 
       // Footer
       doc.moveDown(2);

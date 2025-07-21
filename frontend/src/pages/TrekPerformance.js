@@ -6,7 +6,9 @@ import {
   sendReminderEmail,
   sendConfirmationEmail,
   sendInvoiceEmail,
-  cancelBooking
+  cancelBooking,
+  sendPartialPaymentReminder,
+  markPartialPaymentComplete
 } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -154,6 +156,28 @@ const TrekPerformance = () => {
         } catch (error) {
           console.error('Error sending reminder email:', error);
           toast.error(error.response?.data?.message || 'Failed to send reminder email');
+        }
+        break;
+        
+      case 'partial-reminder':
+        try {
+          await sendPartialPaymentReminder(booking.bookingId);
+          toast.success('Partial payment reminder sent successfully');
+          fetchBatchDetails(selectedBatch._id); // Refresh batch details
+        } catch (error) {
+          console.error('Error sending partial payment reminder:', error);
+          toast.error(error.message || 'Failed to send partial payment reminder');
+        }
+        break;
+        
+      case 'mark-partial-complete':
+        try {
+          await markPartialPaymentComplete(booking.bookingId);
+          toast.success('Partial payment marked as complete successfully');
+          fetchBatchDetails(selectedBatch._id); // Refresh batch details
+        } catch (error) {
+          console.error('Error marking partial payment as complete:', error);
+          toast.error(error.message || 'Failed to mark partial payment as complete');
         }
         break;
         
@@ -349,35 +373,41 @@ const TrekPerformance = () => {
       {/* Batch Details Modal */}
       {selectedBatch && batchDetails && (
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Batch Details: {formatDate(selectedBatch.startDate)} - {formatDate(selectedBatch.endDate)}
-              </h2>
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Batch Details: {formatDate(batchDetails.batchDetails.startDate)} - {formatDate(batchDetails.batchDetails.endDate)}
+            </h2>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => fetchBatchDetails(selectedBatch._id)}
+                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Refresh
+              </button>
               <button
                 onClick={() => setShowExportModal(true)}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm"
+                className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Export Participants
               </button>
+              <button
+                onClick={() => {
+                  setSelectedBatch(null);
+                  setBatchDetails(null);
+                  setSearchParams({}); // Clear batchId from URL
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setSelectedBatch(null);
-                setBatchDetails(null);
-                setSearchParams({}); // Clear batchId from URL
-              }}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
-          
+
           {/* Batch Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
             <div className="bg-gray-50 rounded-lg p-4">
@@ -461,8 +491,24 @@ const TrekPerformance = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900 mb-1">
-                          {formatCurrency(booking.totalPrice)}
+                          {formatCurrency(booking.amountPaid || booking.totalPrice)}
                         </div>
+                        
+                        {/* Partial Payment Information */}
+                        {booking.paymentMode === 'partial' && booking.partialPaymentDetails && (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <div>Total: {formatCurrency(booking.totalPrice)}</div>
+                            {booking.status === 'payment_confirmed_partial' && (
+                              <>
+                                <div className="text-orange-600">Remaining: {formatCurrency(booking.partialPaymentDetails.remainingAmount || 0)}</div>
+                                {booking.partialPaymentDetails.finalPaymentDueDate && (
+                                  <div className="text-red-600">Due: {formatDate(booking.partialPaymentDetails.finalPaymentDueDate)}</div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                        
                         {(() => {
                           // Calculate total refunded amount (booking-level + participant-level)
                           let refunded = 0;
@@ -487,8 +533,10 @@ const TrekPerformance = () => {
                           }
                           return null;
                         })()}
+                        
                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                           booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          booking.status === 'payment_confirmed_partial' ? 'bg-orange-100 text-orange-800' :
                           booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
                         }`}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
-import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon, checkExistingPendingBooking } from "../services/api";
+import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon, checkExistingPendingBooking, deletePendingBooking } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Modal from "../components/Modal";
@@ -31,11 +31,17 @@ function BookingPage() {
       phone: currentUser?.phone || "",
     }
   });
+  const [paymentMode, setPaymentMode] = useState('full');
 
   // Add new state for coupon code
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState(null);
+
+  // Add state for existing pending booking
+  const [showExistingBookingModal, setShowExistingBookingModal] = useState(false);
+  const [existingBooking, setExistingBooking] = useState(null);
+  const [deletingBooking, setDeletingBooking] = useState(false);
 
   useEffect(() => {
     const fetchRazorpayKey = async () => {
@@ -186,6 +192,30 @@ function BookingPage() {
     setCouponError(null);
   };
 
+  const handleContinueExistingBooking = () => {
+    setShowExistingBookingModal(false);
+    navigate(`/payment/${existingBooking._id}`);
+  };
+
+  const handleDeleteExistingBooking = async () => {
+    try {
+      setDeletingBooking(true);
+      await deletePendingBooking(existingBooking._id);
+      setShowExistingBookingModal(false);
+      setExistingBooking(null);
+      toast.success("Existing booking deleted. You can now start a new booking.");
+    } catch (error) {
+      toast.error(error.message || "Failed to delete existing booking");
+    } finally {
+      setDeletingBooking(false);
+    }
+  };
+
+  const handleCloseExistingBookingModal = () => {
+    setShowExistingBookingModal(false);
+    setExistingBooking(null);
+  };
+
   const validateForm = () => {
     // Validate user details
     if (!formData.userDetails.name || !formData.userDetails.email || !formData.userDetails.phone) {
@@ -233,8 +263,8 @@ function BookingPage() {
         );
         
         if (existingBookingCheck.exists) {
-          toast.info("You have an existing pending payment. Redirecting to payment page...");
-          navigate(`/payment/${existingBookingCheck.booking._id}`);
+          setExistingBooking(existingBookingCheck.booking);
+          setShowExistingBookingModal(true);
           setProcessingPayment(false);
           return;
         }
@@ -259,6 +289,7 @@ function BookingPage() {
         addOns: validAddOns,
         userDetails: formData.userDetails,
         totalPrice: calculateTotalPrice(),
+        paymentMode: paymentMode,
         couponCode: appliedCoupon?.promoCode || null,
         discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.promoCode.discountValue / 100) : 0,
         originalPrice: calculateBasePrice(),
@@ -267,8 +298,14 @@ function BookingPage() {
 
       const booking = await createBooking(bookingData);
       
+      // Calculate payment amount based on payment mode
+      let paymentAmount = booking.totalPrice;
+      if (paymentMode === 'partial' && booking.partialPaymentDetails) {
+        paymentAmount = booking.partialPaymentDetails.initialAmount;
+      }
+      
       // Create Razorpay order using the API service
-      const { order } = await createPaymentOrder(booking.totalPrice, booking._id);
+      const { order } = await createPaymentOrder(paymentAmount, booking._id);
 
       // Initialize Razorpay
       const options = {
@@ -276,7 +313,7 @@ function BookingPage() {
         amount: order.amount,
         currency: order.currency,
         name: 'Trek Booking',
-        description: `Trek Booking Payment${appliedCoupon ? ` (with ${appliedCoupon.promoCode.discountValue}% discount)` : ''}`,
+        description: `Trek Booking Payment${paymentMode === 'partial' ? ' (Partial)' : ''}${appliedCoupon ? ` (with ${appliedCoupon.promoCode.discountValue}% discount)` : ''}`,
         order_id: order.id,
         handler: async function (response) {
           try {
@@ -678,6 +715,55 @@ function BookingPage() {
                 )}
               </div>
 
+              {/* Partial Payment Options */}
+              {trek.partialPayment && trek.partialPayment.enabled && (
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    Payment Options
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        id="payment_full"
+                        name="paymentMode"
+                        value="full"
+                        checked={paymentMode === 'full'}
+                        onChange={(e) => setPaymentMode(e.target.value)}
+                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                      />
+                      <label htmlFor="payment_full" className="ml-2 block text-sm text-gray-900">
+                        <span className="font-medium">Pay in Full</span>
+                        <span className="text-gray-500 ml-2">- Pay the complete amount now</span>
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        id="payment_partial"
+                        name="paymentMode"
+                        value="partial"
+                        checked={paymentMode === 'partial'}
+                        onChange={(e) => setPaymentMode(e.target.value)}
+                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                      />
+                      <label htmlFor="payment_partial" className="ml-2 block text-sm text-gray-900">
+                        <span className="font-medium">Pay Partial Now & Pay Later</span>
+                        <span className="text-gray-500 ml-2">
+                          - Pay ₹{trek.partialPayment.amountType === 'percentage' 
+                            ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
+                            : trek.partialPayment.amount} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end">
                 <button
                   type="submit"
@@ -692,7 +778,7 @@ function BookingPage() {
                       Loading Payment...
                     </>
                   ) : (
-                    'Proceed to Payment'
+                    paymentMode === 'partial' ? 'Pay Partial Amount' : 'Proceed to Payment'
                   )}
                 </button>
               </div>
@@ -776,6 +862,38 @@ function BookingPage() {
                     ₹{calculateTotalPrice().toFixed(2)}
                   </dd>
                 </div>
+                
+                {/* Partial Payment Breakdown */}
+                {paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled && (
+                  <>
+                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                      <dt className="text-sm font-medium text-gray-500">Initial Payment</dt>
+                      <dd className="mt-1 text-sm text-emerald-600 font-medium sm:mt-0 sm:col-span-2">
+                        ₹{trek.partialPayment.amountType === 'percentage' 
+                          ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
+                          : trek.partialPayment.amount}
+                      </dd>
+                    </div>
+                    <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                      <dt className="text-sm font-medium text-gray-500">Remaining Balance</dt>
+                      <dd className="mt-1 text-sm text-gray-800 font-medium sm:mt-0 sm:col-span-2">
+                        ₹{trek.partialPayment.amountType === 'percentage' 
+                          ? calculateTotalPrice() - Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
+                          : calculateTotalPrice() - trek.partialPayment.amount}
+                      </dd>
+                    </div>
+                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                      <dt className="text-sm font-medium text-gray-500">Due Date</dt>
+                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        {selectedBatch && (() => {
+                          const dueDate = new Date(selectedBatch.startDate);
+                          dueDate.setDate(dueDate.getDate() - trek.partialPayment.finalPaymentDueDays);
+                          return dueDate.toLocaleDateString();
+                        })()}
+                      </dd>
+                    </div>
+                  </>
+                )}
               </dl>
             </div>
           </div>
@@ -844,6 +962,58 @@ function BookingPage() {
             <LoadingSpinner />
             <p className="text-lg font-medium text-gray-900">Verifying Payment...</p>
             <p className="text-sm text-gray-600">Please wait while we verify your payment</p>
+          </div>
+        </div>
+      )}
+
+      {/* Existing Pending Booking Modal */}
+      {showExistingBookingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+                <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Existing Pending Booking
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                You already have a pending payment for this trek and batch. What would you like to do?
+              </p>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={handleContinueExistingBooking}
+                  className="w-full bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
+                >
+                  Continue with Existing Booking
+                </button>
+                
+                <button
+                  onClick={handleDeleteExistingBooking}
+                  disabled={deletingBooking}
+                  className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {deletingBooking ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete & Start Fresh'
+                  )}
+                </button>
+                
+                <button
+                  onClick={handleCloseExistingBookingModal}
+                  className="w-full bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

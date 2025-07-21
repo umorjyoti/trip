@@ -79,7 +79,8 @@ const PaymentPage = () => {
         }
         
         // Check if booking is in the right status for payment
-        if (data.status !== 'pending_payment') {
+        // Allow both pending_payment and payment_confirmed_partial statuses
+        if (data.status !== 'pending_payment' && data.status !== 'payment_confirmed_partial') {
           toast.error('This booking is not ready for payment');
           navigate('/my-bookings');
           return;
@@ -159,7 +160,9 @@ const PaymentPage = () => {
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-gray-500"><FaCalendarAlt className="text-emerald-400" /> Dates:</span>
                 <span className="font-medium text-gray-800">
-                  {booking.formattedDates?.startDate && booking.formattedDates?.endDate ? (
+                  {booking.batch?.startDate && booking.batch?.endDate ? (
+                    `${new Date(booking.batch.startDate).toLocaleDateString()} - ${new Date(booking.batch.endDate).toLocaleDateString()}`
+                  ) : booking.formattedDates?.startDate && booking.formattedDates?.endDate ? (
                     `${new Date(booking.formattedDates.startDate).toLocaleDateString()} - ${new Date(booking.formattedDates.endDate).toLocaleDateString()}`
                   ) : 'N/A'}
                 </span>
@@ -172,18 +175,40 @@ const PaymentPage = () => {
                 <span className="flex items-center gap-2 text-gray-500"><FaReceipt className="text-emerald-400" /> Booking ID:</span>
                 <span className="font-mono text-xs text-gray-600">{booking._id}</span>
               </div>
-              <div className="border-t border-gray-200 pt-6 flex items-center justify-between mt-4">
-                <span className="text-xl font-semibold text-gray-800">Total Amount:</span>
-                <span className="text-3xl font-extrabold text-emerald-600">
-                  ₹{Intl.NumberFormat('en-IN').format(Math.round(booking.totalPrice))}
-                </span>
-              </div>
+              {booking.paymentMode === 'partial' && booking.partialPaymentDetails && booking.status === 'payment_confirmed_partial' ? (
+                <div className="border-t border-gray-200 pt-6 space-y-3 mt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-medium text-gray-700">Remaining Balance:</span>
+                    <span className="text-2xl font-bold text-orange-600">
+                      ₹{booking.partialPaymentDetails.remainingAmount?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    Due: {booking.partialPaymentDetails.finalPaymentDueDate ? 
+                      new Date(booking.partialPaymentDetails.finalPaymentDueDate).toLocaleDateString() : 'N/A'}
+                  </div>
+                </div>
+              ) : (
+                <div className="border-t border-gray-200 pt-6 flex items-center justify-between mt-4">
+                  <span className="text-xl font-semibold text-gray-800">
+                    {booking.paymentMode === 'partial' ? 'Initial Payment:' : 'Total Amount:'}
+                  </span>
+                  <span className="text-3xl font-extrabold text-emerald-600">
+                    ₹{(booking.paymentMode === 'partial' && booking.partialPaymentDetails 
+                        ? booking.partialPaymentDetails.initialAmount 
+                        : booking.totalPrice)?.toFixed(2) || '0.00'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           <PaymentButton 
-            amount={booking.totalPrice} 
+            amount={booking.paymentMode === 'partial' && booking.partialPaymentDetails 
+              ? booking.partialPaymentDetails.remainingAmount 
+              : booking.totalPrice} 
             bookingId={booking._id} 
-            onSuccess={handlePaymentSuccess} 
+            onSuccess={handlePaymentSuccess}
+            isRemainingBalance={booking.status === 'payment_confirmed_partial'}
           />
           <div className="mt-8 text-center text-sm text-gray-500">
             <p>Your booking is secure. You can pay now or later.</p>
@@ -203,4 +228,4 @@ const PaymentPage = () => {
   );
 };
 
-export default PaymentPage; 
+export default PaymentPage;

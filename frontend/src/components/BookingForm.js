@@ -31,6 +31,7 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
   });
   const [errors, setErrors] = useState({});
   const [totalPrice, setTotalPrice] = useState(batch?.price || 0);
+  const [paymentMode, setPaymentMode] = useState('full');
 
   // Debug the batch data
   useEffect(() => {
@@ -200,7 +201,8 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
         emergencyContact: formData.emergencyContact,
         participantDetails: formData.participantDetails,
         specialRequirements: formData.specialRequirements,
-        totalPrice
+        totalPrice,
+        paymentMode
       };
       
       const response = await createBooking(bookingData);
@@ -494,6 +496,53 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
               placeholder="Any other special requirements for your group"
             />
           </div>
+
+          {/* Payment Mode Selection */}
+          {trek.partialPayment && trek.partialPayment.enabled && (
+            <div className="mb-6">
+              <h4 className="text-md font-medium text-gray-900 mb-3 flex items-center">
+                <FaMoneyBillWave className="mr-2 text-emerald-500" />
+                Payment Options
+              </h4>
+              <div className="space-y-3">
+                <div className="flex items-center">
+                  <input
+                    type="radio"
+                    id="payment_full"
+                    name="paymentMode"
+                    value="full"
+                    checked={paymentMode === 'full'}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                  />
+                  <label htmlFor="payment_full" className="ml-2 block text-sm text-gray-900">
+                    <span className="font-medium">Pay in Full</span>
+                    <span className="text-gray-500 ml-2">- Pay the complete amount now</span>
+                  </label>
+                </div>
+                
+                <div className="flex items-center">
+                  <input
+                    type="radio"
+                    id="payment_partial"
+                    name="paymentMode"
+                    value="partial"
+                    checked={paymentMode === 'partial'}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
+                  />
+                  <label htmlFor="payment_partial" className="ml-2 block text-sm text-gray-900">
+                    <span className="font-medium">Pay Partial Now & Pay Later</span>
+                    <span className="text-gray-500 ml-2">
+                      - Pay ₹{trek.partialPayment.amountType === 'percentage' 
+                        ? Math.round((totalPrice * trek.partialPayment.amount) / 100)
+                        : trek.partialPayment.amount} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Price Summary */}
           <div className="mt-6 bg-gray-50 p-4 rounded-md">
@@ -501,10 +550,38 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
               <span className="text-sm font-medium text-gray-700">Total Price:</span>
               <span className="text-lg font-bold text-emerald-600">{formatCurrency(totalPrice)}</span>
             </div>
-            <div className="mt-2 text-xs text-gray-500 flex items-start">
-              <FaInfoCircle className="mr-1 mt-0.5 flex-shrink-0" />
-              <span>A 20% deposit will be required to confirm your booking. The remaining balance can be paid 30 days before the trek start date.</span>
-            </div>
+            
+            {paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled && (
+              <div className="mt-3 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Initial Payment:</span>
+                  <span className="font-medium text-emerald-600">
+                    ₹{trek.partialPayment.amountType === 'percentage' 
+                      ? Math.round((totalPrice * trek.partialPayment.amount) / 100)
+                      : trek.partialPayment.amount}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Remaining Balance:</span>
+                  <span className="font-medium text-gray-800">
+                    ₹{trek.partialPayment.amountType === 'percentage' 
+                      ? totalPrice - Math.round((totalPrice * trek.partialPayment.amount) / 100)
+                      : totalPrice - trek.partialPayment.amount}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 flex items-start">
+                  <FaInfoCircle className="mr-1 mt-0.5 flex-shrink-0" />
+                  <span>Remaining balance due {trek.partialPayment.finalPaymentDueDays} days before trek start date</span>
+                </div>
+              </div>
+            )}
+            
+            {paymentMode === 'full' && (
+              <div className="mt-2 text-xs text-gray-500 flex items-start">
+                <FaInfoCircle className="mr-1 mt-0.5 flex-shrink-0" />
+                <span>Pay the complete amount now to confirm your booking</span>
+              </div>
+            )}
           </div>
           
           {/* Form Actions */}

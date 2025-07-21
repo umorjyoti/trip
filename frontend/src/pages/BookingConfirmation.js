@@ -75,7 +75,8 @@ function BookingConfirmation() {
 
   // Determine if payment is needed based on status
   const needsPayment = booking.status === 'pending_payment';
-  const needsParticipantDetails = booking.status === 'payment_completed';
+  const needsParticipantDetails = booking.status === 'payment_completed' || 
+    (booking.status === 'payment_confirmed_partial' && (!booking.participantDetails || booking.participantDetails.length === 0));
   const isConfirmed = booking.status === 'confirmed';
   const isTrekCompleted = booking.status === 'trek_completed';
 
@@ -85,6 +86,12 @@ function BookingConfirmation() {
         return 'Payment Pending - Please complete your payment to proceed';
       case 'payment_completed':
         return 'Payment Completed - Please fill in participant details to confirm your booking';
+      case 'payment_confirmed_partial':
+        if (booking.participantDetails && booking.participantDetails.length > 0) {
+          return 'Partial Payment Completed - Please complete the remaining payment to confirm your booking';
+        } else {
+          return 'Partial Payment Completed - Please fill in participant details and complete the remaining payment';
+        }
       case 'confirmed':
         return 'Booking Confirmed - Your trek is confirmed and ready!';
       case 'trek_completed':
@@ -102,6 +109,8 @@ function BookingConfirmation() {
         return 'bg-yellow-100 text-yellow-800';
       case 'payment_completed':
         return 'bg-blue-100 text-blue-800';
+      case 'payment_confirmed_partial':
+        return 'bg-orange-100 text-orange-800';
       case 'confirmed':
         return 'bg-green-100 text-green-800';
       case 'trek_completed':
@@ -181,6 +190,9 @@ function BookingConfirmation() {
               {needsPayment && (
                 <li className="text-indigo-600 font-medium">Please complete your payment to confirm your booking.</li>
               )}
+              {booking.status === 'payment_confirmed_partial' && booking.participantDetails && booking.participantDetails.length > 0 && (
+                <li className="text-orange-600 font-medium">Please complete the remaining payment to confirm your booking.</li>
+              )}
             </ul>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -198,6 +210,14 @@ function BookingConfirmation() {
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Fill Participant Details
+              </Link>
+            )}
+            {booking.status === 'payment_confirmed_partial' && booking.participantDetails && booking.participantDetails.length > 0 && (
+              <Link
+                to={`/payment/${booking._id}`}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+              >
+                Complete Remaining Payment
               </Link>
             )}
             <Link

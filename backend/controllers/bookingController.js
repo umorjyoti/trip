@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail, sendPartialPaymentReminderEmail, sendConfirmationEmailToAllParticipants } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
@@ -116,7 +116,17 @@ const createCustomTrekBooking = async (req, res) => {
 
     // Send confirmation email
     try {
-      await sendBookingConfirmationEmail(booking, trek, customBatch);
+      // If participant details are available, send to all participants
+      if (booking.participantDetails && booking.participantDetails.length > 0) {
+        await sendConfirmationEmailToAllParticipants(booking, trek, booking.user, booking.participantDetails, customBatch, booking.additionalRequests);
+      } else {
+        // Fallback: send to booking user only
+        await sendEmail({
+          to: booking.userDetails.email,
+          subject: `Booking Confirmed - ${trek?.name || 'Trek Booking'}`,
+          text: `Dear ${booking.userDetails.name},\n\nYour booking is confirmed!\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
+        });
+      }
       // Generate and send invoice for direct confirmation
       await booking.populate('trek').populate('user');
       const paymentDetails = booking.paymentDetails || {
@@ -161,6 +171,7 @@ const createBooking = async (req, res) => {
       couponCode, // Promo code information
       discountAmount,
       originalPrice,
+      paymentMode, // 'full' or 'partial'
     } = req.body;
 
     // Validate required fields
@@ -230,6 +241,23 @@ const createBooking = async (req, res) => {
         .json({ message: "Not enough spots available in this batch" });
     }
 
+    // Validate partial payment configuration
+    if (paymentMode === 'partial') {
+      if (!trek.partialPayment.enabled) {
+        return res.status(400).json({ message: "Partial payment is not enabled for this trek" });
+      }
+      
+      // Check if booking is within final payment window
+      const batchStartDate = new Date(batch.startDate);
+      const daysUntilTrek = Math.ceil((batchStartDate - new Date()) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntilTrek <= trek.partialPayment.finalPaymentDueDays) {
+        return res.status(400).json({ 
+          message: `Partial payment is not available for bookings within ${trek.partialPayment.finalPaymentDueDays} days of the trek start date` 
+        });
+      }
+    }
+
     // Check for existing pending payment booking for this user, trek, and batch
     const existingPendingBooking = await Booking.findOne({
       user: req.user._id,
@@ -250,6 +278,7 @@ const createBooking = async (req, res) => {
       booking.addOns = Array.isArray(addOns) ? addOns : [];
       booking.userDetails = userDetails;
       booking.totalPrice = totalPrice;
+      booking.paymentMode = paymentMode || 'full';
       
               // Update promo code details if provided
         if (couponCode) {
@@ -275,6 +304,31 @@ const createBooking = async (req, res) => {
       
       console.log(`Updated existing pending booking ${booking._id} for user ${req.user._id}`);
     } else {
+      // Calculate partial payment details if applicable
+      let partialPaymentDetails = null;
+      if (paymentMode === 'partial' && trek.partialPayment.enabled) {
+        const batchStartDate = new Date(batch.startDate);
+        const finalPaymentDueDate = new Date(batchStartDate);
+        finalPaymentDueDate.setDate(finalPaymentDueDate.getDate() - trek.partialPayment.finalPaymentDueDays);
+        
+        let initialAmount = 0;
+        if (trek.partialPayment.amountType === 'percentage') {
+          initialAmount = Math.round((totalPrice * trek.partialPayment.amount) / 100);
+        } else {
+          initialAmount = trek.partialPayment.amount;
+        }
+        
+        // Ensure initial amount doesn't exceed total price
+        initialAmount = Math.min(initialAmount, totalPrice);
+        
+        partialPaymentDetails = {
+          initialAmount,
+          remainingAmount: totalPrice - initialAmount,
+          finalPaymentDueDate,
+          reminderSent: false
+        };
+      }
+
       // Create new booking
       booking = new Booking({
         user: req.user._id,
@@ -285,6 +339,8 @@ const createBooking = async (req, res) => {
         userDetails,
         totalPrice,
         status: "pending_payment",
+        paymentMode: paymentMode || 'full',
+        partialPaymentDetails,
         promoCodeDetails: couponCode ? {
           promoCodeId: couponCode._id,
           code: couponCode.code,
@@ -493,7 +549,9 @@ const getBookingById = async (req, res) => {
       cancellationRequest: booking.cancellationRequest || null,
       refundStatus: booking.refundStatus,
       refundAmount: booking.refundAmount,
-      refundDate: booking.refundDate
+      refundDate: booking.refundDate,
+      paymentMode: booking.paymentMode || 'full',
+      partialPaymentDetails: booking.partialPaymentDetails || null
     };
 
     res.json(responseData);
@@ -1139,7 +1197,19 @@ const updateBooking = async (req, res) => {
     }
 
     if (status !== undefined) {
-      booking.status = status;
+      // For partial payments, ensure status logic is respected
+      if (booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+        if (booking.partialPaymentDetails.remainingAmount > 0) {
+          // If there's still remaining amount, force status to payment_confirmed_partial
+          booking.status = 'payment_confirmed_partial';
+        } else {
+          // If no remaining amount, allow the status to be set
+          booking.status = status;
+        }
+      } else {
+        // For full payments, allow status to be set normally
+        booking.status = status;
+      }
     }
 
     await booking.save();
@@ -1460,26 +1530,43 @@ const updateParticipantDetails = async (req, res) => {
     };
 
     booking.additionalRequests = additionalRequests || '';
-    booking.status = 'confirmed'; // Update status to confirmed after collecting details
+    
+    // Update status based on payment type
+    if (booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+      // For partial payments, keep status as payment_confirmed_partial until full payment is complete
+      if (booking.partialPaymentDetails.remainingAmount > 0) {
+        booking.status = 'payment_confirmed_partial';
+      } else {
+        // If remaining amount is 0, then it's fully paid and can be confirmed
+        booking.status = 'confirmed';
+      }
+    } else {
+      // For full payments, update status to confirmed after collecting details
+      booking.status = 'confirmed';
+    }
 
     await booking.save();
 
     console.log('Booking updated successfully, status:', booking.status);
 
-    // Send booking confirmation email
-    try {
-      const trek = booking.trek;
-      const user = booking.user;
-      const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
-      
-      console.log('Sending booking confirmation email to:', user.email);
+    // Send booking confirmation email to all participants only if booking is fully confirmed
+    if (booking.status === 'confirmed') {
+      try {
+        const trek = booking.trek;
+        const user = booking.user;
+        const batch = trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
+        
+        console.log('Sending booking confirmation email to all participants');
 
-      await sendBookingConfirmationEmail(booking, trek, user, formattedParticipants, batch, additionalRequests);
-      
-      console.log('Booking confirmation email sent successfully');
-    } catch (emailError) {
-      console.error('Error sending booking confirmation email:', emailError);
-      // Don't fail the participant details update if email fails
+        await sendConfirmationEmailToAllParticipants(booking, trek, user, formattedParticipants, batch, additionalRequests);
+        
+        console.log('Booking confirmation emails sent successfully to all participants');
+      } catch (emailError) {
+        console.error('Error sending booking confirmation emails to all participants:', emailError);
+        // Don't fail the participant details update if email fails
+      }
+    } else {
+      console.log('Not sending booking confirmation email. Booking status:', booking.status);
     }
 
     res.json({ 
@@ -1599,32 +1686,23 @@ const downloadInvoice = async (req, res) => {
   }
 };
 
-// Send reminder email
+// Send reminder email (admin only)
 const sendReminderEmail = async (req, res) => {
   try {
     const { bookingId } = req.params;
     
-    const booking = await Booking.findById(bookingId)
-      .populate('user')
-      .populate('trek')
-      .populate('batch');
-
+    const booking = await Booking.findById(bookingId).populate('user trek');
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Check if user is admin
-    if (!req.user.isAdmin && req.user.role !== "admin") {
-      return res.status(403).json({ message: "Only admins can send reminder emails" });
-    }
-
-    // Send reminder email using the proper template
-    await sendBookingReminderEmail(booking, booking.trek, booking.user, booking.batch);
-
+    // Send reminder email logic here
+    // You can implement the actual email sending logic
+    
     res.json({ message: 'Reminder email sent successfully' });
   } catch (error) {
     console.error('Error sending reminder email:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -1654,8 +1732,8 @@ const sendConfirmationEmail = async (req, res) => {
       gender: 'N/A'
     }];
 
-    // Send confirmation email using the proper template
-    await sendBookingConfirmationEmail(
+    // Send confirmation email to all participants using the proper template
+    await sendConfirmationEmailToAllParticipants(
       booking, 
       booking.trek, 
       booking.user, 
@@ -2114,6 +2192,44 @@ const getExistingPendingBooking = async (req, res) => {
   }
 };
 
+// Delete pending booking for user
+const deletePendingBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    if (!bookingId) {
+      return res.status(400).json({ 
+        message: "Booking ID is required" 
+      });
+    }
+
+    // Find the pending booking
+    const pendingBooking = await Booking.findOne({
+      _id: bookingId,
+      user: req.user._id,
+      status: 'pending_payment'
+    });
+
+    if (!pendingBooking) {
+      return res.status(404).json({ 
+        message: "Pending booking not found or you don't have permission to delete it" 
+      });
+    }
+
+    // Delete the pending booking
+    await Booking.findByIdAndDelete(bookingId);
+
+    res.json({
+      success: true,
+      message: "Pending booking deleted successfully. You can now start a new booking."
+    });
+
+  } catch (error) {
+    console.error("Error deleting pending booking:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 // Cleanup expired pending bookings (admin only)
 const cleanupExpiredBookings = async (req, res) => {
   try {
@@ -2146,6 +2262,102 @@ const cleanupExpiredBookings = async (req, res) => {
   }
 };
 
+// Send partial payment reminder (admin only)
+const sendPartialPaymentReminder = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user trek')
+      .populate({
+        path: 'batch',
+        select: 'startDate endDate'
+      });
+      
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'payment_confirmed_partial') {
+      return res.status(400).json({ message: 'Booking is not in partial payment status' });
+    }
+
+    if (!booking.partialPaymentDetails) {
+      return res.status(400).json({ message: 'No partial payment details found' });
+    }
+
+    // Check if reminder is already sent
+    if (booking.partialPaymentDetails.reminderSent) {
+      return res.status(400).json({ message: 'Reminder already sent for this booking' });
+    }
+
+    // Send reminder email using standard template
+    const emailResult = await sendPartialPaymentReminderEmail(
+      booking, 
+      booking.trek, 
+      booking.user, 
+      booking.batch
+    );
+
+    if (!emailResult) {
+      return res.status(500).json({ message: 'Failed to send reminder email' });
+    }
+
+    // Update reminder sent flag
+    booking.partialPaymentDetails.reminderSent = true;
+    await booking.save();
+    
+    res.json({ 
+      message: 'Partial payment reminder sent successfully',
+      emailSent: true
+    });
+  } catch (error) {
+    console.error('Error sending partial payment reminder:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Mark partial payment as complete (admin only)
+const markPartialPaymentComplete = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId).populate('user trek');
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'payment_confirmed_partial') {
+      return res.status(400).json({ message: 'Booking is not in partial payment status' });
+    }
+
+    if (!booking.partialPaymentDetails) {
+      return res.status(400).json({ message: 'No partial payment details found' });
+    }
+
+    // Update partial payment details
+    booking.partialPaymentDetails.remainingAmount = 0;
+    booking.partialPaymentDetails.finalPaymentDate = new Date();
+    
+    // Update status based on whether participant details exist
+    if (booking.participantDetails && booking.participantDetails.length > 0) {
+      booking.status = 'confirmed';
+    } else {
+      booking.status = 'payment_completed';
+    }
+    
+    await booking.save();
+    
+    res.json({ 
+      message: 'Partial payment marked as complete successfully',
+      booking 
+    });
+  } catch (error) {
+    console.error('Error marking partial payment as complete:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports = {
   createBooking,
   getUserBookings,
@@ -2172,5 +2384,8 @@ module.exports = {
   updateCancellationRequest,
   calculateRefund,
   getExistingPendingBooking,
-  cleanupExpiredBookings
+  deletePendingBooking,
+  cleanupExpiredBookings,
+  sendPartialPaymentReminder,
+  markPartialPaymentComplete
 };

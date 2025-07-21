@@ -39,7 +39,9 @@ function BookingDetail() {
           createdAt: data.createdAt || new Date(),
           cancelledAt: data.cancelledAt || null,
           participantDetails: Array.isArray(data.participantDetails) ? data.participantDetails : [],
-          cancellationRequest: data.cancellationRequest || null
+          cancellationRequest: data.cancellationRequest || null,
+          paymentMode: data.paymentMode || 'full',
+          partialPaymentDetails: data.partialPaymentDetails || null
         };
         
         setBooking(bookingData);
@@ -71,6 +73,8 @@ function BookingDetail() {
         return 'bg-red-100 text-red-800';
       case 'completed':
         return 'bg-blue-100 text-blue-800';
+      case 'payment_confirmed_partial':
+        return 'bg-orange-100 text-orange-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -316,7 +320,7 @@ function BookingDetail() {
                 <svg className="flex-shrink-0 h-5 w-5 text-gray-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
                 </svg>
-                <Link to="/bookings" className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">My Bookings</Link>
+                <Link to="/my-bookings" className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700">My Bookings</Link>
               </div>
             </li>
             <li>
@@ -330,6 +334,58 @@ function BookingDetail() {
           </ol>
         </nav>
       </div>
+
+      {/* Payment Summary Section - Prominent display for partial payments */}
+      {(booking.paymentMode === 'partial' && booking.partialPaymentDetails && booking.status === 'payment_confirmed_partial') ? (
+        <div className="mb-8">
+          <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-lg p-4 border border-orange-200">
+                    <div className="text-sm text-gray-500">Amount Paid</div>
+                    <div className="text-2xl font-bold text-emerald-600">
+                      ₹{booking.partialPaymentDetails?.initialAmount?.toFixed(2) || '0.00'}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 border border-orange-200">
+                    <div className="text-sm text-gray-500">Remaining Due</div>
+                    <div className="text-2xl font-bold text-red-600">
+                      ₹{booking.partialPaymentDetails?.remainingAmount?.toFixed(2) || '0.00'}
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 border border-orange-200">
+                    <div className="text-sm text-gray-500">Due Date</div>
+                    <div className="text-lg font-semibold text-red-600">
+                      {booking.partialPaymentDetails?.finalPaymentDueDate ? formatDate(booking.partialPaymentDetails.finalPaymentDueDate) : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="inline-flex rounded-full px-3 py-1 text-sm font-semibold bg-orange-100 text-orange-800 mb-2">
+                  Partial Payment
+                </div>
+                <div className="text-sm text-gray-600">
+                  Total: ₹{booking.totalPrice?.toFixed(2) || '0.00'}
+                </div>
+                {booking.status === 'payment_confirmed_partial' && (
+                  <button
+                    onClick={() => {
+                      // Navigate to payment page for remaining balance
+                      navigate(`/payment/${booking._id}`);
+                    }}
+                    className="mt-3 w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                  >
+                    Pay Remaining Balance
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Booking Details */}
@@ -383,6 +439,50 @@ function BookingDetail() {
                 <dt className="text-sm font-medium text-gray-500">Total Amount (INR)</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">₹{booking.totalPrice?.toFixed(2) || '0.00'}</dd>
               </div>
+              
+              {/* Partial Payment Information */}
+              {booking.paymentMode === 'partial' && booking.partialPaymentDetails && 
+               booking.status !== 'confirmed' && booking.status !== 'payment_completed' && (
+                <>
+                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Payment Mode</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-orange-100 text-orange-800">
+                        Partial Payment
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Amount Paid</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      <span className="font-semibold text-emerald-600">₹{booking.partialPaymentDetails?.initialAmount?.toFixed(2) || '0.00'}</span>
+                    </dd>
+                  </div>
+                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Remaining Balance</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      <span className="font-semibold text-orange-600">₹{booking.partialPaymentDetails?.remainingAmount?.toFixed(2) || '0.00'}</span>
+                    </dd>
+                  </div>
+                  {booking.partialPaymentDetails?.finalPaymentDueDate && (
+                    <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                      <dt className="text-sm font-medium text-gray-500">Final Payment Due Date</dt>
+                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        <span className="font-semibold text-red-600">{formatDate(booking.partialPaymentDetails.finalPaymentDueDate)}</span>
+                      </dd>
+                    </div>
+                  )}
+                  {booking.partialPaymentDetails?.finalPaymentDate && (
+                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                      <dt className="text-sm font-medium text-gray-500">Final Payment Date</dt>
+                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        <span className="font-semibold text-green-600">{formatDate(booking.partialPaymentDetails.finalPaymentDate)}</span>
+                      </dd>
+                    </div>
+                  )}
+                </>
+              )}
+              
               {booking.status === 'cancelled' && booking.cancelledAt && (
                 <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                   <dt className="text-sm font-medium text-gray-500">Cancelled Date</dt>
