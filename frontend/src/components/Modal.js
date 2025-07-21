@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { FaTimes } from 'react-icons/fa';
 
-function Modal({ title, children, onClose, size = 'default', isOpen = true }) {
+function Modal({ title, children, onClose, size = 'default', isOpen = true, showBackdrop = true }) {
   // Prevent scrolling of the background when modal is open
   useEffect(() => {
     if (!isOpen) return;
@@ -50,15 +50,17 @@ function Modal({ title, children, onClose, size = 'default', isOpen = true }) {
   const modalContent = (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity z-40"
-        onClick={onClose}
-        aria-hidden="true"
-      ></div>
+      {showBackdrop && (
+        <div
+          className="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity z-40"
+          onClick={onClose}
+          aria-hidden="true"
+        ></div>
+      )}
 
       {/* Modal Centering Container */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        className={`fixed inset-0 ${showBackdrop ? 'z-50' : 'z-40'} flex items-center justify-center p-4`}
       >
         {/* Modal Panel */}
         <div

@@ -564,9 +564,9 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">Remaining Balance:</span>
                   <span className="font-medium text-gray-800">
-                    ₹{trek.partialPayment.amountType === 'percentage' 
+                    ₹{(trek.partialPayment.amountType === 'percentage' 
                       ? totalPrice - Math.round((totalPrice * trek.partialPayment.amount) / 100)
-                      : totalPrice - trek.partialPayment.amount}
+                      : totalPrice - trek.partialPayment.amount).toFixed(2)}
                   </span>
                 </div>
                 <div className="text-xs text-gray-500 flex items-start">

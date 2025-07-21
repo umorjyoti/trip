@@ -1868,6 +1868,33 @@ function TrekDetail() {
                           </div>
                         )}
 
+                        {trek.season && (
+                          <div className="flex items-start">
+                            <div className="flex-shrink-0">
+                              <svg
+                                className="h-5 w-5 text-emerald-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.414-1.414L11 9.586V6z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </div>
+                            <div className="ml-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Best Season
+                              </p>
+                              <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
+                                {trek.season}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                         {trek.bestTimeToVisit && (
                           <div className="flex items-start">
                             <div className="flex-shrink-0">
