@@ -194,38 +194,356 @@ exports.verifyPayment = async (req, res) => {
               }
             }
             
-            // Send payment confirmation email with invoice
-            await sendPaymentReceivedEmail(booking, trek, user, paymentDetails);
-            
-            // Generate invoice PDF and send as attachment
+            // Send payment confirmation email with invoice attachment
             try {
               const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
               await sendEmailWithAttachment({
                 to: user.email,
-                subject: `Your Invoice for Booking ${booking._id}`,
-                text: `Dear ${user.name},\n\nThank you for your payment! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount Paid: ₹${payment.amount / 100}\n\nBest regards,\nTrek Adventures Team`,
+                subject: `💳 Payment Confirmed - ${trek?.name || 'Trek Booking'}`,
+                text: `Dear ${user.name},\n\n💳 Thank you for your payment! Your booking has been confirmed.\n\n📋 INVOICE DETAILS:\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nParticipants: ${booking.numberOfParticipants}\nAmount Paid: ₹${payment.amount / 100}\nPayment Method: ${payment.method}\nPayment ID: ${payment.id}\nPayment Date: ${new Date().toLocaleDateString()}\n\n📝 NEXT STEPS:\n1. Please complete your participant details to finalize your booking\n2. You will receive a final confirmation email once all details are submitted\n3. Our team will contact you with further instructions\n\n❓ NEED HELP?\nIf you have any questions, please don't hesitate to contact us.\n\n🏔️ We look forward to an amazing trek with you!\n\nBest regards,\nThe Trek Team\nYour Adventure Awaits!\n\n---\nThis is an automated message. Please do not reply to this email.\nFor support, contact us through our website or mobile app.`,
+                html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💳 Payment Confirmed - ${trek?.name || 'Trek Booking'}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .payment-container {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .amount {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .amount {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+
+        <h2>Dear ${user.name},</h2>
+        
+        <div class="payment-container">
+            <div class="section-title">💳 Payment Confirmed!</div>
+            <p>Thank you for your payment! Your booking has been confirmed.</p>
+            <div class="amount">₹${payment.amount / 100}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📋 Invoice Details</div>
+            <ul class="info-list">
+                <li><strong>Booking ID:</strong> ${booking._id}</li>
+                <li><strong>Trek:</strong> ${trek?.name || 'N/A'}</li>
+                <li><strong>Participants:</strong> ${booking.numberOfParticipants}</li>
+                <li><strong>Amount Paid:</strong> ₹${payment.amount / 100}</li>
+                <li><strong>Payment Method:</strong> ${payment.method}</li>
+                <li><strong>Payment ID:</strong> ${payment.id}</li>
+                <li><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📝 Next Steps</div>
+            <ol>
+                <li>Please complete your participant details to finalize your booking</li>
+                <li>You will receive a final confirmation email once all details are submitted</li>
+                <li>Our team will contact you with further instructions</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <div class="section-title">❓ Need Help?</div>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+        </div>
+
+        <p style="text-align: center; font-size: 18px; color: #10b981; margin: 30px 0;">
+            🏔️ We look forward to an amazing trek with you!
+        </p>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Trek Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`,
                 attachmentBuffer: invoiceBuffer,
                 attachmentFilename: `Invoice-${booking._id}.pdf`
               });
             } catch (invoiceError) {
               console.error('Error generating or sending invoice PDF:', invoiceError);
+              // Fallback to sending payment confirmation email without invoice
+              await sendPaymentReceivedEmail(booking, trek, user, paymentDetails);
             }
           } else {
-            // Send regular payment confirmation email for full payments
-            await sendPaymentReceivedEmail(booking, trek, user, paymentDetails);
-            
-            // Generate invoice PDF and send as attachment for full payments only
+            // Send regular payment confirmation email with invoice attachment for full payments
             try {
               const invoiceBuffer = await generateInvoicePDF(booking, paymentDetails);
               await sendEmailWithAttachment({
                 to: user.email,
-                subject: `Your Invoice for Booking ${booking._id}`,
-                text: `Dear ${user.name},\n\nThank you for your payment! Please find your invoice attached.\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount Paid: ₹${payment.amount / 100}\n\nBest regards,\nTrek Adventures Team`,
+                subject: `💳 Payment Confirmed - ${trek?.name || 'Trek Booking'}`,
+                text: `Dear ${user.name},\n\n💳 Thank you for your payment! Your booking has been confirmed.\n\n📋 INVOICE DETAILS:\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nParticipants: ${booking.numberOfParticipants}\nAmount Paid: ₹${payment.amount / 100}\nPayment Method: ${payment.method}\nPayment ID: ${payment.id}\nPayment Date: ${new Date().toLocaleDateString()}\n\n📝 NEXT STEPS:\n1. Please complete your participant details to finalize your booking\n2. You will receive a final confirmation email once all details are submitted\n3. Our team will contact you with further instructions\n\n❓ NEED HELP?\nIf you have any questions, please don't hesitate to contact us.\n\n🏔️ We look forward to an amazing trek with you!\n\nBest regards,\nThe Trek Team\nYour Adventure Awaits!\n\n---\nThis is an automated message. Please do not reply to this email.\nFor support, contact us through our website or mobile app.`,
+                html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💳 Payment Confirmed - ${trek?.name || 'Trek Booking'}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        .payment-container {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .amount {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+        }
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .info-list {
+            list-style: none;
+            padding: 0;
+        }
+        .info-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-list li:last-child {
+            border-bottom: none;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .amount {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="subtitle">Your Adventure Awaits</div>
+        </div>
+
+        <h2>Dear ${user.name},</h2>
+        
+        <div class="payment-container">
+            <div class="section-title">💳 Payment Confirmed!</div>
+            <p>Thank you for your payment! Your booking has been confirmed.</p>
+            <div class="amount">₹${payment.amount / 100}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📋 Invoice Details</div>
+            <ul class="info-list">
+                <li><strong>Booking ID:</strong> ${booking._id}</li>
+                <li><strong>Trek:</strong> ${trek?.name || 'N/A'}</li>
+                <li><strong>Participants:</strong> ${booking.numberOfParticipants}</li>
+                <li><strong>Amount Paid:</strong> ₹${payment.amount / 100}</li>
+                <li><strong>Payment Method:</strong> ${payment.method}</li>
+                <li><strong>Payment ID:</strong> ${payment.id}</li>
+                <li><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">📝 Next Steps</div>
+            <ol>
+                <li>Please complete your participant details to finalize your booking</li>
+                <li>You will receive a final confirmation email once all details are submitted</li>
+                <li>Our team will contact you with further instructions</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <div class="section-title">❓ Need Help?</div>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+        </div>
+
+        <p style="text-align: center; font-size: 18px; color: #10b981; margin: 30px 0;">
+            🏔️ We look forward to an amazing trek with you!
+        </p>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Trek Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`,
                 attachmentBuffer: invoiceBuffer,
                 attachmentFilename: `Invoice-${booking._id}.pdf`
               });
             } catch (invoiceError) {
               console.error('Error generating or sending invoice PDF:', invoiceError);
+              // Fallback to sending payment confirmation email without invoice
+              await sendPaymentReceivedEmail(booking, trek, user, paymentDetails);
             }
           }
         } catch (emailError) {
