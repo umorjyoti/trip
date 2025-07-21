@@ -346,7 +346,7 @@ function About() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             {teamMembers.map((member, index) => (
               <div key={index} className="text-center">
-                <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden">
+                <div className="w-36 h-36 sm:w-48 sm:h-48 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 overflow-hidden">
                   {member.hasImage ? (
                     <img 
                       src={member.image} 
