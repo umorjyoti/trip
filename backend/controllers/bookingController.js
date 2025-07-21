@@ -315,11 +315,27 @@ const createBooking = async (req, res) => {
         if (trek.partialPayment.amountType === 'percentage') {
           initialAmount = Math.round((totalPrice * trek.partialPayment.amount) / 100);
         } else {
-          initialAmount = trek.partialPayment.amount;
+          initialAmount = trek.partialPayment.amount * participantsCount;
         }
         
         // Ensure initial amount doesn't exceed total price
         initialAmount = Math.min(initialAmount, totalPrice);
+        
+        // Validate frontend-supplied value if present (security)
+        if (req.body.paymentMode === 'partial' && req.body.frontendInitialAmount !== undefined) {
+          if (Number(req.body.frontendInitialAmount) !== initialAmount) {
+            console.error('[SECURITY] Partial payment amount mismatch:', {
+              user: req.user?._id,
+              trekId,
+              batchId,
+              attempted: req.body.frontendInitialAmount,
+              expected: initialAmount,
+              numberOfParticipants: participantsCount,
+              time: new Date().toISOString(),
+            });
+            return res.status(400).json({ message: 'Partial payment amount mismatch. Please refresh and try again.' });
+          }
+        }
         
         partialPaymentDetails = {
           initialAmount,
