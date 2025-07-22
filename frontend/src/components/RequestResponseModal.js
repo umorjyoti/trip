@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import Modal from './Modal';
 import { FaCheck, FaTimes, FaComment, FaCalculator, FaUser, FaUsers, FaRupeeSign } from 'react-icons/fa';
 
-function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
+function RequestResponseModal({ isOpen, onClose, booking, onSuccess, batchDetails, trek }) {
   const [status, setStatus] = useState('approved');
   const [adminResponse, setAdminResponse] = useState('');
   const [loading, setLoading] = useState(false);
@@ -333,28 +333,27 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Trek:</span>
-                    <span className="ml-2 text-gray-900">{booking.trek?.name || 'N/A'}</span>
+                    <span className="ml-2 text-gray-900">{trek?.name || booking.trek?.name || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="font-medium text-gray-600">Batch:</span>
                     <span className="ml-2 text-gray-900">
                       {(() => {
-                        // Try to get batch information from different possible sources
-                        if (booking.batch) {
-                          // If batch is populated as an object
-                          if (booking.batch.startDate && booking.batch.endDate) {
-                            return `${new Date(booking.batch.startDate).toLocaleDateString()} - ${new Date(booking.batch.endDate).toLocaleDateString()}`;
-                          } else if (booking.batch.startDate) {
-                            return new Date(booking.batch.startDate).toLocaleDateString();
-                          } else if (booking.batch._id) {
-                            return `Batch ID: ${booking.batch._id}`;
+                        // Prefer batchDetails if provided
+                        if (batchDetails && batchDetails.batchDetails) {
+                          const b = batchDetails.batchDetails;
+                          if (b.startDate && b.endDate) {
+                            return `${new Date(b.startDate).toLocaleDateString()} - ${new Date(b.endDate).toLocaleDateString()}`;
+                          } else if (b.startDate) {
+                            return new Date(b.startDate).toLocaleDateString();
+                          } else if (b._id) {
+                            return `Batch ID: ${b._id}`;
                           }
                         }
-                        
-                        // If batch is just an ID, try to find it in trek batches
-                        if (booking.trek && booking.trek.batches && booking.batch) {
+                        // If batch is just an ID, try to find it in trek.batches (from prop)
+                        if (trek && trek.batches && booking.batch) {
                           const batchId = typeof booking.batch === 'string' ? booking.batch : booking.batch._id;
-                          const batch = booking.trek.batches.find(b => b._id.toString() === batchId.toString());
+                          const batch = trek.batches.find(b => b._id.toString() === batchId.toString());
                           if (batch) {
                             if (batch.startDate && batch.endDate) {
                               return `${new Date(batch.startDate).toLocaleDateString()} - ${new Date(batch.endDate).toLocaleDateString()}`;
@@ -363,13 +362,16 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess }) {
                             }
                           }
                         }
-                        
-                        // Fallback to showing batch ID if available
+                        // Fallback to original logic
                         if (booking.batch) {
-                          const batchId = typeof booking.batch === 'string' ? booking.batch : booking.batch._id;
-                          return `Batch ID: ${batchId}`;
+                          if (booking.batch.startDate && booking.batch.endDate) {
+                            return `${new Date(booking.batch.startDate).toLocaleDateString()} - ${new Date(booking.batch.endDate).toLocaleDateString()}`;
+                          } else if (booking.batch.startDate) {
+                            return new Date(booking.batch.startDate).toLocaleDateString();
+                          } else if (booking.batch._id) {
+                            return `Batch ID: ${booking.batch._id}`;
+                          }
                         }
-                        
                         return 'N/A';
                       })()}
                     </span>
