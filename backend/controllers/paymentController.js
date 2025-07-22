@@ -214,13 +214,18 @@ exports.verifyPayment = async (req, res) => {
             booking.partialPaymentDetails.remainingAmount === 0;
 
           if (isPartialPayment && !isRemainingBalancePayment) {
+            // Find the actual batch object from trek's batches array
+            const batch = trek?.batches?.find(
+              (b) => b._id.toString() === booking.batch?.toString()
+            );
+            
             // Send partial payment confirmation email with invoice attachment (initial payment)
             await sendPartialPaymentConfirmationEmail(
               booking,
               trek,
               user,
               paymentDetails,
-              booking.batch
+              batch
             );
           } else if (isRemainingBalancePayment) {
             // For remaining balance payment, send booking confirmation email to all participants if status is confirmed
