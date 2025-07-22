@@ -1487,16 +1487,18 @@ export const createRemainingBalanceOrder = async (bookingId) => {
 };
 
 export async function adminCancelBooking({ bookingId, refund, refundType, participantId, reason }) {
-  const res = await fetch(`/admin/bookings/${bookingId}/cancel`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeader(),
-    },
-    body: JSON.stringify({ refund, refundType, participantId, reason }),
-  });
-  if (!res.ok) throw new Error((await res.json()).message || 'Failed to cancel booking');
-  return res.json();
+  try {
+    const response = await api.patch(`/admin/bookings/${bookingId}/cancel`, {
+      refund,
+      refundType,
+      participantId,
+      reason
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    throw new Error(error.response?.data?.message || 'Failed to cancel booking');
+  }
 }
 
 export const sendCustomTrekLink = async (trekId, email) => {

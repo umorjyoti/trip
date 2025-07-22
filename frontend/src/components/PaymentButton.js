@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import LoadingSpinner from './LoadingSpinner';
 import Modal from './Modal';
+import { getRazorpayKey, createPaymentOrder, createRemainingBalanceOrder, verifyPayment } from '../services/api';
 
 function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = false, isRemainingBalance = false }) {
   const [loading, setLoading] = useState(false);
@@ -28,30 +29,8 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
     // Fetch Razorpay key when component mounts
     const fetchRazorpayKey = async () => {
       try {
-        // Get auth token from localStorage
-        const token = localStorage.getItem('token');
-        if (!token) {
-          throw new Error('Authentication required');
-        }
-
-        const response = await fetch('/payments/get-key', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to fetch Razorpay key');
-        }
-
-        const data = await response.json();
-        if (!data.key) {
-          throw new Error('Invalid API key received');
-        }
-        
-        setRazorpayKey(data.key);
+        const key = await getRazorpayKey();
+        setRazorpayKey(key);
       } catch (error) {
         console.error('Error fetching Razorpay key:', error);
         toast.error(error.message || 'Failed to initialize payment. Please try again.');
@@ -75,44 +54,18 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
     try {
       setLoading(true);
       
-      // Get auth token
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Authentication required');
+      // Create order on backend using API service
+      let orderData;
+      if (isRemainingBalance) {
+        orderData = await createRemainingBalanceOrder(bookingId);
+      } else {
+        orderData = await createPaymentOrder(amount, bookingId);
       }
-
-      // Create order on backend
-      const endpoint = isRemainingBalance ? '/payments/create-remaining-balance-order' : '/payments/create-order';
-      const requestBody = isRemainingBalance 
-        ? { bookingId }
-        : {
-            amount: amount, // Send exact amount
-            bookingId,
-            partial_payment: allowPartialPayment,
-          };
       
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create payment order');
-      }
-
-      const data = await response.json();
-      const order = data.order;
-      const actualAmount = isRemainingBalance ? data.remainingAmount : amount;
+      const order = orderData.order;
+      const actualAmount = isRemainingBalance ? orderData.remainingAmount : amount;
 
       // Initialize Razorpay
-
-    
-
       const options = {
         key: razorpayKey,
         amount: order.amount,
@@ -123,29 +76,15 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         handler: async function (response) {
           try {
             setVerifyingPayment(true);
-            // Verify payment on backend
-            const verifyResponse = await fetch('/payments/verify', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                bookingId,
-              }),
+            // Verify payment on backend using API service
+            const paymentData = await verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId,
             });
-
-            if (!verifyResponse.ok) {
-              const errorData = await verifyResponse.json();
-              throw new Error(errorData.message || 'Payment verification failed');
-            }
-
-            const { payment } = await verifyResponse.json();
             
-            if (payment.status === 'captured') {
+            if (paymentData.payment.status === 'captured') {
               toast.success('Payment successful!');
               onSuccess();
             } else {

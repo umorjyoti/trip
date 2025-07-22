@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { getTrekById } from '../services/api';
+import { getTrekById, createBooking } from '../services/api';
 
 const BookingForm = () => {
   const { trekId } = useParams();
@@ -116,24 +116,14 @@ const BookingForm = () => {
     }
 
     try {
-      const response = await fetch('/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          trekId,
-          participants,
-          contactInfo,
-          emergencyContact,
-        }),
-      });
+      const bookingData = {
+        trekId,
+        participants,
+        contactInfo,
+        emergencyContact,
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to create booking');
-      }
-
-      const { booking } = await response.json();
+      const { booking } = await createBooking(bookingData);
       navigate(`/booking-preview/${booking._id}`);
     } catch (err) {
       setError(err.message);
