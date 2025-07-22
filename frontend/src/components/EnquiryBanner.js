@@ -20,6 +20,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
   const [bannerSettings, setBannerSettings] = useState(null);
   const [bannerLoading, setBannerLoading] = useState(true);
   const [isLocallyClosed, setIsLocallyClosed] = useState(false);
+  const [showAutoPopup, setShowAutoPopup] = useState(false);
 
   // Fetch global banner settings
   useEffect(() => {
@@ -37,6 +38,23 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
 
     fetchBannerSettings();
   }, []);
+
+  // Handle automatic popup with 3-second delay
+  useEffect(() => {
+    if (bannerSettings?.isActive && !isOpen && !isLocallyClosed) {
+      // Check if banner was already shown in this session
+      const bannerShown = JSON.parse(sessionStorage.getItem('enquiryBannerShown') || 'false');
+      
+      if (!bannerShown) {
+        // Add 3-second delay for automatic popup
+        const timer = setTimeout(() => {
+          setShowAutoPopup(true);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [bannerSettings, isOpen, isLocallyClosed]);
 
   // Reset form when trek changes
   useEffect(() => {
@@ -103,7 +121,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
   };
 
   // Determine if banner should be displayed automatically
-  const shouldDisplayAuto = shouldShowBanner() && !isLocallyClosed;
+  const shouldDisplayAuto = shouldShowBanner() && showAutoPopup && !isLocallyClosed;
   
   // If banner is not active, already shown, or still loading, don't render
   if (bannerLoading || (!isOpen && !shouldDisplayAuto)) {
@@ -117,6 +135,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
     // After 1 millisecond, close the banner
     setTimeout(() => {
       setIsLocallyClosed(true);
+      setShowAutoPopup(false);
       onClose();
     }, 1);
   };
