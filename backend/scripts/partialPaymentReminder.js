@@ -26,21 +26,23 @@ const sendPartialPaymentReminders = async () => {
         $gte: new Date() // Only future dates
       },
       'partialPaymentDetails.reminderSent': false
-    }).populate('trek').populate('user').populate({
-      path: 'batch',
-      select: 'startDate endDate'
-    });
+    }).populate('trek').populate('user');
 
     console.log(`Found ${dueBookings.length} bookings with due partial payments`);
 
     for (const booking of dueBookings) {
       try {
+        // Find the actual batch object from trek's batches array
+        const batch = booking.trek?.batches?.find(
+          (b) => b._id.toString() === booking.batch?.toString()
+        );
+
         // Send reminder email using standard template
         const emailResult = await sendPartialPaymentReminderEmail(
           booking,
           booking.trek,
           booking.user,
-          booking.batch
+          batch
         );
 
         if (emailResult) {

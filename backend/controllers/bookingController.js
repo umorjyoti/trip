@@ -2287,11 +2287,7 @@ const sendPartialPaymentReminder = async (req, res) => {
     const { bookingId } = req.params;
     
     const booking = await Booking.findById(bookingId)
-      .populate('user trek')
-      .populate({
-        path: 'batch',
-        select: 'startDate endDate'
-      });
+      .populate('user trek');
       
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -2310,12 +2306,17 @@ const sendPartialPaymentReminder = async (req, res) => {
       return res.status(400).json({ message: 'Reminder already sent for this booking' });
     }
 
+    // Find the actual batch object from trek's batches array
+    const batch = booking.trek?.batches?.find(
+      (b) => b._id.toString() === booking.batch?.toString()
+    );
+
     // Send reminder email using standard template
     const emailResult = await sendPartialPaymentReminderEmail(
       booking, 
       booking.trek, 
       booking.user, 
-      booking.batch
+      batch
     );
 
     if (!emailResult) {
