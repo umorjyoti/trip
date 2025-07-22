@@ -52,8 +52,12 @@ function WeekendGetaways() {
         // Fetch weekend getaway page settings
         try {
           const settingsData = await getWeekendGetawayPageSettings();
+          console.log('Weekend getaway page settings data:', settingsData); // Debug log
           if (settingsData.weekendGetawayPage?.heroImage) {
+            console.log('Setting hero image:', settingsData.weekendGetawayPage.heroImage); // Debug log
             setHeroImage(settingsData.weekendGetawayPage.heroImage);
+          } else {
+            console.log('No hero image found in settings'); // Debug log
           }
           if (settingsData.weekendGetawayPage?.heroTitle) {
             setHeroTitle(settingsData.weekendGetawayPage.heroTitle);
@@ -158,29 +162,49 @@ function WeekendGetaways() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-200">
-      {/* Hero Section with Enhanced Animation */}
+      {/* Hero Section */}
       <div className="relative h-[65vh] overflow-hidden group">
-         {/* Parallax Background Image */}
-        <motion.div
-          className="absolute inset-0 bg-fixed bg-center bg-cover"
-          style={{ 
-            backgroundImage: heroImage 
-              ? `url(${heroImage})` 
-              : 'url(https://images.unsplash.com/photo-1533240332313-0db49b459ad6?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80)'
-          }}
-          initial={{ scale: 1.1 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 10, ease: "linear", repeat: Infinity, repeatType: "mirror" }} // Slow continuous zoom
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
-
+        {/* Background Image */}
+        {heroImage ? (
+          <img
+            src={heroImage}
+            alt="Weekend Getaways Hero"
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => {
+              console.error('Hero image failed to load:', heroImage);
+              e.target.style.display = 'none';
+            }}
+            onLoad={() => {
+              console.log('Hero image loaded successfully:', heroImage);
+            }}
+          />
+        ) : (
+          <img
+            src="https://images.unsplash.com/photo-1533240332313-0db49b459ad6?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80"
+            alt="Weekend Getaways Hero"
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => {
+              console.error('Fallback hero image failed to load');
+              e.target.style.display = 'none';
+            }}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent"></div>
+        
+        {/* Debug Info - Remove this after fixing */}
+        {!heroImage && (
+          <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded text-sm z-20">
+            No hero image set
+          </div>
+        )}
+        
         {/* Hero Content */}
         <div className="relative h-full flex flex-col items-center justify-center text-white text-center px-4 z-10">
           <motion.h1
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-5xl md:text-7xl font-bold mb-4 tracking-tight text-shadow-lg" // Added text shadow
+            className="text-5xl md:text-7xl font-bold mb-4 tracking-tight text-shadow-lg"
           >
             {heroTitle}
           </motion.h1>
@@ -188,7 +212,7 @@ function WeekendGetaways() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            className="text-xl md:text-2xl max-w-2xl text-shadow" // Added text shadow
+            className="text-xl md:text-2xl max-w-2xl text-shadow"
           >
             {heroSubtitle}
           </motion.p>
