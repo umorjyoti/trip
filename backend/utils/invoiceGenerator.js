@@ -22,11 +22,12 @@ const generateInvoicePDF = async (booking, payment) => {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
 
       // Company Header
-      doc.fontSize(24).font('Helvetica-Bold').text('Bengaluru Trekkers', { align: 'center' });
+      doc.fontSize(18).font('Helvetica-Bold').text('TREKTALES EXPLORERS (OPC) PRIVATE LIMITED', { align: 'center' });
+      doc.fontSize(14).font('Helvetica-Bold').text('Bengaluru Trekkers', { align: 'center' });
       doc.fontSize(12).font('Helvetica').text('Your Adventure Awaits', { align: 'center' });
       doc.moveDown(0.5);
-      doc.fontSize(10).text('21, MG Road, Bengaluru, KA 560001', { align: 'center' });
-      doc.text('Phone: +91 98765 43210 | Email: info@bengalurutrekkers.com', { align: 'center' });
+      doc.fontSize(10).text('HAL 3rd Stage, Indiranagar, Bengaluru 560075', { align: 'center' });
+      doc.text('Phone: +91 94494 93112 | Email: support@bengalurutrekkers.in', { align: 'center' });
       doc.text('GSTIN: 12ABCDE1234F1Z5', { align: 'center' });
       doc.moveDown(2);
 

@@ -70,8 +70,8 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         key: razorpayKey,
         amount: order.amount,
         currency: order.currency,
-        name: 'Trek Booking',
-        description: isRemainingBalance ? 'Remaining Balance Payment' : 'Trek Booking Payment',
+        name: 'Bengaluru Trekkers',
+        description: isRemainingBalance ? 'Remaining Balance Payment' : 'Bengaluru Trekkers Payment',
         order_id: order.id,
         handler: async function (response) {
           try {

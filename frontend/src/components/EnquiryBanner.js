@@ -259,7 +259,7 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
                     value={formData.phone}
                     onChange={handleChange}
                     className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 94494 93112"
                   />
                 </div>
               </div>

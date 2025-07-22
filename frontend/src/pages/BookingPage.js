@@ -333,8 +333,8 @@ function BookingPage() {
         key: razorpayKey,
         amount: order.amount,
         currency: order.currency,
-        name: 'Trek Booking',
-        description: `Trek Booking Payment${paymentMode === 'partial' ? ' (Partial)' : ''}${appliedCoupon ? ` (with ${appliedCoupon.promoCode.discountValue}% discount)` : ''}`,
+        name: 'Bengaluru Trekkers',
+        description: `Bengaluru Trekkers Payment${paymentMode === 'partial' ? ' (Partial)' : ''}${appliedCoupon ? ` (with ${appliedCoupon.promoCode.discountValue}% discount)` : ''}`,
         order_id: order.id,
         handler: async function (response) {
           try {

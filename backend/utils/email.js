@@ -108,7 +108,7 @@ const sendBookingConfirmationEmail = async (
     )
     .join("\n");
 
-  const emailSubject = `🎉 Booking Confirmed - ${trek?.name || "Trek Booking"}`;
+  const emailSubject = `🎉 Booking Confirmed - ${trek?.name || "Bengaluru Trekkers"}`;
 
   const emailContent = `
 Dear ${user.name},
@@ -2105,7 +2105,7 @@ const sendRescheduleApprovalEmail = async (
   adminResponse
 ) => {
   const emailSubject = `✅ Reschedule Request Approved - ${
-    trek?.name || "Trek Booking"
+    trek?.name || "Bengaluru Trekkers"
   }`;
 
   const emailContent = `
@@ -3143,7 +3143,7 @@ const sendConfirmationEmailToAllParticipants = async (
     )
     .join("\n");
 
-  const emailSubject = `🎉 Booking Confirmed - ${trek?.name || "Trek Booking"}`;
+  const emailSubject = `🎉 Booking Confirmed - ${trek?.name || "Bengaluru Trekkers"}`;
 
   const emailContent = `
 Dear Participant,

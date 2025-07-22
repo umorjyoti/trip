@@ -123,7 +123,7 @@ const createCustomTrekBooking = async (req, res) => {
         // Fallback: send to booking user only
         await sendEmail({
           to: booking.userDetails.email,
-          subject: `Booking Confirmed - ${trek?.name || 'Trek Booking'}`,
+          subject: `Booking Confirmed - ${trek?.name || 'Bengaluru Trekkers'}`,
           text: `Dear ${booking.userDetails.name},\n\nYour booking is confirmed!\n\nBooking ID: ${booking._id}\nTrek: ${trek?.name || 'N/A'}\nAmount: ₹${booking.totalPrice}\n\nBest regards,\nTrek Adventures Team`,
         });
       }

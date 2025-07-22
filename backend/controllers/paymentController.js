@@ -268,7 +268,7 @@ exports.verifyPayment = async (req, res) => {
               await sendEmailWithAttachment({
                 to: user.email,
                 subject: `💳 Payment Confirmed - ${
-                  trek?.name || "Trek Booking"
+                  trek?.name || "Bengaluru Trekkers"
                 }`,
                 text: `Dear ${
                   user.name
@@ -491,7 +491,7 @@ exports.verifyPayment = async (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💳 Payment Confirmed - ${trek?.name || "Trek Booking"}</title>
+    <title>💳 Payment Confirmed - ${trek?.name || "Bengaluru Trekkers"}</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
