@@ -151,7 +151,7 @@ function SearchResults() {
                 <FaSearch className="text-gray-400 mr-3" />
                 <input
                   type="text"
-                  placeholder="Search treks..."
+                  placeholder="Search treks, regions, or descriptions..."
                   className="bg-transparent w-full focus:outline-none"
                   name="search"
                   value={filters.search}

@@ -905,7 +905,8 @@ exports.getTreks = async (req, res) => {
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+        { description: { $regex: search, $options: 'i' } },
+        { regionName: { $regex: search, $options: 'i' } }
       ];
     }
 

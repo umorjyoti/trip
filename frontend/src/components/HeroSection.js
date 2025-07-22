@@ -114,7 +114,7 @@ function HeroSection() {
                 <FaSearch className="text-white mr-3" />
                 <input
                   type="text"
-                  placeholder="Search treks..."
+                  placeholder="Search treks, regions, or descriptions..."
                   className="bg-transparent w-full text-white placeholder-white/70 focus:outline-none"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
