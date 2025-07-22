@@ -415,7 +415,10 @@ const getUserBookings = async (req, res) => {
   try {
     console.log("Getting bookings for user:", req.user._id);
 
-    const bookings = await Booking.find({ user: req.user._id })
+    const bookings = await Booking.find({ 
+      user: req.user._id,
+      status: { $ne: 'pending_payment' } // Exclude pending_payment bookings
+    })
       .populate({
         path: "trek",
         select: "name imageUrl batches", // include batches for manual extraction

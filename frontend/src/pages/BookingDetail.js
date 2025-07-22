@@ -337,46 +337,48 @@ function BookingDetail() {
 
       {/* Payment Summary Section - Prominent display for partial payments */}
       {(booking.paymentMode === 'partial' && booking.partialPaymentDetails && booking.status === 'payment_confirmed_partial') ? (
-        <div className="mb-8">
-          <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Summary</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-lg p-4 border border-orange-200">
-                    <div className="text-sm text-gray-500">Amount Paid</div>
-                    <div className="text-2xl font-bold text-emerald-600">
+        <div className="mb-4">
+          <div className="bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 rounded-lg p-3 sm:p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900">Payment Summary</h3>
+                  <div className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-orange-100 text-orange-800">
+                    Partial Payment
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="bg-white rounded-lg p-2 sm:p-4 border border-orange-200">
+                    <div className="text-xs text-gray-500">Amount Paid</div>
+                    <div className="text-lg sm:text-2xl font-bold text-emerald-600">
                       ₹{booking.partialPaymentDetails?.initialAmount?.toFixed(2) || '0.00'}
                     </div>
                   </div>
-                  <div className="bg-white rounded-lg p-4 border border-orange-200">
-                    <div className="text-sm text-gray-500">Remaining Due</div>
-                    <div className="text-2xl font-bold text-red-600">
+                  <div className="bg-white rounded-lg p-2 sm:p-4 border border-orange-200">
+                    <div className="text-xs text-gray-500">Remaining Due</div>
+                    <div className="text-lg sm:text-2xl font-bold text-red-600">
                       ₹{booking.partialPaymentDetails?.remainingAmount?.toFixed(2) || '0.00'}
                     </div>
                   </div>
-                  <div className="bg-white rounded-lg p-4 border border-orange-200">
-                    <div className="text-sm text-gray-500">Due Date</div>
-                    <div className="text-lg font-semibold text-red-600">
+                  <div className="bg-white rounded-lg p-2 sm:p-4 border border-orange-200">
+                    <div className="text-xs text-gray-500">Due Date</div>
+                    <div className="text-sm sm:text-lg font-semibold text-red-600">
                       {booking.partialPaymentDetails?.finalPaymentDueDate ? formatDate(booking.partialPaymentDetails.finalPaymentDueDate) : 'N/A'}
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <div className="inline-flex rounded-full px-3 py-1 text-sm font-semibold bg-orange-100 text-orange-800 mb-2">
-                  Partial Payment
-                </div>
-                <div className="text-sm text-gray-600">
+                <div className="text-xs sm:text-sm text-gray-600 mt-2 text-center sm:text-left">
                   Total: ₹{booking.totalPrice?.toFixed(2) || '0.00'}
                 </div>
+              </div>
+              <div className="text-center lg:text-right lg:self-center">
                 {booking.status === 'payment_confirmed_partial' && (
                   <button
                     onClick={() => {
                       // Navigate to payment page for remaining balance
                       navigate(`/payment/${booking._id}`);
                     }}
-                    className="mt-3 w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    className="w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors text-sm sm:text-base"
                   >
                     Pay Remaining Balance
                   </button>
@@ -390,21 +392,21 @@ function BookingDetail() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Booking Details */}
         <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+          <div className="px-4 py-5 sm:px-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
               <h3 className="text-lg leading-6 font-medium text-gray-900">Booking Details</h3>
               <p className="mt-1 max-w-2xl text-sm text-gray-500">
                 Booking ID: {booking._id}
               </p>
             </div>
-            <span className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${getStatusBadgeClass(booking.status)}`}>
-              {booking.status}
+            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(booking.status)} break-words`}>
+              {booking.status.replace(/_/g, ' ')}
             </span>
           </div>
           
           <div className="border-t border-gray-200">
             <dl>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <div className="bg-gray-50 px-4 py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Trek</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                   {booking.trek && (
@@ -414,11 +416,11 @@ function BookingDetail() {
                   )}
                 </dd>
               </div>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <div className="bg-white px-4 py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Booking Date</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(booking.createdAt)}</dd>
               </div>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <div className="bg-gray-50 px-4 py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Batch Information</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                   {booking.batch && (
@@ -431,11 +433,11 @@ function BookingDetail() {
                   )}
                 </dd>
               </div>
-              <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <div className="bg-gray-50 px-4 py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Number of Participants</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{booking.participants || 0}</dd>
               </div>
-              <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+              <div className="bg-white px-4 py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                 <dt className="text-sm font-medium text-gray-500">Total Amount (INR)</dt>
                 <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">₹{booking.totalPrice?.toFixed(2) || '0.00'}</dd>
               </div>
