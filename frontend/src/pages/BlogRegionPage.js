@@ -196,7 +196,7 @@ function BlogRegionPage() {
                         {blog.excerpt}
                       </p>
                       <div className="flex items-center justify-between text-sm text-gray-500">
-                        <span>By {blog.author.name}</span>
+                        <span>By {blog.author?.name || "Bengaluru Trekkers"}</span>
                         <span>{format(new Date(blog.publishedAt), 'MMM dd, yyyy')}</span>
                       </div>
                     </div>

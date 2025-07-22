@@ -146,7 +146,7 @@ function BlogList() {
           "image": blog.bannerImage,
           "author": {
             "@type": "Person",
-            "name": blog.author.name
+            "name": blog.author?.name || "Bengaluru Trekkers"
           },
           "datePublished": blog.publishedAt,
           "url": `${window.location.origin}/blogs/${blog.slug}`
@@ -388,7 +388,7 @@ function BlogList() {
                         </h2>
                         <p className="text-gray-600 mb-4 line-clamp-3">{blog.excerpt}</p>
                         <div className="flex items-center justify-between text-sm text-gray-500">
-                          <span>{blog.author.name}</span>
+                          <span>{blog.author?.name || "Bengaluru Trekkers"}</span>
                           <span>{format(new Date(blog.publishedAt), 'MMM d, yyyy')}</span>
                         </div>
                       </div>
