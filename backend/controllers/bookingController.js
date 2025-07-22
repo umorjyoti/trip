@@ -847,13 +847,19 @@ const getBookings = async (req, res) => {
 
     // Calculate today's participants count
     const todayParticipantsCount = todayStats.reduce((sum, booking) => {
-      if (booking.status === 'confirmed') {
-        // For confirmed bookings, check participantDetails and count non-cancelled participants
-        if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
-          const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
-          return sum + activeParticipants;
+      if (booking.status === 'confirmed' || booking.status === 'payment_confirmed_partial' || booking.status === 'payment_completed') {
+        if (booking.status === 'confirmed') {
+          // For confirmed bookings, check participantDetails and count non-cancelled participants
+          if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+            const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+            return sum + activeParticipants;
+          } else {
+            // Fallback to numberOfParticipants if no participantDetails
+            return sum + (booking.numberOfParticipants || 0);
+          }
         } else {
-          // Fallback to numberOfParticipants if no participantDetails
+          // For payment_confirmed_partial and payment_completed, use numberOfParticipants
+          // as participant details won't be filled yet
           return sum + (booking.numberOfParticipants || 0);
         }
       }
@@ -2199,82 +2205,7 @@ const calculateRefund = async (req, res) => {
   }
 };
 
-// Get existing pending payment booking for user
-const getExistingPendingBooking = async (req, res) => {
-  try {
-    const { trekId, batchId } = req.query;
 
-    if (!trekId || !batchId) {
-      return res.status(400).json({ 
-        message: "Trek ID and Batch ID are required" 
-      });
-    }
-
-    // Find existing pending payment booking for this user, trek, and batch
-    const existingBooking = await Booking.findOne({
-      user: req.user._id,
-      trek: trekId,
-      batch: batchId,
-      status: 'pending_payment',
-      'bookingSession.expiresAt': { $gt: new Date() } // Only consider non-expired sessions
-    });
-
-    if (existingBooking) {
-      return res.json({
-        exists: true,
-        booking: existingBooking,
-        message: "You have an existing pending payment for this trek and batch"
-      });
-    }
-
-    res.json({
-      exists: false,
-      message: "No existing pending payment found"
-    });
-
-  } catch (error) {
-    console.error("Error checking existing pending booking:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
-
-// Delete pending booking for user
-const deletePendingBooking = async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-
-    if (!bookingId) {
-      return res.status(400).json({ 
-        message: "Booking ID is required" 
-      });
-    }
-
-    // Find the pending booking
-    const pendingBooking = await Booking.findOne({
-      _id: bookingId,
-      user: req.user._id,
-      status: 'pending_payment'
-    });
-
-    if (!pendingBooking) {
-      return res.status(404).json({ 
-        message: "Pending booking not found or you don't have permission to delete it" 
-      });
-    }
-
-    // Delete the pending booking
-    await Booking.findByIdAndDelete(bookingId);
-
-    res.json({
-      success: true,
-      message: "Pending booking deleted successfully. You can now start a new booking."
-    });
-
-  } catch (error) {
-    console.error("Error deleting pending booking:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-};
 
 // Cleanup expired pending bookings (admin only)
 const cleanupExpiredBookings = async (req, res) => {
@@ -2430,8 +2361,7 @@ module.exports = {
   createCancellationRequest,
   updateCancellationRequest,
   calculateRefund,
-  getExistingPendingBooking,
-  deletePendingBooking,
+
   cleanupExpiredBookings,
   sendPartialPaymentReminder,
   markPartialPaymentComplete

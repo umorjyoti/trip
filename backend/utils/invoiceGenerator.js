@@ -28,7 +28,7 @@ const generateInvoicePDF = async (booking, payment) => {
       doc.moveDown(0.5);
       doc.fontSize(10).text('HAL 3rd Stage, Indiranagar, Bengaluru 560075', { align: 'center' });
       doc.text('Phone: +91 94494 93112 | Email: support@bengalurutrekkers.in', { align: 'center' });
-      doc.text('GSTIN: 12ABCDE1234F1Z5', { align: 'center' });
+      doc.text('GSTIN: 29AAKCT9162B1Z2', { align: 'center' });
       doc.moveDown(2);
 
       // Invoice Header

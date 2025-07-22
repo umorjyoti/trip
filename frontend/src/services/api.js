@@ -552,27 +552,7 @@ export const updateBookingStatus = async (bookingId, status) => {
   }
 };
 
-export const checkExistingPendingBooking = async (trekId, batchId) => {
-  try {
-    const response = await api.get('/bookings/check-pending', {
-      params: { trekId, batchId }
-    });
-    return response.data;
-  } catch (error) {
-    const errorMessage = error.response?.data?.message || 'Failed to check existing pending booking';
-    throw new Error(errorMessage);
-  }
-};
 
-export const deletePendingBooking = async (bookingId) => {
-  try {
-    const response = await api.delete(`/bookings/pending/${bookingId}`);
-    return response.data;
-  } catch (error) {
-    const errorMessage = error.response?.data?.message || 'Failed to delete pending booking';
-    throw new Error(errorMessage);
-  }
-};
 
 export const cleanupExpiredBookings = async () => {
   try {

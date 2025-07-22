@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
-import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon, checkExistingPendingBooking, deletePendingBooking } from "../services/api";
+import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Modal from "../components/Modal";
@@ -38,10 +38,7 @@ function BookingPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState(null);
 
-  // Add state for existing pending booking
-  const [showExistingBookingModal, setShowExistingBookingModal] = useState(false);
-  const [existingBooking, setExistingBooking] = useState(null);
-  const [deletingBooking, setDeletingBooking] = useState(false);
+
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   // Ensure body scrolling is restored when component unmounts or when payment processing ends
@@ -207,29 +204,7 @@ function BookingPage() {
     setCouponError(null);
   };
 
-  const handleContinueExistingBooking = () => {
-    setShowExistingBookingModal(false);
-    navigate(`/payment/${existingBooking._id}`);
-  };
 
-  const handleDeleteExistingBooking = async () => {
-    try {
-      setDeletingBooking(true);
-      await deletePendingBooking(existingBooking._id);
-      setShowExistingBookingModal(false);
-      setExistingBooking(null);
-      toast.success("Existing booking deleted. You can now start a new booking.");
-    } catch (error) {
-      toast.error(error.message || "Failed to delete existing booking");
-    } finally {
-      setDeletingBooking(false);
-    }
-  };
-
-  const handleCloseExistingBookingModal = () => {
-    setShowExistingBookingModal(false);
-    setExistingBooking(null);
-  };
 
   const validateForm = () => {
     // Validate user details
@@ -275,24 +250,6 @@ function BookingPage() {
 
     try {
       setProcessingPayment(true);
-      
-      // Check for existing pending booking first
-      try {
-        const existingBookingCheck = await checkExistingPendingBooking(
-          location?.state?.trekId || trek?._id,
-          selectedBatch._id
-        );
-        
-        if (existingBookingCheck.exists) {
-          setExistingBooking(existingBookingCheck.booking);
-          setShowExistingBookingModal(true);
-          setProcessingPayment(false);
-          return;
-        }
-      } catch (error) {
-        console.error("Error checking existing booking:", error);
-        // Continue with new booking creation if check fails
-      }
       
       // Generate a unique session ID for this booking attempt
       const sessionId = `session_${Date.now()}_${currentUser._id}_${Math.random().toString(36).substr(2, 9)}`;
@@ -1036,57 +993,7 @@ function BookingPage() {
         </div>
       )}
 
-      {/* Existing Pending Booking Modal */}
-      {showExistingBookingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Existing Pending Booking
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                You already have a pending payment for this trek and batch. What would you like to do?
-              </p>
-              
-              <div className="space-y-3">
-                <button
-                  onClick={handleContinueExistingBooking}
-                  className="w-full bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
-                >
-                  Continue with Existing Booking
-                </button>
-                
-                <button
-                  onClick={handleDeleteExistingBooking}
-                  disabled={deletingBooking}
-                  className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deletingBooking ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
-                      Deleting...
-                    </>
-                  ) : (
-                    'Delete & Start Fresh'
-                  )}
-                </button>
-                
-                <button
-                  onClick={handleCloseExistingBookingModal}
-                  className="w-full bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

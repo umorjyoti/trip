@@ -155,17 +155,7 @@ router.get('/',
  *               $ref: '#/components/schemas/Error'
  */
 
-// Check for existing pending booking
-router.get('/check-pending', 
-  protect, 
-  bookingController.getExistingPendingBooking
-);
 
-// Delete pending booking
-router.delete('/pending/:bookingId', 
-  protect, 
-  bookingController.deletePendingBooking
-);
 
 // Get booking by ID
 router.get('/:id', 
