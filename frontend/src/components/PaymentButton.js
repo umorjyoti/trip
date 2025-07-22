@@ -113,7 +113,6 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
         notes: {
           bookingId,
         },
-        callback_url: `${window.location.origin}/payment/callback`,
       };
       console.log("options",options,razorpayKey)
 

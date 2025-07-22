@@ -1478,7 +1478,9 @@ export const verifyPayment = async (paymentData) => {
 
 export const createRemainingBalanceOrder = async (bookingId) => {
   try {
-    const response = await api.post('/payments/create-remaining-balance-order', { bookingId });
+    const response = await api.post('/payments/create-remaining-balance-order', { bookingId }, {
+      headers: getAuthHeader()
+    });
     return response.data;
   } catch (error) {
     console.error('Error creating remaining balance order:', error);
