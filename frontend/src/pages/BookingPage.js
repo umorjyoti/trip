@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, useLocation } from "react-router-dom";
-import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon, checkExistingPendingBooking, deletePendingBooking } from "../services/api";
+import { getTrekById, getAuthHeader, createBooking, getRazorpayKey, createPaymentOrder, verifyPayment, validateCoupon } from "../services/api";
 import { toast } from "react-toastify";
 import LoadingSpinner from "../components/LoadingSpinner";
 import Modal from "../components/Modal";
@@ -38,10 +38,6 @@ function BookingPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState(null);
 
-  // Add state for existing pending booking
-  const [showExistingBookingModal, setShowExistingBookingModal] = useState(false);
-  const [existingBooking, setExistingBooking] = useState(null);
-  const [deletingBooking, setDeletingBooking] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   // Ensure body scrolling is restored when component unmounts or when payment processing ends
@@ -207,29 +203,7 @@ function BookingPage() {
     setCouponError(null);
   };
 
-  const handleContinueExistingBooking = () => {
-    setShowExistingBookingModal(false);
-    navigate(`/payment/${existingBooking._id}`);
-  };
 
-  const handleDeleteExistingBooking = async () => {
-    try {
-      setDeletingBooking(true);
-      await deletePendingBooking(existingBooking._id);
-      setShowExistingBookingModal(false);
-      setExistingBooking(null);
-      toast.success("Existing booking deleted. You can now start a new booking.");
-    } catch (error) {
-      toast.error(error.message || "Failed to delete existing booking");
-    } finally {
-      setDeletingBooking(false);
-    }
-  };
-
-  const handleCloseExistingBookingModal = () => {
-    setShowExistingBookingModal(false);
-    setExistingBooking(null);
-  };
 
   const validateForm = () => {
     // Validate user details
@@ -276,23 +250,7 @@ function BookingPage() {
     try {
       setProcessingPayment(true);
       
-      // Check for existing pending booking first
-      try {
-        const existingBookingCheck = await checkExistingPendingBooking(
-          location?.state?.trekId || trek?._id,
-          selectedBatch._id
-        );
-        
-        if (existingBookingCheck.exists) {
-          setExistingBooking(existingBookingCheck.booking);
-          setShowExistingBookingModal(true);
-          setProcessingPayment(false);
-          return;
-        }
-      } catch (error) {
-        console.error("Error checking existing booking:", error);
-        // Continue with new booking creation if check fails
-      }
+      // Skip existing booking check - directly create new booking
       
       // Generate a unique session ID for this booking attempt
       const sessionId = `session_${Date.now()}_${currentUser._id}_${Math.random().toString(36).substr(2, 9)}`;
@@ -504,595 +462,361 @@ function BookingPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="mb-8">
-        <nav className="flex" aria-label="Breadcrumb">
-          <ol className="flex items-center space-x-4">
-            <li>
-              <div>
-                <Link to="/" className="text-gray-400 hover:text-gray-500">
-                  <svg
-                    className="flex-shrink-0 h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                    aria-hidden="true"
-                  >
-                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-                  </svg>
-                  <span className="sr-only">Home</span>
-                </Link>
-              </div>
-            </li>
-            <li>
-              <div className="flex items-center">
-                <svg
-                  className="flex-shrink-0 h-5 w-5 text-gray-300"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  aria-hidden="true"
-                >
-                  <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
-                </svg>
-                <Link
-                  to={`/treks/${name}`}
-                  state={{ trekId: trek._id, trekName: trek.name }}
-                  className="ml-4 text-sm font-medium text-gray-500 hover:text-gray-700"
-                >
-                  {trek.name}
-                </Link>
-              </div>
-            </li>
-            <li>
-              <div className="flex items-center">
-                <svg
-                  className="flex-shrink-0 h-5 w-5 text-gray-300"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  aria-hidden="true"
-                >
-                  <path d="M5.555 17.776l8-16 .894.448-8 16-.894-.448z" />
-                </svg>
-                <span className="ml-4 text-sm font-medium text-gray-500">
-                  Book Now
-                </span>
-              </div>
-            </li>
-          </ol>
-        </nav>
-      </div>
-
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Booking Details
-            </h3>
-            <p className="mt-1 max-w-2xl text-sm text-gray-500">
-              Please fill in your booking information
-            </p>
-          </div>
-          <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Number of Participants */}
-              <div>
-                <label
-                  htmlFor="numberOfParticipants"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Number of Participants
-                </label>
-                <select
-                  id="numberOfParticipants"
-                  name="numberOfParticipants"
-                  value={formData.numberOfParticipants}
-                  onChange={handleParticipantsChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-                  required
-                >
-                  {[...Array(selectedBatch ? selectedBatch.maxParticipants - selectedBatch.currentParticipants : 0)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>{i + 1}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* User Details Section */}
-              <div>
-                <h4 className="text-md font-medium text-gray-900 mb-4">
-                  Your Details
-                </h4>
-                <div className="space-y-4">
-                  <div>
-                    <label
-                      htmlFor="userName"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      id="userName"
-                      value={formData.userDetails.name}
-                      onChange={handleUserDetailsChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-                      required
-                      placeholder="Enter your full name"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="userEmail"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      id="userEmail"
-                      value={formData.userDetails.email}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50 text-gray-500 cursor-not-allowed sm:text-sm"
-                      disabled
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="userPhone"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Phone Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      id="userPhone"
-                      value={formData.userDetails.phone}
-                      onChange={handleUserDetailsChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-                      required
-                      placeholder="Enter 10-digit phone number"
-                      pattern="[0-9]{10}"
-                      maxLength="10"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Add-ons Section */}
-              {trek.addOns && trek.addOns.length > 0 && (
-                <div>
-                  <h4 className="text-md font-medium text-gray-900 mb-4">
-                    Optional Add-ons
-                  </h4>
-                  <div className="space-y-4">
-                    {trek.addOns
-                      .filter((addOn) => addOn.isEnabled)
-                      .map((addOn, idx) => {
-                        const addOnKey = getAddOnKey(addOn, idx);
-                        return (
-                          <div
-                            key={addOnKey}
-                            className="relative flex items-start"
-                          >
-                            <div className="flex items-center h-5">
-                              <input
-                                id={`addon-${addOnKey}`}
-                                type="checkbox"
-                                checked={formData.addOns.includes(addOnKey)}
-                                onChange={() => handleAddOnChange(addOnKey)}
-                                className="focus:ring-emerald-500 h-4 w-4 text-emerald-600 border-gray-300 rounded"
-                              />
-                            </div>
-                            <div className="ml-3 text-sm">
-                              <label
-                                htmlFor={`addon-${addOnKey}`}
-                                className="font-medium text-gray-700"
-                              >
-                                {addOn.name} - ₹{addOn.price}
-                              </label>
-                              {addOn.description && (
-                                <p className="text-gray-500">
-                                  {addOn.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
-
-              {/* Add Coupon Code Section before the Proceed to Payment button */}
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-md font-medium text-gray-900 mb-4">
-                  Apply Coupon Code
-                </h4>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={couponCode}
-                    onChange={handleCouponCodeChange}
-                    placeholder="Enter coupon code"
-                    className="flex-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyCoupon}
-                    className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                  >
-                    Apply
-                  </button>
-                </div>
-                {couponError && (
-                  <p className="mt-2 text-sm text-red-600">{couponError}</p>
-                )}
-                {appliedCoupon && (
-                  <div className="mt-2 p-2 bg-green-50 rounded-md flex justify-between items-center">
-                    <p className="text-sm text-green-700">
-                      Coupon applied: {appliedCoupon.promoCode.code} (
-                      {appliedCoupon.promoCode.discountType === 'percentage'
-                        ? `${appliedCoupon.promoCode.discountValue}% off`
-                        : `₹${appliedCoupon.promoCode.discountValue} off`}
-                      )
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      className="text-sm text-red-600 hover:text-red-800"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Partial Payment Options */}
-              {trek.partialPayment && trek.partialPayment.enabled && (
-                <div className="border-t border-gray-200 pt-4">
-                  <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                    </svg>
-                    Payment Options
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="payment_full"
-                        name="paymentMode"
-                        value="full"
-                        checked={paymentMode === 'full'}
-                        onChange={(e) => setPaymentMode(e.target.value)}
-                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
-                      />
-                      <label htmlFor="payment_full" className="ml-2 block text-sm text-gray-900">
-                        <span className="font-medium">Pay in Full</span>
-                        <span className="text-gray-500 ml-2">- Pay the complete amount now</span>
-                      </label>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <input
-                        type="radio"
-                        id="payment_partial"
-                        name="paymentMode"
-                        value="partial"
-                        checked={paymentMode === 'partial'}
-                        onChange={(e) => setPaymentMode(e.target.value)}
-                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300"
-                      />
-                      <label htmlFor="payment_partial" className="ml-2 block text-sm text-gray-900">
-                        <span className="font-medium">Pay Partial Now & Pay Later</span>
-                        <span className="text-gray-500 ml-2">
-                          - Pay ₹{trek.partialPayment.amountType === 'percentage' 
-                            ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                            : trek.partialPayment.amount * formData.numberOfParticipants} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Terms & Conditions Checkbox */}
-              <div className="mt-6 mb-4">
-                <div className="flex items-start">
-                  <input
-                    type="checkbox"
-                    id="agreeToTerms"
-                    checked={agreeToTerms}
-                    onChange={(e) => setAgreeToTerms(e.target.checked)}
-                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded mt-1"
-                    required
-                  />
-                  <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-900">
-                    I agree to the{' '}
-                    <a 
-                      href="/terms" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-emerald-600 hover:text-emerald-500 underline"
-                    >
-                      Terms & Conditions
-                    </a>
-                    {' '}and{' '}
-                    <a 
-                      href="/privacy" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-emerald-600 hover:text-emerald-500 underline"
-                    >
-                      Privacy Policy
-                    </a>
-                    {' '}*
-                  </label>
-                </div>
-                {!agreeToTerms && (
-                  <p className="mt-1 text-sm text-red-600">
-                    You must agree to the Terms & Conditions to proceed with the booking.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={processingPayment || !agreeToTerms}
-                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
-                    processingPayment || !agreeToTerms ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {processingPayment ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Loading Payment...
-                    </>
-                  ) : (
-                    paymentMode === 'partial' ? 'Pay Partial Amount' : 'Proceed to Payment'
-                  )}
-                </button>
-              </div>
-            </form>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold text-gray-900">{trek.name}</h1>
+              <p className="text-sm text-gray-500">Complete your booking</p>
+            </div>
+            <Link
+              to={`/treks/${name}`}
+              className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+            >
+              ← Back to Trek
+            </Link>
           </div>
         </div>
+      </div>
 
-        <div className="space-y-6">
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Trek Information
-              </h3>
-            </div>
-            <div className="border-t border-gray-200">
-              <dl>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Trek Name</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {trek.name}
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Price per Person</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    ₹{selectedBatch?.price?.toFixed(2) || "0.00"}
-                  </dd>
-                </div>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Number of Participants</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {formData.numberOfParticipants}
-                  </dd>
-                </div>
-                {formData.addOns.length > 0 && (
-                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Add-ons</dt>
-                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      <ul className="space-y-1">
-                        {getSelectedAddOns().map(({ addOn, key }) => (
-                          <li key={key}>
-                            {addOn.name} - ₹{(addOn.price * formData.numberOfParticipants).toFixed(2)}
-                          </li>
-                        ))}
-                      </ul>
-                    </dd>
-                  </div>
-                )}
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Base Amount</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {appliedCoupon && appliedCoupon.promoCode ? (
-                      <div>
-                        <span className="line-through text-gray-500">
-                          ₹{calculateBasePrice().toFixed(2)}
-                        </span>
-                        <span className="ml-2">
-                          ₹{calculateDiscountedPrice(calculateBasePrice()).toFixed(2)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span>₹{calculateBasePrice().toFixed(2)}</span>
-                    )}
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">GST ({taxInfo.gstPercent}%)</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    ₹{(calculateDiscountedPrice(calculateBasePrice()) * (taxInfo.gstPercent / 100)).toFixed(2)}
-                  </dd>
-                </div>
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Payment Gateway Charges ({taxInfo.gatewayPercent}%)</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    ₹{(calculateDiscountedPrice(calculateBasePrice()) * (taxInfo.gatewayPercent / 100)).toFixed(2)}
-                  </dd>
-                </div>
-                <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 font-semibold">
-                  <dt className="text-sm font-medium text-gray-500">Total Amount</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    ₹{calculateTotalPrice().toFixed(2)}
-                  </dd>
-                </div>
-                
-                {/* Partial Payment Breakdown */}
-                {paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled && (
-                  <>
-                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">Initial Payment</dt>
-                      <dd className="mt-1 text-sm text-emerald-600 font-medium sm:mt-0 sm:col-span-2">
-                        ₹{trek.partialPayment.amountType === 'percentage' 
-                          ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                          : trek.partialPayment.amount * formData.numberOfParticipants}
-                      </dd>
-                    </div>
-                    <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">Remaining Balance</dt>
-                      <dd className="mt-1 text-sm text-gray-800 font-medium sm:mt-0 sm:col-span-2">
-                        ₹{(trek.partialPayment.amountType === 'percentage' 
-                          ? calculateTotalPrice() - Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                          : calculateTotalPrice() - (trek.partialPayment.amount * formData.numberOfParticipants)).toFixed(2)}
-                      </dd>
-                    </div>
-                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">Due Date</dt>
-                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        {selectedBatch && (() => {
-                          const dueDate = new Date(selectedBatch.startDate);
-                          dueDate.setDate(dueDate.getDate() - trek.partialPayment.finalPaymentDueDays);
-                          return dueDate.toLocaleDateString();
-                        })()}
-                      </dd>
-                    </div>
-                  </>
-                )}
-              </dl>
-            </div>
-          </div>
-
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
-                Available Batches
-              </h3>
-            </div>
-            <div className="border-t border-gray-200">
-              <div className="divide-y divide-gray-200">
-                {trek.batches.map((batch) => {
-                  const isFull =
-                    batch.currentParticipants >= batch.maxParticipants;
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Batch Selection */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Batch</h2>
+            <div className="space-y-3">
+              {trek.batches
+                .filter((batch) => batch.status === "active")
+                .map((batch) => {
+                  const spotsLeft = batch.maxParticipants - batch.currentParticipants;
                   const isSelected = selectedBatch?._id === batch._id;
-                  const spotsLeft =
-                    batch.maxParticipants - batch.currentParticipants;
+                  const isFull = spotsLeft <= 0;
 
                   return (
                     <div
                       key={batch._id}
-                      className={`px-4 py-4 sm:px-6 cursor-pointer hover:bg-gray-50 ${
-                        isSelected ? "bg-emerald-50" : ""
-                      }`}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                        isSelected ? "border-emerald-500 bg-emerald-50" : "border-gray-200 hover:border-gray-300"
+                      } ${isFull ? "opacity-50 cursor-not-allowed" : ""}`}
                       onClick={() => !isFull && handleBatchSelect(batch)}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex justify-between items-center">
                         <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {new Date(batch.startDate).toLocaleDateString()} -{" "}
-                            {new Date(batch.endDate).toLocaleDateString()}
+                          <p className="font-medium text-gray-900">
+                            {new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()}
                           </p>
                           <p className="text-sm text-gray-500">
                             {isFull ? "Full" : `${spotsLeft} spots left`}
                           </p>
                         </div>
-                        <div className="flex items-center">
-                          {isSelected && (
-                            <svg
-                              className="h-5 w-5 text-emerald-500"
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 20 20"
-                              fill="currentColor"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          )}
+                        <div className="text-right">
+                          <p className="font-semibold text-gray-900">₹{batch.price}</p>
+                          <p className="text-sm text-gray-500">per person</p>
                         </div>
                       </div>
                     </div>
                   );
                 })}
-              </div>
             </div>
           </div>
-        </div>
-      </div>
-      {verifyingPayment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4">
-            <LoadingSpinner />
-            <p className="text-lg font-medium text-gray-900">Verifying Payment...</p>
-            <p className="text-sm text-gray-600">Please wait while we verify your payment</p>
-          </div>
-        </div>
-      )}
 
-      {/* Existing Pending Booking Modal */}
-      {showExistingBookingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
-                <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
+          {/* Booking Details */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Booking Details</h2>
+            
+            {/* Participants */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Participants
+              </label>
+              <select
+                value={formData.numberOfParticipants}
+                onChange={handleParticipantsChange}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                required
+              >
+                {[...Array(selectedBatch ? selectedBatch.maxParticipants - selectedBatch.currentParticipants : 0)].map((_, i) => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Contact Details */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.userDetails.name}
+                  onChange={handleUserDetailsChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                  placeholder="Enter your full name"
+                />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Existing Pending Booking
-              </h3>
-              <p className="text-sm text-gray-600 mb-6">
-                You already have a pending payment for this trek and batch. What would you like to do?
-              </p>
               
-              <div className="space-y-3">
-                <button
-                  onClick={handleContinueExistingBooking}
-                  className="w-full bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition-colors"
-                >
-                  Continue with Existing Booking
-                </button>
-                
-                <button
-                  onClick={handleDeleteExistingBooking}
-                  disabled={deletingBooking}
-                  className="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {deletingBooking ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
-                      Deleting...
-                    </>
-                  ) : (
-                    'Delete & Start Fresh'
-                  )}
-                </button>
-                
-                <button
-                  onClick={handleCloseExistingBookingModal}
-                  className="w-full bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.userDetails.email}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-500"
+                  disabled
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.userDetails.phone}
+                  onChange={handleUserDetailsChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                  placeholder="Enter 10-digit phone number"
+                  pattern="[0-9]{10}"
+                  maxLength="10"
+                />
               </div>
             </div>
           </div>
-        </div>
-      )}
+
+          {/* Add-ons */}
+          {trek.addOns && trek.addOns.length > 0 && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Optional Add-ons</h2>
+              <div className="space-y-3">
+                {trek.addOns
+                  .filter((addOn) => addOn.isEnabled)
+                  .map((addOn, idx) => {
+                    const addOnKey = getAddOnKey(addOn, idx);
+                    return (
+                      <div key={addOnKey} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.addOns.includes(addOnKey)}
+                          onChange={() => handleAddOnChange(addOnKey)}
+                          className="h-4 w-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <div className="ml-3 flex-1">
+                          <label className="font-medium text-gray-900">
+                            {addOn.name}
+                          </label>
+                          {addOn.description && (
+                            <p className="text-sm text-gray-500">{addOn.description}</p>
+                          )}
+                        </div>
+                        <span className="font-semibold text-gray-900">₹{addOn.price}</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Coupon Code */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Coupon Code</h2>
+            <div className="flex space-x-3">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={handleCouponCodeChange}
+                placeholder="Enter coupon code"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              />
+              <button
+                type="button"
+                onClick={handleApplyCoupon}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500"
+              >
+                Apply
+              </button>
+            </div>
+            {couponError && (
+              <p className="mt-2 text-sm text-red-600">{couponError}</p>
+            )}
+            {appliedCoupon && (
+              <div className="mt-3 p-3 bg-green-50 rounded-lg flex justify-between items-center">
+                <span className="text-sm text-green-700">
+                  {appliedCoupon.promoCode.code} - {appliedCoupon.promoCode.discountType === 'percentage' 
+                    ? `${appliedCoupon.promoCode.discountValue}% off` 
+                    : `₹${appliedCoupon.promoCode.discountValue} off`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="text-sm text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Options */}
+          {trek.partialPayment && trek.partialPayment.enabled && (
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Options</h2>
+              <div className="space-y-3">
+                <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="paymentMode"
+                    value="full"
+                    checked={paymentMode === 'full'}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="h-4 w-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
+                  />
+                  <div className="ml-3">
+                    <span className="font-medium text-gray-900">Pay in Full</span>
+                    <p className="text-sm text-gray-500">Pay the complete amount now</p>
+                  </div>
+                </label>
+                
+                <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="radio"
+                    name="paymentMode"
+                    value="partial"
+                    checked={paymentMode === 'partial'}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="h-4 w-4 text-emerald-600 border-gray-300 focus:ring-emerald-500"
+                  />
+                  <div className="ml-3">
+                    <span className="font-medium text-gray-900">Pay Partial Now</span>
+                    <p className="text-sm text-gray-500">
+                      Pay ₹{trek.partialPayment.amountType === 'percentage' 
+                        ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
+                        : trek.partialPayment.amount * formData.numberOfParticipants} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Pricing Summary */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pricing Summary</h2>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Base Price ({formData.numberOfParticipants} × ₹{selectedBatch?.price})</span>
+                <span className="font-medium">₹{calculateBasePrice().toFixed(2)}</span>
+              </div>
+              
+              {getSelectedAddOns().length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Add-ons</span>
+                  <span className="font-medium">₹{getSelectedAddOns().reduce((sum, { addOn }) => sum + (addOn.price * formData.numberOfParticipants), 0).toFixed(2)}</span>
+                </div>
+              )}
+              
+              {appliedCoupon && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount ({appliedCoupon.promoCode.code})</span>
+                  <span>-₹{(calculateBasePrice() * (appliedCoupon.promoCode.discountValue / 100)).toFixed(2)}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between">
+                <span className="text-gray-600">GST ({taxInfo.gstPercent}%)</span>
+                <span className="font-medium">₹{(calculateDiscountedPrice(calculateBasePrice()) * (taxInfo.gstPercent / 100)).toFixed(2)}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-gray-600">Gateway Charges ({taxInfo.gatewayPercent}%)</span>
+                <span className="font-medium">₹{(calculateDiscountedPrice(calculateBasePrice()) * (taxInfo.gatewayPercent / 100)).toFixed(2)}</span>
+              </div>
+              
+              <div className="border-t pt-3 flex justify-between text-lg font-semibold">
+                <span>Total Amount</span>
+                <span>₹{calculateTotalPrice().toFixed(2)}</span>
+              </div>
+              
+              {paymentMode === 'partial' && trek.partialPayment && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-blue-700">Initial Payment</span>
+                    <span className="font-medium text-blue-700">₹{trek.partialPayment.amountType === 'percentage' 
+                      ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
+                      : trek.partialPayment.amount * formData.numberOfParticipants}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-blue-700">Remaining Balance</span>
+                    <span className="font-medium text-blue-700">₹{(calculateTotalPrice() - (trek.partialPayment.amountType === 'percentage' 
+                      ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
+                      : trek.partialPayment.amount * formData.numberOfParticipants)).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Terms & Submit */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-start mb-6">
+              <input
+                type="checkbox"
+                checked={agreeToTerms}
+                onChange={(e) => setAgreeToTerms(e.target.checked)}
+                className="h-4 w-4 text-emerald-600 border-gray-300 rounded mt-1 focus:ring-emerald-500"
+                required
+              />
+              <label className="ml-3 text-sm text-gray-700">
+                I agree to the{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-500 underline">
+                  Terms & Conditions
+                </a>
+                {' '}and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-500 underline">
+                  Privacy Policy
+                </a>
+              </label>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={processingPayment || !agreeToTerms}
+              className={`w-full py-3 px-4 border border-transparent rounded-lg text-white font-medium focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
+                processingPayment || !agreeToTerms 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-emerald-600 hover:bg-emerald-700'
+              }`}
+            >
+              {processingPayment ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </div>
+              ) : (
+                paymentMode === 'partial' ? 'Pay Partial Amount' : 'Proceed to Payment'
+              )}
+            </button>
+          </div>
+        </form>
+
+              {verifyingPayment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4">
+              <LoadingSpinner />
+              <p className="text-lg font-medium text-gray-900">Verifying Payment...</p>
+              <p className="text-sm text-gray-600">Please wait while we verify your payment</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
