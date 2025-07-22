@@ -79,6 +79,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsConditions from './pages/TermsConditions';
 import ComingSoon from './pages/ComingSoon';
 import SocialMediaLeads from './pages/SocialMediaLeads';
+import CustomDropdownDemo from './components/CustomDropdownDemo';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -162,6 +163,7 @@ function App() {
               <Route path="/terms" element={<TermsConditions />} />
               <Route path="/coming-soon" element={<ComingSoon />} />
               <Route path="/social-media-leads" element={<SocialMediaLeads />} />
+              <Route path="/dropdown-demo" element={<CustomDropdownDemo />} />
               <Route path="/treks" element={<SearchResults />} />
               <Route path="/treks/:name" element={<TrekDetail />} />
               <Route path="/treks/:name/book" element={<BookingPage />} />

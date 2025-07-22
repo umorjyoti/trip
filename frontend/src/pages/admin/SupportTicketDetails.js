@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getSupportTicketById, updateSupportTicket, addSupportTicketReply } from '../../services/api';
 import { formatDate } from '../../utils/helpers';
+import CustomDropdown from '../../components/CustomDropdown';
+import { FaFlag, FaCheckCircle } from 'react-icons/fa';
 
 const SupportTicketDetails = () => {
   const { id } = useParams();
@@ -119,28 +121,36 @@ const SupportTicketDetails = () => {
               </p>
             </div>
             <div className="flex space-x-4">
-              <select
-                value={ticket.status}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                disabled={updating}
-                className="px-3 py-1 border rounded-md text-sm"
-              >
-                <option value="open">Open</option>
-                <option value="in-progress">In Progress</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-              <select
-                value={ticket.priority}
-                onChange={(e) => handlePriorityChange(e.target.value)}
-                disabled={updating}
-                className="px-3 py-1 border rounded-md text-sm"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+              <div className="w-32">
+                <CustomDropdown
+                  options={[
+                    { value: 'open', label: 'Open' },
+                    { value: 'in-progress', label: 'In Progress' },
+                    { value: 'resolved', label: 'Resolved' },
+                    { value: 'closed', label: 'Closed' }
+                  ]}
+                  value={ticket.status}
+                  onChange={(option) => handleStatusChange(option.value)}
+                  placeholder="Status"
+                  disabled={updating}
+                  icon={FaCheckCircle}
+                />
+              </div>
+              <div className="w-32">
+                <CustomDropdown
+                  options={[
+                    { value: 'low', label: 'Low' },
+                    { value: 'medium', label: 'Medium' },
+                    { value: 'high', label: 'High' },
+                    { value: 'urgent', label: 'Urgent' }
+                  ]}
+                  value={ticket.priority}
+                  onChange={(option) => handlePriorityChange(option.value)}
+                  placeholder="Priority"
+                  disabled={updating}
+                  icon={FaFlag}
+                />
+              </div>
             </div>
           </div>
         </div>

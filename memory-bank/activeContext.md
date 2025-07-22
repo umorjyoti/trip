@@ -4,7 +4,20 @@
 
 ### Recent Changes (Latest Session)
 
-#### 1. Fixed Trek Update Issue
+#### 1. Created Custom Dropdown Component for iOS Compatibility
+- **Problem**: Native select elements have compatibility issues on iOS devices in the enquiry form and support ticket creation
+- **Solution**: Created a custom dropdown component that works properly on all devices including iOS
+- **Files Created/Modified**:
+  - `frontend/src/components/CustomDropdown.js` - New custom dropdown component with full iOS compatibility
+  - `frontend/src/components/EnquiryBanner.js` - Replaced native select with CustomDropdown for trip type selection
+  - `frontend/src/components/CreateTicketModal.js` - Replaced all select elements with CustomDropdown for request type, preferred batch, and priority
+  - `frontend/src/pages/admin/SupportTicketDetails.js` - Replaced status and priority select elements with CustomDropdown
+  - `frontend/src/pages/admin/SupportTickets.js` - Replaced filter select elements with CustomDropdown
+  - `frontend/src/components/__tests__/CustomDropdown.test.js` - Comprehensive test suite for the new component
+  - `frontend/src/components/CustomDropdownDemo.js` - Demo component for testing and showcasing the dropdown
+  - `frontend/src/App.js` - Added `/dropdown-demo` route for testing the component
+
+#### 2. Fixed Trek Update Issue
 - **Problem**: Partial payment settings were not being saved when editing a trek
 - **Solution**: Updated `backend/controllers/trekController.js` to extract and handle `partialPayment` field in the `updateTrek` function
 - **Files Modified**: 

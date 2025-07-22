@@ -3,6 +3,7 @@ import { createTicket, createCancellationRequest, getBookingById, getTrekById } 
 import { toast } from 'react-toastify';
 import Modal from './Modal';
 import { FaTag, FaFlag, FaAlignLeft, FaListAlt, FaCalendarAlt } from 'react-icons/fa';
+import CustomDropdown from './CustomDropdown';
 
 function CreateTicketModal({ bookingId, onClose, onSuccess }) {
   const [ticketType, setTicketType] = useState('general');
@@ -168,23 +169,18 @@ function CreateTicketModal({ bookingId, onClose, onSuccess }) {
           <label htmlFor="ticketType" className="block text-sm font-medium text-gray-700 mb-1">
             Request Type <span className="text-red-500">*</span>
           </label>
-          <div className="relative rounded-md shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaListAlt className="text-gray-400" />
-            </div>
-            <select
-              id="ticketType"
-              name="ticketType"
-              value={ticketType}
-              onChange={e => setTicketType(e.target.value)}
-              className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-              required
-            >
-              <option value="general">General Support Ticket</option>
-              <option value="cancellation">Cancellation Request</option>
-              <option value="reschedule">Reschedule Request</option>
-            </select>
-          </div>
+          <CustomDropdown
+            options={[
+              { value: 'general', label: 'General Support Ticket' },
+              { value: 'cancellation', label: 'Cancellation Request' },
+              { value: 'reschedule', label: 'Reschedule Request' }
+            ]}
+            value={ticketType}
+            onChange={(option) => setTicketType(option.value)}
+            placeholder="Select request type"
+            required
+            icon={FaListAlt}
+          />
         </div>
         
         {ticketType === 'reschedule' && (
@@ -192,44 +188,30 @@ function CreateTicketModal({ bookingId, onClose, onSuccess }) {
             <label htmlFor="preferredBatch" className="block text-sm font-medium text-gray-700 mb-1">
               Preferred Batch <span className="text-red-500">*</span>
             </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaCalendarAlt className="text-gray-400" />
-              </div>
-              {fetchingBatches ? (
-                <div className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
-                  <div className="flex items-center">
-                    <svg className="animate-spin h-4 w-4 text-gray-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Loading available batches...
-                  </div>
+            {fetchingBatches ? (
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                <div className="flex items-center">
+                  <svg className="animate-spin h-4 w-4 text-gray-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading available batches...
                 </div>
-              ) : (
-                <select
-                  id="preferredBatch"
-                  name="preferredBatch"
-                  value={preferredBatch}
-                  onChange={e => setPreferredBatch(e.target.value)}
-                  className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-                  required
-                >
-                  <option value="">Select a preferred batch</option>
-                  {availableBatches.map((batch) => (
-                    <option key={batch._id} value={batch._id}>
-                      {formatDate(batch.startDate)} - {formatDate(batch.endDate)} 
-                      ({formatCurrency(batch.price)}) - 
-                      {batch.currentParticipants}/{batch.maxParticipants} spots available
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            {availableBatches.length === 0 && !fetchingBatches && (
-              <p className="mt-1 text-sm text-red-600">
-                No available batches found for rescheduling. Please contact support directly.
-              </p>
+              </div>
+            ) : (
+              <CustomDropdown
+                options={availableBatches.map((batch) => ({
+                  value: batch._id,
+                  label: `${formatDate(batch.startDate)} - ${formatDate(batch.endDate)} (${formatCurrency(batch.price)}) - ${batch.currentParticipants}/${batch.maxParticipants} spots available`
+                }))}
+                value={preferredBatch}
+                onChange={(option) => setPreferredBatch(option.value)}
+                placeholder="Select a preferred batch"
+                required
+                icon={FaCalendarAlt}
+                disabled={availableBatches.length === 0}
+                error={availableBatches.length === 0 && !fetchingBatches ? "No available batches found for rescheduling. Please contact support directly." : null}
+              />
             )}
           </div>
         )}
@@ -262,22 +244,17 @@ function CreateTicketModal({ bookingId, onClose, onSuccess }) {
             <label htmlFor="priority" className="block text-sm font-medium text-gray-700 mb-1">
               Priority
             </label>
-            <div className="relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FaFlag className="text-gray-400" />
-              </div>
-              <select
-                id="priority"
-                name="priority"
-                value={priority}
-                onChange={e => setPriority(e.target.value)}
-                className="pl-10 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
+            <CustomDropdown
+              options={[
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' }
+              ]}
+              value={priority}
+              onChange={(option) => setPriority(option.value)}
+              placeholder="Select priority"
+              icon={FaFlag}
+            />
           </div>
         )}
         

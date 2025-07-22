@@ -56,6 +56,15 @@
     - Enhanced user experience with readable URLs (e.g., `/regions/meghalaya`)
     - Admin form validation with specific error messages for duplicate names
     - Updated all region navigation components throughout the application
+*   **Custom Dropdown Component**: iOS-compatible dropdown component to replace native select elements:
+    - Custom dropdown component that works properly on all devices including iOS
+    - Replaced native select in enquiry form for trip type selection
+    - Replaced all select elements in support ticket creation (request type, preferred batch, priority)
+    - Replaced select elements in admin support ticket management (status, priority filters)
+    - Comprehensive test suite with 7 test cases covering all functionality
+    - Demo page available at `/dropdown-demo` for testing and showcasing
+    - Supports icons, error states, disabled states, and keyboard navigation
+    - Proper accessibility with ARIA attributes and keyboard support
 
 **What's Left to Build:**
 

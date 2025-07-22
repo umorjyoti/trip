@@ -3,6 +3,7 @@ import { FaTimes, FaPhone, FaEnvelope, FaUser, FaMapMarkerAlt, FaCalendarAlt } f
 import { createLead, getEnquiryBannerSettings } from '../services/api';
 import { toast } from 'react-toastify';
 import Modal from './Modal';
+import CustomDropdown from './CustomDropdown';
 
 function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail Page' }) {
   const [formData, setFormData] = useState({
@@ -248,24 +249,25 @@ function EnquiryBanner({ trek, isOpen, onClose, onSuccess, source = 'Trek Detail
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   What kind of trip do you prefer? *
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaCalendarAlt className="text-gray-400" />
-                  </div>
-                  <select
-                    name="tripType"
-                    value={formData.tripType}
-                    onChange={handleChange}
-                    className="pl-10 pr-10 w-full py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-                    required
-                  >
-                    <option value="Backpacking Trips">Backpacking Trips</option>
-                    <option value="Weekend Getaways">Weekend Getaways</option>
-                    <option value="Adventure Tours">Adventure Tours</option>
-                    <option value="Cultural Tours">Cultural Tours</option>
-                    <option value="Custom Tours">Custom Tours</option>
-                  </select>
-                </div>
+                <CustomDropdown
+                  options={[
+                    "Backpacking Trips",
+                    "Weekend Getaways", 
+                    "Adventure Tours",
+                    "Cultural Tours",
+                    "Custom Tours"
+                  ]}
+                  value={formData.tripType}
+                  onChange={(option) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      tripType: option
+                    }));
+                  }}
+                  placeholder="Select trip type"
+                  required
+                  icon={FaCalendarAlt}
+                />
               </div>
               
               <div>

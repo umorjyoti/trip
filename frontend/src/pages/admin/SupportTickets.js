@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getSupportTickets } from '../../services/api';
 import { formatDate } from '../../utils/helpers';
+import CustomDropdown from '../../components/CustomDropdown';
+import { FaFilter, FaFlag } from 'react-icons/fa';
 
 const SupportTickets = () => {
   const [tickets, setTickets] = useState([]);
@@ -66,30 +68,46 @@ const SupportTickets = () => {
             placeholder="Search tickets..."
             className="px-4 py-2 border rounded-md"
           />
-          <select
-            name="status"
-            value={filters.status}
-            onChange={handleFilterChange}
-            className="px-4 py-2 border rounded-md"
-          >
-            <option value="all">All Status</option>
-            <option value="open">Open</option>
-            <option value="in-progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
-          <select
-            name="priority"
-            value={filters.priority}
-            onChange={handleFilterChange}
-            className="px-4 py-2 border rounded-md"
-          >
-            <option value="all">All Priority</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
+          <div className="w-40">
+            <CustomDropdown
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'open', label: 'Open' },
+                { value: 'in-progress', label: 'In Progress' },
+                { value: 'resolved', label: 'Resolved' },
+                { value: 'closed', label: 'Closed' }
+              ]}
+              value={filters.status}
+              onChange={(option) => {
+                setFilters(prev => ({
+                  ...prev,
+                  status: option.value
+                }));
+              }}
+              placeholder="All Status"
+              icon={FaFilter}
+            />
+          </div>
+          <div className="w-40">
+            <CustomDropdown
+              options={[
+                { value: 'all', label: 'All Priority' },
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+                { value: 'urgent', label: 'Urgent' }
+              ]}
+              value={filters.priority}
+              onChange={(option) => {
+                setFilters(prev => ({
+                  ...prev,
+                  priority: option.value
+                }));
+              }}
+              placeholder="All Priority"
+              icon={FaFlag}
+            />
+          </div>
         </div>
       </div>
 
