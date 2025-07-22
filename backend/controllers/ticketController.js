@@ -262,7 +262,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">📧 Support Ticket Update</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Support Ticket Update" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">You have a new response on your ticket</div>
         </div>
 
@@ -521,7 +524,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">📊 Status Update</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Status Update" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your support ticket status has changed</div>
         </div>
 

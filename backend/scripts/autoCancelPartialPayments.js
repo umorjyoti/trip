@@ -66,7 +66,7 @@ const autoCancelPartialPayments = async () => {
                 If you believe this is an error or would like to discuss payment options, please contact our support team immediately.
               </p>
               
-              <p>Best regards,<br>Trek Adventures Team</p>
+              <p>Best regards,<br>Bengaluru Trekkers Team</p>
             </div>
           `
         });

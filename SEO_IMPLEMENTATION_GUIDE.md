@@ -1,8 +1,8 @@
-# SEO Implementation Guide for Trek Adventures Blog
+# SEO Implementation Guide for Bengaluru Trekkers Blog
 
 ## Overview
 
-This document outlines the comprehensive SEO implementation for the Trek Adventures blog system. All features have been implemented to improve search engine visibility, user experience, and content discoverability.
+This document outlines the comprehensive SEO implementation for the Bengaluru Trekkers blog system. All features have been implemented to improve search engine visibility, user experience, and content discoverability.
 
 ## 🚀 Implemented SEO Features
 
@@ -31,7 +31,7 @@ const structuredData = {
   },
   "publisher": {
     "@type": "Organization",
-    "name": "Trek Adventures"
+    "name": "Bengaluru Trekkers"
   },
   "datePublished": blog.publishedAt,
   "dateModified": blog.updatedAt,

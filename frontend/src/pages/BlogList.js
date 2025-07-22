@@ -160,21 +160,21 @@ function BlogList() {
   return (
     <>
       <Helmet>
-        <title>Blog - Trek Adventures | Travel Stories & Tips</title>
+        <title>Blog - Bengaluru Trekkers | Travel Stories & Tips</title>
         <meta name="description" content="Discover amazing travel stories, trekking tips, and adventure guides from our expert team. Read about the best trekking destinations and travel experiences." />
         <meta name="keywords" content="travel blog, trekking tips, adventure stories, hiking guides, travel tips, trek adventures" />
         <link rel="canonical" href={`${window.location.origin}/blogs`} />
         
         {/* Open Graph */}
-        <meta property="og:title" content="Blog - Trek Adventures | Travel Stories & Tips" />
+        <meta property="og:title" content="Blog - Bengaluru Trekkers | Travel Stories & Tips" />
         <meta property="og:description" content="Discover amazing travel stories, trekking tips, and adventure guides from our expert team." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${window.location.origin}/blogs`} />
-        <meta property="og:site_name" content="Trek Adventures" />
+        <meta property="og:site_name" content="Bengaluru Trekkers" />
         
         {/* Twitter Cards */}
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="Blog - Trek Adventures | Travel Stories & Tips" />
+        <meta name="twitter:title" content="Blog - Bengaluru Trekkers | Travel Stories & Tips" />
         <meta name="twitter:description" content="Discover amazing travel stories, trekking tips, and adventure guides from our expert team." />
         <meta name="twitter:site" content="@trekadventures" />
         

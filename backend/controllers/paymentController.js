@@ -303,7 +303,10 @@ exports.verifyPayment = async (req, res) => {
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -348,7 +351,7 @@ exports.verifyPayment = async (req, res) => {
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -479,7 +482,10 @@ exports.verifyPayment = async (req, res) => {
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -524,7 +530,7 @@ exports.verifyPayment = async (req, res) => {
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">

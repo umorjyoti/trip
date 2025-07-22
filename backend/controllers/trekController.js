@@ -2128,7 +2128,8 @@ exports.sendCustomTrekLink = async (req, res) => {
     const html = `
       <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(16,185,129,0.10); overflow: hidden;">
         <div style="background: #10b981; padding: 18px 0; text-align: center;">
-          <span style="color: #fff; font-size: 1.6rem; font-weight: bold; letter-spacing: 1px;">Bengaluru Trekkers</span>
+          <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 40px; width: auto; max-width: 200px; filter: brightness(0) invert(1);">
+          <div style="font-size: 24px; font-weight: bold; color: white; margin-top: 8px;">Bengaluru Trekkers</div>
         </div>
         <img src="${trek.imageUrl || (trek.images && trek.images[0]) || 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80'}" alt="${trek.name}" style="width: 100%; max-height: 280px; object-fit: cover; display: block;">
         <div style="padding: 24px 12px 20px 12px;">

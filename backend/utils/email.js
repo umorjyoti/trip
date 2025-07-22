@@ -133,7 +133,7 @@ If you have any questions or need to make changes, please contact us immediately
 🏔️ We look forward to an amazing trek with you!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -171,6 +171,16 @@ For support, contact us through our website or mobile app.
             border-bottom: 2px solid #10b981;
         }
         .logo {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .logo img {
+            height: 60px;
+            width: auto;
+            max-width: 200px;
+        }
+        }
+        .logo-text {
             font-size: 28px;
             font-weight: bold;
             color: #10b981;
@@ -251,7 +261,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -315,7 +328,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -373,7 +386,7 @@ If you have any questions, please don't hesitate to contact us.
 🏔️ We look forward to an amazing trek with you!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -483,7 +496,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -528,7 +544,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -602,7 +618,7 @@ If you have any questions or need to make changes, please contact us immediately
 🏔️ Get ready for an amazing adventure!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -729,7 +745,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -796,7 +815,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -864,7 +883,7 @@ If you have any questions or need to make changes, please contact us immediately
 🏔️ We look forward to an amazing trek with you!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -1037,7 +1056,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -1106,7 +1125,7 @@ If you have any questions about the invoice or payment, please contact us immedi
 🏔️ Thank you for choosing us for your adventure!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -1215,7 +1234,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -1262,7 +1284,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
@@ -1520,7 +1542,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
         
@@ -1759,7 +1784,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
         
@@ -1908,7 +1936,7 @@ If you have any questions or need to make changes, please contact us immediately
 🏔️ We look forward to an amazing trek with you!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -2091,7 +2119,7 @@ For support, contact us through our website or mobile app.
         </div>
 
         <div class="footer">
-            <p>Best regards,<br>The Trek Team</p>
+            <p>Best regards,<br>The Bengaluru Trekkers Team</p>
             <p style="margin-top: 20px; font-size: 12px; color: #9ca3af;">
                 This is an automated message. Please do not reply to this email.<br>
                 For support, contact us through our website or mobile app.
@@ -2144,7 +2172,7 @@ Due Date: ${booking.partialPaymentDetails?.finalPaymentDueDate ? new Date(bookin
 
 🔗 COMPLETE PAYMENT:
 Click the link below to complete your remaining payment:
-${process.env.FRONTEND_URL || 'https://yourwebsite.com'}/payment/${booking._id}
+${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/${booking._id}
 
 📞 NEED HELP?
 If you have any questions or need assistance with payment, please contact us immediately.
@@ -2152,7 +2180,7 @@ If you have any questions or need assistance with payment, please contact us imm
 🏔️ We look forward to having you on this amazing trek!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -2277,7 +2305,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -2320,7 +2351,7 @@ For support, contact us through our website or mobile app.
         </div>
 
         <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || 'https://yourwebsite.com'}/payment/${booking._id}" class="payment-button">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/${booking._id}" class="payment-button">
                 💳 Complete Payment
             </a>
         </div>
@@ -2334,7 +2365,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
             <p>This is an automated reminder. Please do not reply to this email.<br>
@@ -2427,7 +2458,7 @@ ${isRemainingBalance ? `
 ${!isRemainingBalance ? `
 🔗 COMPLETE REMAINING PAYMENT:
 Click the link below to complete your remaining payment:
-${process.env.FRONTEND_URL || 'https://yourwebsite.com'}/payment/${booking._id}
+${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/${booking._id}
 ` : ''}
 
 📞 NEED HELP?
@@ -2436,7 +2467,7 @@ If you have any questions or need assistance, please contact us immediately.
 🏔️ We look forward to having you on this amazing trek!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -2561,7 +2592,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -2640,7 +2674,7 @@ For support, contact us through our website or mobile app.
 
         ${!isRemainingBalance ? `
         <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL || 'https://yourwebsite.com'}/payment/${booking._id}" class="payment-button">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/${booking._id}" class="payment-button">
                 💳 Complete Remaining Payment
             </a>
         </div>
@@ -2657,7 +2691,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
             <p>This is an automated message. Please do not reply to this email.<br>
@@ -2744,7 +2778,7 @@ If you have any questions or need to make changes, please contact us immediately
 🏔️ We look forward to an amazing trek with you!
 
 Best regards,
-The Trek Team
+The Bengaluru Trekkers Team
 Your Adventure Awaits!
 
 ---
@@ -2862,7 +2896,10 @@ For support, contact us through our website or mobile app.
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🏔️ Bengaluru Trekkers</div>
+            <div class="logo">
+                <img src="https://s3.ap-south-1.amazonaws.com/bucket.bengalurutrekkers/images/1753156158875-logo-transperant.png" alt="Bengaluru Trekkers" style="height: 60px; width: auto; max-width: 200px; filter: brightness(0) invert(1); display: block; margin: 0 auto;">
+            </div>
+            <div class="logo-text">Bengaluru Trekkers</div>
             <div class="subtitle">Your Adventure Awaits</div>
         </div>
 
@@ -2924,7 +2961,7 @@ For support, contact us through our website or mobile app.
 
         <div class="footer">
             <p><strong>Best regards,</strong><br>
-            The Trek Team<br>
+            The Bengaluru Trekkers Team<br>
             Your Adventure Awaits!</p>
             
             <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">

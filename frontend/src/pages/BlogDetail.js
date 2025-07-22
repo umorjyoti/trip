@@ -126,7 +126,7 @@ function BlogDetail() {
         <meta property="og:image" content={blog.bannerImage} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={`${window.location.origin}/blogs/${blog.slug}`} />
-        <meta property="og:site_name" content="Trek Adventures" />
+        <meta property="og:site_name" content="Bengaluru Trekkers" />
         <meta property="article:published_time" content={blog.publishedAt} />
         <meta property="article:modified_time" content={blog.updatedAt} />
         <meta property="article:author" content={blog.author ? blog.author.name : ''} />
