@@ -662,6 +662,8 @@ const TrekPerformance = () => {
         isOpen={showRequestResponseModal}
         onClose={() => setShowRequestResponseModal(false)}
         booking={selectedBooking}
+        batchDetails={batchDetails}
+        trek={performanceData?.trek}
         onSuccess={handleRequestResponseSuccess}
       />
     </div>
