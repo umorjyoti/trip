@@ -536,7 +536,7 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
                     <span className="text-gray-500 ml-2">
                       - Pay ₹{trek.partialPayment.amountType === 'percentage' 
                         ? Math.round((totalPrice * trek.partialPayment.amount) / 100)
-                        : trek.partialPayment.amount} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
+                        : trek.partialPayment.amount * formData.numberOfParticipants} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
                     </span>
                   </label>
                 </div>
@@ -558,7 +558,7 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
                   <span className="font-medium text-emerald-600">
                     ₹{trek.partialPayment.amountType === 'percentage' 
                       ? Math.round((totalPrice * trek.partialPayment.amount) / 100)
-                      : trek.partialPayment.amount}
+                      : trek.partialPayment.amount * formData.numberOfParticipants}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
@@ -566,7 +566,7 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
                   <span className="font-medium text-gray-800">
                     ₹{(trek.partialPayment.amountType === 'percentage' 
                       ? totalPrice - Math.round((totalPrice * trek.partialPayment.amount) / 100)
-                      : totalPrice - trek.partialPayment.amount).toFixed(2)}
+                      : totalPrice - (trek.partialPayment.amount * formData.numberOfParticipants)).toFixed(2)}
                   </span>
                 </div>
                 <div className="text-xs text-gray-500 flex items-start">

@@ -438,6 +438,17 @@ function BookingPage() {
     return discountedPrice + gstAmount + gatewayCharges;
   };
 
+  const calculateInitialPayment = () => {
+    if (!trek.partialPayment || !trek.partialPayment.enabled) return 0;
+    
+    if (trek.partialPayment.amountType === 'percentage') {
+      return Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100);
+    } else {
+      // For fixed amount, multiply by number of participants
+      return trek.partialPayment.amount * formData.numberOfParticipants;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -779,9 +790,7 @@ function BookingPage() {
                       <label htmlFor="payment_partial" className="ml-2 block text-sm text-gray-900">
                         <span className="font-medium">Pay Partial Now & Pay Later</span>
                         <span className="text-gray-500 ml-2">
-                          - Pay ₹{trek.partialPayment.amountType === 'percentage' 
-                            ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                            : trek.partialPayment.amount} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
+                          - Pay ₹{calculateInitialPayment()} now, balance due {trek.partialPayment.finalPaymentDueDays} days before trek
                         </span>
                       </label>
                     </div>
@@ -934,17 +943,13 @@ function BookingPage() {
                     <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                       <dt className="text-sm font-medium text-gray-500">Initial Payment</dt>
                       <dd className="mt-1 text-sm text-emerald-600 font-medium sm:mt-0 sm:col-span-2">
-                        ₹{trek.partialPayment.amountType === 'percentage' 
-                          ? Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                          : trek.partialPayment.amount}
+                        ₹{calculateInitialPayment()}
                       </dd>
                     </div>
                     <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                       <dt className="text-sm font-medium text-gray-500">Remaining Balance</dt>
                       <dd className="mt-1 text-sm text-gray-800 font-medium sm:mt-0 sm:col-span-2">
-                        ₹{(trek.partialPayment.amountType === 'percentage' 
-                          ? calculateTotalPrice() - Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100)
-                          : calculateTotalPrice() - trek.partialPayment.amount).toFixed(2)}
+                        ₹{(calculateTotalPrice() - calculateInitialPayment()).toFixed(2)}
                       </dd>
                     </div>
                     <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">

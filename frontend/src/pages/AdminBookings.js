@@ -18,7 +18,7 @@ import RequestResponseModal from '../components/RequestResponseModal';
 import { formatCurrency, formatCurrencyWithSuffix, formatNumberWithSuffix, formatDate } from '../utils/formatters';
 import CustomTooltip from '../components/CustomTooltip';
 import MetricTooltip from '../components/MetricTooltip';
-import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaUsers } from 'react-icons/fa';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
@@ -58,7 +58,8 @@ function AdminBookings() {
     totalBookings: 0,
     confirmedBookings: 0,
     cancelledBookings: 0,
-    averageBookingValue: 0
+    averageBookingValue: 0,
+    todayParticipantsCount: 0
   });
 
   // Modal states
@@ -119,7 +120,8 @@ function AdminBookings() {
           totalBookings: data.stats.totalBookings || 0,
           confirmedBookings: data.stats.confirmedBookings || 0,
           cancelledBookings: data.stats.cancelledBookings || 0,
-          averageBookingValue: data.stats.averageBookingValue || 0
+          averageBookingValue: data.stats.averageBookingValue || 0,
+          todayParticipantsCount: data.stats.todayParticipantsCount || 0
         });
       }
     } catch (err) {
@@ -446,7 +448,7 @@ function AdminBookings() {
       </div>
 
       {/* Performance Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Total Revenue</h3>
           <MetricTooltip 
@@ -506,6 +508,19 @@ function AdminBookings() {
           >
             <p className="text-3xl font-bold text-yellow-600 cursor-help">
               {formatCurrencyWithSuffix(performanceMetrics.averageBookingValue)}
+            </p>
+          </MetricTooltip>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Today's Participants</h3>
+          <MetricTooltip 
+            value={performanceMetrics.todayParticipantsCount}
+            type="number"
+            icon={<FaUsers className="w-4 h-4" />}
+            theme="info"
+          >
+            <p className="text-3xl font-bold text-indigo-600 cursor-help">
+              {formatNumberWithSuffix(performanceMetrics.todayParticipantsCount)}
             </p>
           </MetricTooltip>
         </div>

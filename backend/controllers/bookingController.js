@@ -771,7 +771,12 @@ const getBookings = async (req, res) => {
 
     console.log("Filter query:", filterQuery);
 
-    const [bookings, total, stats] = await Promise.all([
+    // Calculate today's date range (00:01 to 24:00)
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 0, 1, 0);
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+    const [bookings, total, stats, todayStats] = await Promise.all([
       Booking.find(filterQuery)
         .populate("user", "name email")
         .populate("trek", "name batches")
@@ -809,7 +814,11 @@ const getBookings = async (req, res) => {
             }
           }
         }
-      ])
+      ]),
+      // Get today's bookings for participant count
+      Booking.find({
+        createdAt: { $gte: todayStart, $lte: todayEnd }
+      }).select('numberOfParticipants participantDetails status')
     ]);
 
     // Extract batch information from trek.batches for each booking
@@ -836,6 +845,21 @@ const getBookings = async (req, res) => {
       };
     });
 
+    // Calculate today's participants count
+    const todayParticipantsCount = todayStats.reduce((sum, booking) => {
+      if (booking.status === 'confirmed') {
+        // For confirmed bookings, check participantDetails and count non-cancelled participants
+        if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+          const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+          return sum + activeParticipants;
+        } else {
+          // Fallback to numberOfParticipants if no participantDetails
+          return sum + (booking.numberOfParticipants || 0);
+        }
+      }
+      return sum;
+    }, 0);
+
     // Extract stats from aggregation result
     const statsData = stats.length > 0 ? stats[0] : {
       totalRevenue: 0,
@@ -844,6 +868,9 @@ const getBookings = async (req, res) => {
       cancelledBookings: 0,
       averageBookingValue: 0
     };
+
+    // Add today's participants count to stats
+    statsData.todayParticipantsCount = todayParticipantsCount;
 
     res.json({
       bookings: enrichedBookings,
