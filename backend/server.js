@@ -192,12 +192,12 @@ app.patch('/api/treks/:id/toggle-status', (req, res) => {
 });
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/trekking-club', {
+mongoose.connect(process.env.MONGODB_URI_PRD, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
 .then(() => {
-  console.log('MongoDB connected');
+  console.log('MongoDB connected22222');
   
   // Setup cron jobs for automated tasks (only in production)
   if (process.env.NODE_ENV === 'production') {

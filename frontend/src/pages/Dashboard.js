@@ -245,7 +245,7 @@ const QuickActionCard = ({
 
 function Dashboard() {
   const { currentUser } = useAuth();
-  const permissions = currentUser?.group?.permissions;
+  const permissions = currentUser?.group?.permissions || { stats: {}, actions: {} };
   const [stats, setStats] = useState(null);
   const [treks, setTreks] = useState([]);
   const [regions, setRegions] = useState([]);
@@ -283,6 +283,7 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     setLoading(true);
+    setError(null);
     try {
       console.log("Fetching dashboard stats...");
       const data = await getDashboardStats();
@@ -297,21 +298,32 @@ function Dashboard() {
       setStats(data);
 
       // Fetch recent treks
-      const treksData = await getTreks({ limit: 5, sort: "createdAt-desc" });
-      console.log("Treks data received:", treksData);
+      let treksArray = [];
+      try {
+        const treksData = await getTreks({ limit: 5, sort: "createdAt-desc" });
+        console.log("Treks data received:", treksData);
 
-      // Ensure treksData is an array before using filter
-      const treksArray = Array.isArray(treksData)
-        ? treksData
-        : treksData && Array.isArray(treksData.treks)
-        ? treksData.treks
-        : [];
+        // Ensure treksData is an array before using filter
+        treksArray = Array.isArray(treksData)
+          ? treksData
+          : treksData && Array.isArray(treksData.treks)
+          ? treksData.treks
+          : [];
+      } catch (trekError) {
+        console.error("Error fetching treks:", trekError);
+        treksArray = [];
+      }
 
       setTreks(treksArray);
 
       // Fetch regions
-      const regionsData = await getRegions();
-      setRegions(regionsData);
+      try {
+        const regionsData = await getRegions();
+        setRegions(Array.isArray(regionsData) ? regionsData : []);
+      } catch (regionError) {
+        console.error("Error fetching regions:", regionError);
+        setRegions([]);
+      }
 
       // Use the backend dashboard stats for total sales and bookings
       // The backend already calculates these correctly
@@ -323,37 +335,66 @@ function Dashboard() {
 
       // For total bookings count, we'll use the backend data
       // But we still need to fetch all bookings for the array
-      const allBookingsData = await getAllBookings();
-      const bookingsArray = Array.isArray(allBookingsData)
-        ? allBookingsData
-        : [];
-      
-      setAllBookings(bookingsArray);
+      try {
+        const allBookingsData = await getAllBookings();
+        const bookingsArray = Array.isArray(allBookingsData)
+          ? allBookingsData
+          : [];
+        setAllBookings(bookingsArray);
+      } catch (bookingsError) {
+        console.error("Error fetching all bookings:", bookingsError);
+        setAllBookings([]);
+      }
 
       // Fetch recent bookings for the current user's view
-      const userBookingsData = await getUserBookings();
-      setBookings(Array.isArray(userBookingsData) ? userBookingsData : []);
+      try {
+        const userBookingsData = await getUserBookings();
+        setBookings(Array.isArray(userBookingsData) ? userBookingsData : []);
+      } catch (userBookingsError) {
+        console.error("Error fetching user bookings:", userBookingsError);
+        setBookings([]);
+      }
 
       // Fetch all users
-      const usersData = await getAllUsers();
-      setUsers(Array.isArray(usersData) ? usersData : []);
+      try {
+        const usersData = await getAllUsers();
+        setUsers(Array.isArray(usersData) ? usersData : []);
+      } catch (usersError) {
+        console.error("Error fetching users:", usersError);
+        setUsers([]);
+      }
 
       // Calculate ongoing treks - make sure we're working with an array
-      const today = new Date();
-      const ongoingTreksCount = treksArray.filter((trek) => {
-        if (!trek.batches || !Array.isArray(trek.batches)) return false;
+      try {
+        const today = new Date();
+        const ongoingTreksCount = treksArray.filter((trek) => {
+          if (!trek || !trek.batches || !Array.isArray(trek.batches)) return false;
 
-        return trek.batches.some((batch) => {
-          const startDate = new Date(batch.startDate);
-          const endDate = new Date(batch.endDate);
-          return startDate <= today && today <= endDate;
-        });
-      }).length;
+          return trek.batches.some((batch) => {
+            if (!batch || !batch.startDate || !batch.endDate) return false;
+            const startDate = new Date(batch.startDate);
+            const endDate = new Date(batch.endDate);
+            return startDate <= today && today <= endDate;
+          });
+        }).length;
 
-      setOngoingTreks(ongoingTreksCount);
+        setOngoingTreks(ongoingTreksCount);
+      } catch (ongoingError) {
+        console.error("Error calculating ongoing treks:", ongoingError);
+        setOngoingTreks(0);
+      }
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
       setError("Failed to load dashboard data. Please try again later.");
+      // Set default values to prevent further errors
+      setStats({ totalTreks: 0, totalBookings: 0, seasons: [], regions: [] });
+      setTreks([]);
+      setRegions([]);
+      setBookings([]);
+      setAllBookings([]);
+      setUsers([]);
+      setSalesStats({ totalSales: 0, confirmedBookings: 0, cancelledBookings: 0 });
+      setOngoingTreks(0);
     } finally {
       setLoading(false);
     }
@@ -361,7 +402,43 @@ function Dashboard() {
 
   // Prepare chart data
   const prepareSeasonData = () => {
-    if (!stats || !stats.seasons || stats.seasons.length === 0) {
+    try {
+      if (!stats || !stats.seasons || !Array.isArray(stats.seasons) || stats.seasons.length === 0) {
+        return {
+          labels: ["Spring", "Summer", "Autumn", "Winter"],
+          datasets: [
+            {
+              data: [0, 0, 0, 0],
+              backgroundColor: [
+                "rgba(255, 99, 132, 0.6)",
+                "rgba(255, 206, 86, 0.6)",
+                "rgba(54, 162, 235, 0.6)",
+                "rgba(75, 192, 192, 0.6)",
+              ],
+              borderWidth: 1,
+            },
+          ],
+        };
+      }
+
+      return {
+        labels: stats.seasons.map((item) => item?._id || item?.season || 'Unknown'),
+        datasets: [
+          {
+            data: stats.seasons.map((item) => item?.count || 0),
+            backgroundColor: [
+              "rgba(255, 99, 132, 0.6)",
+              "rgba(255, 206, 86, 0.6)",
+              "rgba(54, 162, 235, 0.6)",
+              "rgba(75, 192, 192, 0.6)",
+              "rgba(153, 102, 255, 0.6)",
+            ],
+            borderWidth: 1,
+          },
+        ],
+      };
+    } catch (error) {
+      console.error("Error preparing season data:", error);
       return {
         labels: ["Spring", "Summer", "Autumn", "Winter"],
         datasets: [
@@ -378,27 +455,39 @@ function Dashboard() {
         ],
       };
     }
-
-    return {
-      labels: stats.seasons.map((item) => item._id || item.season),
-      datasets: [
-        {
-          data: stats.seasons.map((item) => item.count),
-          backgroundColor: [
-            "rgba(255, 99, 132, 0.6)",
-            "rgba(255, 206, 86, 0.6)",
-            "rgba(54, 162, 235, 0.6)",
-            "rgba(75, 192, 192, 0.6)",
-            "rgba(153, 102, 255, 0.6)",
-          ],
-          borderWidth: 1,
-        },
-      ],
-    };
   };
 
   const prepareRegionData = () => {
-    if (!stats || !stats.regions || stats.regions.length === 0) {
+    try {
+      if (!stats || !stats.regions || !Array.isArray(stats.regions) || stats.regions.length === 0) {
+        return {
+          labels: ["No regions yet"],
+          datasets: [
+            {
+              label: "Number of Treks",
+              data: [0],
+              backgroundColor: "rgba(75, 192, 192, 0.6)",
+              borderColor: "rgba(75, 192, 192, 1)",
+              borderWidth: 1,
+            },
+          ],
+        };
+      }
+
+      return {
+        labels: stats.regions.map((item) => item?._id || item?.region || 'Unknown'),
+        datasets: [
+          {
+            label: "Number of Treks",
+            data: stats.regions.map((item) => item?.count || 0),
+            backgroundColor: "rgba(75, 192, 192, 0.6)",
+            borderColor: "rgba(75, 192, 192, 1)",
+            borderWidth: 1,
+          },
+        ],
+      };
+    } catch (error) {
+      console.error("Error preparing region data:", error);
       return {
         labels: ["No regions yet"],
         datasets: [
@@ -412,19 +501,6 @@ function Dashboard() {
         ],
       };
     }
-
-    return {
-      labels: stats.regions.map((item) => item._id || item.region),
-      datasets: [
-        {
-          label: "Number of Treks",
-          data: stats.regions.map((item) => item.count),
-          backgroundColor: "rgba(75, 192, 192, 0.6)",
-          borderColor: "rgba(75, 192, 192, 1)",
-          borderWidth: 1,
-        },
-      ],
-    };
   };
 
   const handleTrekDeleted = (deletedId) => {
@@ -506,8 +582,8 @@ function Dashboard() {
     },
     {
       title: "Total Regions",
-      value: formatNumberWithSuffix(regions?.length || 0),
-      rawValue: regions?.length || 0,
+      value: formatNumberWithSuffix(Array.isArray(regions) ? regions.length : 0),
+      rawValue: Array.isArray(regions) ? regions.length : 0,
       icon: FaGlobe,
       color: "purple",
       link: "/admin/regions",
@@ -515,16 +591,16 @@ function Dashboard() {
     },
     {
       title: "Total Sales",
-      value: formatCurrencyWithSuffix(salesStats.totalSales),
-      rawValue: salesStats.totalSales,
+      value: formatCurrencyWithSuffix(salesStats?.totalSales || 0),
+      rawValue: salesStats?.totalSales || 0,
       icon: FaChartLine,
       color: "emerald",
       permissionKey: "sales",
     },
     {
       title: "Active Users",
-      value: formatNumberWithSuffix(users.length),
-      rawValue: users.length,
+      value: formatNumberWithSuffix(Array.isArray(users) ? users.length : 0),
+      rawValue: Array.isArray(users) ? users.length : 0,
       icon: FaUsers,
       color: "purple",
       link: "/admin/users",
@@ -532,8 +608,8 @@ function Dashboard() {
     },
     {
       title: "Ongoing Treks",
-      value: formatNumberWithSuffix(ongoingTreks),
-      rawValue: ongoingTreks,
+      value: formatNumberWithSuffix(ongoingTreks || 0),
+      rawValue: ongoingTreks || 0,
       icon: FaHiking,
       color: "emerald",
       permissionKey: "ongoingTreks",
@@ -658,7 +734,8 @@ function Dashboard() {
     }
   ];
 
-  if (loading) {
+  // Show loading spinner while user data is loading or while fetching dashboard data
+  if (loading || !currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner />
@@ -714,7 +791,7 @@ function Dashboard() {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {statsConfig
-            .filter((stat) => permissions.stats[stat.permissionKey])
+            .filter((stat) => permissions?.stats?.[stat.permissionKey] || !stat.permissionKey)
             .map((stat, idx) => (
               <StatCard
                 key={idx}
@@ -737,7 +814,7 @@ function Dashboard() {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
           {quickActions
-            .filter((action) => permissions.actions[action.permissionKey])
+            .filter((action) => permissions?.actions?.[action.permissionKey] || !action.permissionKey)
             .map((action, index) => (
               <QuickActionCard key={index} {...action} />
             ))}
@@ -757,10 +834,10 @@ function Dashboard() {
           </Link>
         </div>
 
-        {treks.length > 0 ? (
+        {Array.isArray(treks) && treks.length > 0 ? (
           <div className="bg-white shadow overflow-hidden rounded-lg">
             <ul className="divide-y divide-gray-200">
-              {treks.map((trek) => (
+              {treks.filter(trek => trek && trek._id).map((trek) => (
                 <li key={trek._id}>
                   <Link
                     to={`/admin/treks/edit/${trek._id}`}
@@ -769,7 +846,7 @@ function Dashboard() {
                     <div className="px-3 py-3 sm:px-4 sm:py-4">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm sm:text-base font-medium text-emerald-600 truncate flex-1 mr-2">
-                          {trek.name}
+                          {trek.name || 'Unnamed Trek'}
                         </p>
                         <div className="flex-shrink-0">
                           <p
@@ -798,7 +875,7 @@ function Dashboard() {
                                 clipRule="evenodd"
                               />
                             </svg>
-                            {trek.regionName}
+                            {trek.regionName || 'No Region'}
                           </p>
                           <p className="flex items-center text-xs sm:text-sm text-gray-500">
                             <svg
@@ -813,7 +890,7 @@ function Dashboard() {
                                 clipRule="evenodd"
                               />
                             </svg>
-                            {trek.duration} days
+                            {trek.duration || 0} days
                           </p>
                         </div>
                         <div className="flex items-center text-xs sm:text-sm text-gray-500">
@@ -831,7 +908,7 @@ function Dashboard() {
                           </svg>
                           <p>
                             Created on{" "}
-                            {new Date(trek.createdAt).toLocaleDateString()}
+                            {trek.createdAt ? new Date(trek.createdAt).toLocaleDateString() : 'Unknown'}
                           </p>
                         </div>
                       </div>
