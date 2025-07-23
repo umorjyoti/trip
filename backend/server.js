@@ -197,7 +197,7 @@ mongoose.connect(process.env.MONGODB_URI_PRD, {
   useUnifiedTopology: true
 })
 .then(() => {
-  console.log('MongoDB connected22222');
+  console.log('MongoDB connected to production database');
   
   // Setup cron jobs for automated tasks (only in production)
   if (process.env.NODE_ENV === 'production') {
