@@ -192,7 +192,7 @@ app.patch('/api/treks/:id/toggle-status', (req, res) => {
 });
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI_PRD, {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
