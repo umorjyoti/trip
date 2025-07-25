@@ -109,14 +109,29 @@ blogSchema.index({ slug: 1 }, { unique: true });
 blogSchema.index({ region: 1, status: 1, publishedAt: -1 });
 
 // Create slug from title before saving
-blogSchema.pre('save', function(next) {
-  // Always generate slug if it doesn't exist or if title is modified
-  if (!this.slug || this.isModified('title')) {
-    this.slug = this.title
+blogSchema.pre('save', async function(next) {
+  // Always generate slug if title is provided
+  if (this.title) {
+    let baseSlug = this.title
       .toLowerCase()
       .replace(/[^a-zA-Z0-9]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+    
+    // Handle uniqueness
+    let slug = baseSlug;
+    let counter = 1;
+    
+    while (true) {
+      const existingBlog = await this.constructor.findOne({ slug: slug, _id: { $ne: this._id } });
+      if (!existingBlog) {
+        break;
+      }
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    
+    this.slug = slug;
   }
   
   // Set publishedAt when status changes to published
