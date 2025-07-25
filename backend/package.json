@@ -12,7 +12,9 @@
     "test-reminder": "node scripts/testReminder.js",
     "test-batch-id": "node scripts/testBatchId.js",
     "check-env": "node scripts/checkEnv.js",
-    "test-models": "node scripts/testModels.js"
+    "test-models": "node scripts/testModels.js",
+    "db:index": "node scripts/createDatabaseIndexes.js create",
+    "db:index-list": "node scripts/createDatabaseIndexes.js list"
   },
   "dependencies": {
     "aws-sdk": "^2.1692.0",
