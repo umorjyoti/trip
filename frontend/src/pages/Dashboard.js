@@ -342,11 +342,17 @@ function Dashboard() {
           : allBookingsData?.bookings || [];
         setAllBookings(bookingsArray);
         
-        // Update sales stats from bookings API response
-        if (allBookingsData?.stats?.totalRevenue !== undefined) {
+        // Update sales stats and bookings count from bookings API response
+        if (allBookingsData?.stats) {
           setSalesStats(prev => ({
             ...prev,
             totalSales: allBookingsData.stats.totalRevenue || 0
+          }));
+          
+          // Update stats with bookings data from the bookings API
+          setStats(prev => ({
+            ...prev,
+            totalBookings: allBookingsData.stats.totalBookings || 0
           }));
         }
       } catch (bookingsError) {
