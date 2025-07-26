@@ -566,7 +566,7 @@ function AdminBookings() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
             >
               <option value="">All Batches</option>
-              {selectedTrek && treks.find(t => t._id === selectedTrek)?.batches.map(batch => (
+              {selectedTrek && treks.find(t => t._id === selectedTrek)?.batches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map(batch => (
                 <option key={batch._id} value={batch._id}>
                   {new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()}
                 </option>

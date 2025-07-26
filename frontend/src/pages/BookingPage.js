@@ -933,7 +933,7 @@ function BookingPage() {
             </div>
             <div className="border-t border-gray-200">
               <div className="divide-y divide-gray-200">
-                {trek.batches.map((batch) => {
+                {trek.batches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((batch) => {
                   const isFull =
                     batch.currentParticipants >= batch.maxParticipants;
                   const isSelected = selectedBatch?._id === batch._id;

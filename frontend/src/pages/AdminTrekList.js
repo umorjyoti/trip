@@ -500,7 +500,7 @@ function AdminTrekList() {
                             </div>
                           )}
                           {/* Batch Cards */}
-                          {trek.batches && trek.batches.length > 0 && trek.batches.map((batch) => (
+                          {trek.batches && trek.batches.length > 0 && [...trek.batches].sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((batch) => (
                             <div
                               key={batch._id}
                               className={`bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative border-2 border-transparent ${

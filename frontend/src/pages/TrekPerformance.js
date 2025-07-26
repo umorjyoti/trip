@@ -336,7 +336,7 @@ const TrekPerformance = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {performanceData.batches.map((batch) => (
+              {performanceData.batches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((batch) => (
                 <tr 
                   key={batch._id} 
                   onClick={() => handleBatchClick(batch)}
