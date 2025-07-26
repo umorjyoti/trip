@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: trekking_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - trekking_network
+
+  # Gateway Service
+  gateway-service:
+    build: ./gateway-service
+    container_name: gateway_service
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    depends_on:
+      - user-service
+      - trek-service
+      - batch-service
+      - booking-service
+      - payment-service
+      - content-service
+      - admin-service
+      - notification-service
+    networks:
+      - trekking_network
+
+  # User Service
+  user-service:
+    build: ./user-service
+    container_name: user_service
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_user?authSource=admin
+    depends_on:
+      - mongodb
+      - notification-service
+    networks:
+      - trekking_network
+
+  # Trek Service
+  trek-service:
+    build: ./trek-service
+    container_name: trek_service
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_trek?authSource=admin
+    depends_on:
+      - mongodb
+    networks:
+      - trekking_network
+
+  # Batch Service
+  batch-service:
+    build: ./batch-service
+    container_name: batch_service
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_batch?authSource=admin
+    depends_on:
+      - mongodb
+      - trek-service
+    networks:
+      - trekking_network
+
+  # Booking Service
+  booking-service:
+    build: ./booking-service
+    container_name: booking_service
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_booking?authSource=admin
+    depends_on:
+      - mongodb
+      - user-service
+      - trek-service
+      - batch-service
+      - notification-service
+    networks:
+      - trekking_network
+
+  # Payment Service
+  payment-service:
+    build: ./payment-service
+    container_name: payment_service
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_payment?authSource=admin
+    depends_on:
+      - mongodb
+      - booking-service
+      - notification-service
+    networks:
+      - trekking_network
+
+  # Content Service
+  content-service:
+    build: ./content-service
+    container_name: content_service
+    restart: unless-stopped
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=development
+      - PORT=3006
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_content?authSource=admin
+    depends_on:
+      - mongodb
+      - user-service
+      - notification-service
+    networks:
+      - trekking_network
+
+  # Admin Service
+  admin-service:
+    build: ./admin-service
+    container_name: admin_service
+    restart: unless-stopped
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=development
+      - PORT=3007
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_admin?authSource=admin
+    depends_on:
+      - mongodb
+      - user-service
+      - trek-service
+      - batch-service
+      - booking-service
+      - payment-service
+      - content-service
+    networks:
+      - trekking_network
+
+  # Notification Service
+  notification-service:
+    build: ./notification-service
+    container_name: notification_service
+    restart: unless-stopped
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=development
+      - PORT=3008
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/trekking_club_notification?authSource=admin
+    depends_on:
+      - mongodb
+    networks:
+      - trekking_network
+
+volumes:
+  mongodb_data:
+
+networks:
+  trekking_network:
+    driver: bridge

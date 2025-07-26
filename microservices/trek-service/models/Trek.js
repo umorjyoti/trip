@@ -1,0 +1,503 @@
+const mongoose = require('mongoose');
+
+// Create an add-on schema
+const AddOnSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  isEnabled: {
+    type: Boolean,
+    default: true
+  }
+}, { _id: false });
+
+// Create an itinerary day schema
+const ItineraryDaySchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  meals: {
+    type: String,
+    default: 'Breakfast, Lunch, Dinner'
+  },
+  accommodation: {
+    type: String,
+    default: ''
+  },
+  activities: [String]
+});
+
+// Create a custom field schema
+const CustomFieldSchema = new mongoose.Schema({
+  fieldName: {
+    type: String,
+    required: true
+  },
+  fieldType: {
+    type: String,
+    enum: ['text', 'number', 'select', 'checkbox'],
+    required: true
+  },
+  isRequired: {
+    type: Boolean,
+    default: false
+  },
+  options: [String],
+  description: String,
+  placeholder: String
+}, { _id: false });
+
+// Create a things to pack schema
+const ThingsToPackSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true
+  },
+  description: String,
+  icon: String
+}, { _id: false });
+
+// Create an activity schema for weekend getaways
+const ActivitySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  duration: {
+    type: String
+  },
+  image: {
+    type: String
+  }
+});
+
+// Create a testimonial schema for weekend getaways
+const TestimonialSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  rating: {
+    type: Number,
+    min: 1,
+    max: 5
+  },
+  image: {
+    type: String
+  }
+});
+
+// Create a mini blog schema for weekend getaways
+const MiniBlogSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true
+  },
+  content: {
+    type: String,
+    required: true
+  },
+  author: {
+    type: String
+  },
+  date: {
+    type: Date,
+    default: Date.now
+  },
+  image: {
+    type: String
+  }
+});
+
+// Create a gallery item schema
+const GalleryItemSchema = new mongoose.Schema({
+  image: {
+    type: String,
+    required: true
+  },
+  caption: {
+    type: String
+  },
+  date: {
+    type: Date
+  },
+  category: {
+    type: String,
+    enum: ['scenery', 'activities', 'party', 'food', 'accommodation', 'people']
+  }
+});
+
+const TrekSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  slug: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  region: {
+    type: String,
+    required: true
+  },
+  regionName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  difficulty: {
+    type: String,
+    enum: ['Easy', 'Moderate', 'Challenging', 'Difficult', 'Extreme'],
+    required: true
+  },
+  duration: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+  season: {
+    type: String,
+    enum: ['Spring', 'Summer', 'Monsoon', 'Autumn', 'Winter', 'Year-round'],
+    default: 'Year-round'
+  },
+  distance: {
+    type: Number,
+    default: 0
+  },
+  maxAltitude: {
+    type: Number
+  },
+  displayPrice: {
+    type: Number,
+    required: true
+  },
+  strikedPrice: {
+    type: Number
+  },
+  images: [String],
+  itinerary: [ItineraryDaySchema],
+  thingsToPack: [ThingsToPackSchema],
+  includes: [String],
+  excludes: [String],
+  customFields: [CustomFieldSchema],
+  isEnabled: {
+    type: Boolean,
+    default: true
+  },
+  // Custom trek fields
+  isCustom: {
+    type: Boolean,
+    default: false
+  },
+  customLinkExpiry: {
+    type: Date
+  },
+  customAccessToken: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  category: {
+    type: String,
+    enum: ['all-treks', 'monsoon-treks', 'sunrise-treks', 'himalayan-treks', 'backpacking-trips', 'long-weekend'],
+    default: 'all-treks'
+  },
+  startingPoint: {
+    type: String,
+    required: true
+  },
+  endingPoint: {
+    type: String,
+    required: true
+  },
+  isWeekendGetaway: {
+    type: Boolean,
+    default: false
+  },
+  weekendHighlights: {
+    type: [String],
+    default: []
+  },
+  transportation: {
+    type: String,
+    default: ''
+  },
+  departureTime: {
+    type: String,
+    default: ''
+  },
+  returnTime: {
+    type: String,
+    default: ''
+  },
+  meetingPoint: {
+    type: String,
+    default: ''
+  },
+  // New fields for enhanced weekend getaway page
+  activities: [ActivitySchema],
+  testimonials: [TestimonialSchema],
+  miniBlogs: [MiniBlogSchema],
+  gallery: [GalleryItemSchema],
+  partyDescription: {
+    type: String,
+    default: ''
+  },
+  partyImages: [String],
+  partyHighlights: [String],
+  foodDescription: {
+    type: String,
+    default: ''
+  },
+  foodImages: [String],
+  accommodationDetails: {
+    type: String,
+    default: ''
+  },
+  accommodationImages: [String],
+  addOns: {
+    type: [AddOnSchema],
+    default: []
+  },
+  itineraryPdfUrl: {
+    type: String
+  },
+  gstPercent: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  gstType: {
+    type: String,
+    enum: ['included', 'excluded'],
+    default: 'excluded'
+  },
+  gatewayPercent: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  gatewayType: {
+    type: String,
+    enum: ['customer', 'self'],
+    default: 'customer'
+  },
+  highlights: {
+    type: [String],
+    required: true,
+    validate: {
+      validator: function(v) {
+        return v.length > 0 && v.every(item => item.trim().length > 0);
+      },
+      message: 'At least one highlight is required'
+    }
+  },
+  faqs: [{
+    question: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    answer: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  }],
+  // SEO fields
+  metaTitle: {
+    type: String,
+    trim: true
+  },
+  metaDescription: {
+    type: String,
+    trim: true
+  },
+  metaKeywords: [String],
+  // Statistics
+  viewCount: {
+    type: Number,
+    default: 0
+  },
+  bookingCount: {
+    type: Number,
+    default: 0
+  },
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  reviewCount: {
+    type: Number,
+    default: 0
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Indexes for better performance
+TrekSchema.index({ slug: 1 });
+TrekSchema.index({ region: 1 });
+TrekSchema.index({ difficulty: 1 });
+TrekSchema.index({ category: 1 });
+TrekSchema.index({ isEnabled: 1 });
+TrekSchema.index({ displayPrice: 1 });
+TrekSchema.index({ name: 'text', description: 'text' });
+
+// Virtual for trek URL
+TrekSchema.virtual('url').get(function() {
+  return `/treks/${this.slug}`;
+});
+
+// Virtual for price range
+TrekSchema.virtual('priceRange').get(function() {
+  if (this.strikedPrice && this.strikedPrice > this.displayPrice) {
+    return {
+      min: this.displayPrice,
+      max: this.strikedPrice,
+      hasDiscount: true,
+      discount: Math.round(((this.strikedPrice - this.displayPrice) / this.strikedPrice) * 100)
+    };
+  }
+  return {
+    min: this.displayPrice,
+    max: this.displayPrice,
+    hasDiscount: false,
+    discount: 0
+  };
+});
+
+// Virtual for difficulty level
+TrekSchema.virtual('difficultyLevel').get(function() {
+  const levels = {
+    'Easy': 1,
+    'Moderate': 2,
+    'Challenging': 3,
+    'Difficult': 4,
+    'Extreme': 5
+  };
+  return levels[this.difficulty] || 1;
+});
+
+// Pre-save middleware to generate slug from name
+TrekSchema.pre('save', function(next) {
+  if (this.isModified('name') || this.isNew) {
+    this.slug = this.name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters except spaces and hyphens
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+      .trim('-'); // Remove leading/trailing hyphens
+  }
+  next();
+});
+
+// Pre-save middleware to update meta fields if not set
+TrekSchema.pre('save', function(next) {
+  if (!this.metaTitle) {
+    this.metaTitle = this.name;
+  }
+  if (!this.metaDescription) {
+    this.metaDescription = this.description.substring(0, 160);
+  }
+  next();
+});
+
+// Instance method to increment view count
+TrekSchema.methods.incrementViewCount = function() {
+  this.viewCount += 1;
+  return this.save();
+};
+
+// Instance method to update rating
+TrekSchema.methods.updateRating = function(newRating) {
+  const totalRating = (this.averageRating * this.reviewCount) + newRating;
+  this.reviewCount += 1;
+  this.averageRating = totalRating / this.reviewCount;
+  return this.save();
+};
+
+// Static method to find by difficulty
+TrekSchema.statics.findByDifficulty = function(difficulty) {
+  return this.find({ difficulty, isEnabled: true });
+};
+
+// Static method to find by region
+TrekSchema.statics.findByRegion = function(region) {
+  return this.find({ region, isEnabled: true });
+};
+
+// Static method to find by category
+TrekSchema.statics.findByCategory = function(category) {
+  return this.find({ category, isEnabled: true });
+};
+
+// Static method to search treks
+TrekSchema.statics.searchTreks = function(searchTerm) {
+  return this.find({
+    $text: { $search: searchTerm },
+    isEnabled: true
+  }).sort({ score: { $meta: 'textScore' } });
+};
+
+// Static method to find popular treks
+TrekSchema.statics.findPopular = function(limit = 10) {
+  return this.find({ isEnabled: true })
+    .sort({ bookingCount: -1, averageRating: -1 })
+    .limit(limit);
+};
+
+// Static method to find featured treks
+TrekSchema.statics.findFeatured = function(limit = 5) {
+  return this.find({ 
+    isEnabled: true,
+    averageRating: { $gte: 4 },
+    bookingCount: { $gte: 10 }
+  })
+  .sort({ averageRating: -1, bookingCount: -1 })
+  .limit(limit);
+};
+
+module.exports = mongoose.model('Trek', TrekSchema);
