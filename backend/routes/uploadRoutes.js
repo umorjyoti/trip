@@ -171,52 +171,59 @@ router.delete('/:key(*)', async (req, res) => {
     }
 
     // Update all treks that might be using this image
-    const trekUpdateResult = await Trek.updateMany(
-      { 
-        $or: [
-          { imageUrl: imageUrl },
-          { images: imageUrl }
-        ]
-      },
-      { 
-        $pull: { images: imageUrl },
-        $set: { 
-          imageUrl: { 
-            $cond: {
-              if: { $eq: ['$imageUrl', imageUrl] },
-              then: 'default-trek.jpg',
-              else: '$imageUrl'
-            }
-          }
-        }
+    const treksToUpdate = await Trek.find({
+      $or: [
+        { imageUrl: imageUrl },
+        { images: imageUrl }
+      ]
+    });
+
+    let trekModifiedCount = 0;
+    for (const trek of treksToUpdate) {
+      const updateData = { $pull: { images: imageUrl } };
+      
+      // If the main imageUrl matches, set it to default
+      if (trek.imageUrl === imageUrl) {
+        updateData.$set = { imageUrl: 'default-trek.jpg' };
       }
-    );
+      
+      const result = await Trek.updateOne({ _id: trek._id }, updateData);
+      if (result.modifiedCount > 0) {
+        trekModifiedCount++;
+      }
+    }
 
     // Update all regions that might be using this image
-    const regionUpdateResult = await Region.updateMany(
-      { 
-        $or: [
-          { coverImage: imageUrl },
-          { images: imageUrl },
-          { descriptionImages: imageUrl }
-        ]
-      },
-      { 
+    const regionsToUpdate = await Region.find({
+      $or: [
+        { coverImage: imageUrl },
+        { images: imageUrl },
+        { descriptionImages: imageUrl }
+      ]
+    });
+
+    let regionModifiedCount = 0;
+    for (const region of regionsToUpdate) {
+      const updateData = { 
         $pull: { 
           images: imageUrl,
           descriptionImages: imageUrl
-        },
-        $set: { 
-          coverImage: { 
-            $cond: {
-              if: { $eq: ['$coverImage', imageUrl] },
-              then: 'default-region.jpg',
-              else: '$coverImage'
-            }
-          }
         }
+      };
+      
+      // If the coverImage matches, set it to default
+      if (region.coverImage === imageUrl) {
+        updateData.$set = { coverImage: 'default-region.jpg' };
       }
-    );
+      
+      const result = await Region.updateOne({ _id: region._id }, updateData);
+      if (result.modifiedCount > 0) {
+        regionModifiedCount++;
+      }
+    }
+
+    const trekUpdateResult = { matchedCount: treksToUpdate.length, modifiedCount: trekModifiedCount };
+    const regionUpdateResult = { matchedCount: regionsToUpdate.length, modifiedCount: regionModifiedCount };
 
     console.log('13. MongoDB update results:', {
       trekMatchedCount: trekUpdateResult.matchedCount,
