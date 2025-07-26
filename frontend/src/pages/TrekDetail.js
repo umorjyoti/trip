@@ -47,7 +47,7 @@ const BatchesTabView = ({
   navigate,
   trekId,
 }) => {
-  // Group batches by month
+  // Group batches by month and sort by start date within each month
   const batchesByMonth = batches.reduce((acc, batch) => {
     const startDate = parseISO(batch.startDate);
     const monthKey = format(startDate, "yyyy-MM");
@@ -57,6 +57,15 @@ const BatchesTabView = ({
     acc[monthKey].push(batch);
     return acc;
   }, {});
+
+  // Sort batches within each month by start date
+  Object.keys(batchesByMonth).forEach(monthKey => {
+    batchesByMonth[monthKey].sort((a, b) => {
+      const dateA = parseISO(a.startDate);
+      const dateB = parseISO(b.startDate);
+      return dateA - dateB;
+    });
+  });
 
   // Get unique months from batches and sort them
   const uniqueMonths = Object.keys(batchesByMonth)
@@ -819,11 +828,18 @@ function TrekDetail() {
       );
     }
 
+    // Sort batches by start date
+    const sortedBatches = [...trek.batches].sort((a, b) => {
+      const dateA = parseISO(a.startDate);
+      const dateB = parseISO(b.startDate);
+      return dateA - dateB;
+    });
+
     return (
       <div className="mt-6 border-t border-gray-200 pt-6">
         <h3 className="text-lg font-medium text-gray-900">Upcoming Batches</h3>
         <div className="mt-4 space-y-4">
-          {trek.batches.map((batch) => {
+          {sortedBatches.map((batch) => {
             const isFull = (batch.currentParticipants) >= batch.maxParticipants;
             const isDisabled = isTrekDisabled || isFull;
             const spotsLeft = batch.maxParticipants - (batch.currentParticipants);
