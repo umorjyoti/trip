@@ -110,6 +110,17 @@ const createCustomTrekBooking = async (req, res) => {
     // Save booking
     await booking.save();
 
+    // Update user's phone number if they don't have one
+    if (req.user && (!req.user.phone || req.user.phone.trim() === '') && userDetails.phone) {
+      try {
+        await User.findByIdAndUpdate(req.user._id, { phone: userDetails.phone });
+        console.log(`Updated phone number for user ${req.user._id} from custom trek booking input`);
+      } catch (updateError) {
+        console.error('Error updating user phone number:', updateError);
+        // Don't fail the booking if phone update fails
+      }
+    }
+
     // Only update batch participants count if booking is confirmed/paid (not pending_payment)
     if (booking.status === 'confirmed' || booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
       await updateBatchParticipantCount(trek._id, customBatch._id);
@@ -374,13 +385,24 @@ const createBooking = async (req, res) => {
         }
       });
 
-      // Save booking
-      await booking.save();
+          // Save booking
+    await booking.save();
 
-      // Only update batch participants count if booking is confirmed/paid (not pending_payment)
-      if (booking.status === 'confirmed' || booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
-        await updateBatchParticipantCount(trek._id, batch._id);
+    // Update user's phone number if they don't have one
+    if (req.user && (!req.user.phone || req.user.phone.trim() === '') && userDetails.phone) {
+      try {
+        await User.findByIdAndUpdate(req.user._id, { phone: userDetails.phone });
+        console.log(`Updated phone number for user ${req.user._id} from booking input`);
+      } catch (updateError) {
+        console.error('Error updating user phone number:', updateError);
+        // Don't fail the booking if phone update fails
       }
+    }
+
+    // Only update batch participants count if booking is confirmed/paid (not pending_payment)
+    if (booking.status === 'confirmed' || booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+      await updateBatchParticipantCount(trek._id, batch._id);
+    }
 
       console.log(`Created new booking ${booking._id} for user ${req.user._id}`);
     }
