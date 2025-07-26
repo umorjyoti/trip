@@ -24,6 +24,9 @@ const recalculateBatchParticipants = async (batchId, trekId) => {
           booking.participantDetails.filter(p => !p.isCancelled).length : 
           booking.numberOfParticipants || 0;
         totalActiveParticipants += activeParticipants;
+      } else if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+        // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
+        totalActiveParticipants += booking.numberOfParticipants || 0;
       }
     });
 

@@ -191,8 +191,8 @@ exports.getTrekById = async (req, res) => {
       const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
         if (!booking) return sum;
         
-        if (booking.status === 'payment_completed') {
-          // For payment_completed bookings, use numberOfParticipants directly
+        if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+          // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
           return sum + (booking.numberOfParticipants || 0);
         } else if (booking.status === 'confirmed') {
           // For confirmed bookings, check participantDetails and count non-cancelled participants
@@ -1347,14 +1347,13 @@ exports.getBatchPerformance = async (req, res) => {
         status: batch.status || 'unknown'
       },
       bookings: {
-        total: safeBookings.length,
+        total: safeBookings.filter(b => b && b.status !== 'pending_payment').length,
         confirmed: safeBookings.filter(b => b && b.status === 'confirmed').length,
         cancelled: safeBookings.filter(b => b && b.status === 'cancelled').length,
-        completed: safeBookings.filter(b => b && b.status === 'completed').length,
-        pending_payment: safeBookings.filter(b => b && b.status === 'pending_payment').length
+        completed: safeBookings.filter(b => b && b.status === 'completed').length
       },
       revenue: {
-        total: safeBookings.reduce((sum, booking) => {
+        total: safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
           // Calculate actual amount paid based on payment mode
           let paid = 0;
           if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
@@ -1452,11 +1451,11 @@ exports.getBatchPerformance = async (req, res) => {
           }, 0)
       },
       participants: {
-        total: safeBookings.reduce((sum, booking) => {
+        total: safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
           if (!booking) return sum;
           
-          if (booking.status === 'payment_completed') {
-            // For payment_completed bookings, use numberOfParticipants directly
+          if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+            // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
             return sum + (booking.numberOfParticipants || 0);
           } else if (booking.status === 'confirmed') {
             // For confirmed bookings, check participantDetails and count non-cancelled participants
@@ -1629,8 +1628,8 @@ exports.getTrekPerformance = async (req, res) => {
     // Safely filter bookings
     const safeBookings = bookings.filter(booking => booking != null);
 
-    // Calculate total revenue and bookings with null safety
-    const totalRevenue = safeBookings.reduce((sum, booking) => {
+    // Calculate total revenue and bookings with null safety (excluding pending_payment)
+    const totalRevenue = safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
       // Calculate actual amount paid based on payment mode
       let paid = 0;
       if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
@@ -1665,7 +1664,7 @@ exports.getTrekPerformance = async (req, res) => {
       }
       return sum + (paid - refunded);
     }, 0);
-    const totalBookings = safeBookings.length;
+    const totalBookings = safeBookings.filter(b => b && b.status !== 'pending_payment').length;
 
     // Calculate batch-specific metrics with comprehensive null checks
     const batchPerformance = trek.batches
@@ -1684,7 +1683,7 @@ exports.getTrekPerformance = async (req, res) => {
             return bookingBatchId === batchId;
           });
           
-          const revenue = batchBookings.reduce((sum, booking) => {
+          const revenue = batchBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
             // Calculate actual amount paid based on payment mode
             let paid = 0;
             if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
@@ -1722,8 +1721,8 @@ exports.getTrekPerformance = async (req, res) => {
           const currentParticipants = batchBookings.reduce((sum, booking) => {
             if (!booking) return sum;
             
-            if (booking.status === 'payment_completed') {
-              // For payment_completed bookings, use numberOfParticipants directly
+            if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+              // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
               return sum + (booking.numberOfParticipants || 0);
             } else if (booking.status === 'confirmed') {
               // For confirmed bookings, check participantDetails and count non-cancelled participants
@@ -1886,9 +1885,9 @@ exports.exportBatchParticipants = async (req, res) => {
       console.log('Booking status:', booking.status);
       console.log('Participant details:', booking.participantDetails);
       
-      // Booking-level check: Skip cancelled bookings
-      if (booking.status === 'cancelled') {
-        console.log('Skipping cancelled booking:', booking._id);
+      // Booking-level check: Skip cancelled and pending_payment bookings
+      if (booking.status === 'cancelled' || booking.status === 'pending_payment') {
+        console.log('Skipping cancelled/pending_payment booking:', booking._id, booking.status);
         cancelledBookingsSkipped++;
         return;
       }
@@ -2023,7 +2022,7 @@ exports.exportBatchParticipants = async (req, res) => {
     // Log export summary
     console.log('Export summary:', {
       totalBookings: bookings.length,
-      cancelledBookingsSkipped,
+      cancelledBookingsSkipped: cancelledBookingsSkipped, // Includes both cancelled and pending_payment
       cancelledParticipantsSkipped,
       totalParticipantsProcessed,
       totalRowsExported: tableData.length - 1 // Subtract header row
@@ -2032,7 +2031,7 @@ exports.exportBatchParticipants = async (req, res) => {
     // Check if we have any data to export after filtering
     if (tableData.length <= 1) {
       return res.status(404).json({ 
-        message: 'No active participants found for this batch after filtering cancelled bookings and participants' 
+        message: 'No active participants found for this batch after filtering cancelled and pending_payment bookings and participants' 
       });
     }
 

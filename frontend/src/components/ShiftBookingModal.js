@@ -27,6 +27,8 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
           const currentBatchId = booking?.batch?._id || booking?.batch;
           return batchStartDate > currentDate && batch._id !== currentBatchId;
         });
+        // Sort batches by start date in ascending order
+        availableBatches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
         setAvailableBatches(availableBatches);
       }
     } catch (error) {

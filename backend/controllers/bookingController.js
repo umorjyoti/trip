@@ -110,9 +110,10 @@ const createCustomTrekBooking = async (req, res) => {
     // Save booking
     await booking.save();
 
-    // Update batch participants count
-    customBatch.currentParticipants += participantsCount;
-    await trek.save();
+    // Only update batch participants count if booking is confirmed/paid (not pending_payment)
+    if (booking.status === 'confirmed' || booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+      await updateBatchParticipantCount(trek._id, customBatch._id);
+    }
 
     // Send confirmation email
     try {
@@ -376,9 +377,10 @@ const createBooking = async (req, res) => {
       // Save booking
       await booking.save();
 
-      // Update batch participants count only for new bookings
-      batch.currentParticipants += participantsCount;
-      await trek.save();
+      // Only update batch participants count if booking is confirmed/paid (not pending_payment)
+      if (booking.status === 'confirmed' || booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+        await updateBatchParticipantCount(trek._id, batch._id);
+      }
 
       console.log(`Created new booking ${booking._id} for user ${req.user._id}`);
     }
@@ -977,6 +979,11 @@ const updateBookingStatus = async (req, res) => {
       }
     }
 
+    // If status transitions to confirmed/paid, update batch participant count
+    if (['confirmed', 'payment_completed', 'payment_confirmed_partial'].includes(status)) {
+      await updateBatchParticipantCount(booking.trek, booking.batch);
+    }
+
     res.json(booking);
   } catch (error) {
     console.error("Error updating booking status:", error);
@@ -1300,6 +1307,11 @@ const updateBooking = async (req, res) => {
     }
 
     await booking.save();
+
+    // If status transitions to confirmed/paid, update batch participant count
+    if (['confirmed', 'payment_completed', 'payment_confirmed_partial'].includes(booking.status)) {
+      await updateBatchParticipantCount(booking.trek._id, booking.batch);
+    }
 
     // Send booking confirmation email if participant details are being updated
     if (isUpdatingParticipantDetails && booking.status === 'confirmed') {
@@ -1633,6 +1645,11 @@ const updateParticipantDetails = async (req, res) => {
     }
 
     await booking.save();
+
+    // If status transitions to confirmed/paid, update batch participant count
+    if (['confirmed', 'payment_completed', 'payment_confirmed_partial'].includes(booking.status)) {
+      await updateBatchParticipantCount(booking.trek._id, booking.batch);
+    }
 
     console.log('Booking updated successfully, status:', booking.status);
 

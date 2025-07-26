@@ -134,7 +134,7 @@ function TrekStatusModal({ isOpen, onClose, trek, onToggleStatus, onTrekUpdated 
               <h4 className="text-sm font-medium text-gray-700 mb-2">Current Batches</h4>
               <div className="bg-gray-50 p-3 rounded-md">
                 <ul className="divide-y divide-gray-200">
-                  {currentTrek.batches.map((batch) => (
+                  {currentTrek.batches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((batch) => (
                     <li key={batch._id} className="py-2">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">

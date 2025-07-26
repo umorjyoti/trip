@@ -116,6 +116,11 @@ function BatchManager({ trek, onBatchesUpdated }) {
     });
   };
 
+  // Sort batches by start date in ascending order
+  const sortedBatches = trek.batches ? [...trek.batches].sort((a, b) => {
+    return new Date(a.startDate) - new Date(b.startDate);
+  }) : [];
+
   return (
     <div className="px-4 py-2">
       <h2 className="text-xl font-semibold text-gray-900 mb-6">Manage Batches</h2>
@@ -229,7 +234,7 @@ function BatchManager({ trek, onBatchesUpdated }) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {trek.batches.map((batch) => (
+                {sortedBatches.map((batch) => (
                   <tr key={batch._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatDate(batch.startDate)}
