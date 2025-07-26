@@ -279,14 +279,33 @@ function MyBookings() {
 
                   {/* Action Buttons */}
                   <div className="flex gap-2">
-                    {resumeAction && (
-                      <Link
-                        to={resumeAction.link}
-                        className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white ${resumeAction.color} hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
-                      >
-                        <span className="mr-1">{resumeAction.icon}</span>
-                        {resumeAction.text}
-                      </Link>
+                    {booking.paymentMode === 'partial' && booking.status === 'payment_confirmed_partial' ? (
+                      <>
+                        <Link
+                          to={`/payment/${booking._id}`}
+                          className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                        >
+                          <span className="mr-1">💰</span>
+                          Pay Remaining Balance
+                        </Link>
+                        <Link
+                          to={`/booking/${booking._id}/participant-details`}
+                          className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                        >
+                          <span className="mr-1">👥</span>
+                          Fill Participant Details
+                        </Link>
+                      </>
+                    ) : (
+                      resumeAction && (
+                        <Link
+                          to={resumeAction.link}
+                          className={`flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white ${resumeAction.color} hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500`}
+                        >
+                          <span className="mr-1">{resumeAction.icon}</span>
+                          {resumeAction.text}
+                        </Link>
+                      )
                     )}
                     
                     <Link

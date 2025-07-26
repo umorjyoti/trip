@@ -1097,7 +1097,7 @@ For support, contact us through our website or mobile app.
         <h2>Dear ${user.name},</h2>
         
         <div class="change-container">
-            <div class="section-title">🔄 Batch Change Notification</div>
+            <div style={{color: 'white !important'}} class="section-title">🔄 Batch Change Notification</div>
             <p>Your booking has been successfully shifted to a new batch as requested.</p>
         </div>
 

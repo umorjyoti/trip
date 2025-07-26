@@ -24,7 +24,8 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
         const currentDate = new Date();
         const availableBatches = trek.batches.filter(batch => {
           const batchStartDate = new Date(batch.startDate);
-          return batchStartDate > currentDate && batch._id !== booking?.batch;
+          const currentBatchId = booking?.batch?._id || booking?.batch;
+          return batchStartDate > currentDate && batch._id !== currentBatchId;
         });
         setAvailableBatches(availableBatches);
       }
@@ -42,7 +43,7 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
 
     setLoading(true);
     try {
-      await shiftBookingToBatch(booking.bookingId, selectedBatchId);
+      await shiftBookingToBatch(booking._id || booking.bookingId, selectedBatchId);
       toast.success('Booking shifted to new batch successfully');
       onUpdate(selectedBatchId);
       onClose();
@@ -74,6 +75,31 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
           <p className="text-gray-600 mb-4">
             Select a new batch to shift this booking. Only future batches with available spots are shown.
           </p>
+          
+          {booking?.paymentMode === 'partial' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Partial Payment Booking
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>This is a partial payment booking. When shifted to a new batch:</p>
+                    <ul className="list-disc list-inside mt-1 space-y-1">
+                      <li>The final payment due date will be updated based on the new batch start date</li>
+                      <li>The partial payment reminder will be reset</li>
+                      <li>All existing partial payment details will be preserved</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           {fetchingBatches ? (
             <div className="flex items-center justify-center py-8">
@@ -119,6 +145,19 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
                           <p><strong>Price per person:</strong> ₹{selectedBatch.price}</p>
                           <p><strong>Available spots:</strong> {selectedBatch.maxParticipants - selectedBatch.currentParticipants}</p>
                           <p><strong>Current participants:</strong> {selectedBatch.currentParticipants}/{selectedBatch.maxParticipants}</p>
+                          
+                          {booking?.paymentMode === 'partial' && booking?.trek?.partialPayment && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="font-medium text-yellow-700">Partial Payment Details:</p>
+                              <p><strong>New due date:</strong> {(() => {
+                                const newBatchStartDate = new Date(selectedBatch.startDate);
+                                const newDueDate = new Date(newBatchStartDate);
+                                newDueDate.setDate(newDueDate.getDate() - booking.trek.partialPayment.finalPaymentDueDays);
+                                return formatDate(newDueDate);
+                              })()}</p>
+                              <p><strong>Remaining balance:</strong> ₹{booking.partialPaymentDetails?.remainingAmount?.toFixed(2) || '0.00'}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     }
