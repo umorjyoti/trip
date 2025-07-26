@@ -440,6 +440,12 @@ const getUserBookings = async (req, res) => {
 
       return {
         ...bookingObj,
+        user: booking.user && typeof booking.user === 'object' ? {
+          _id: booking.user._id,
+          name: booking.user.name,
+          email: booking.user.email,
+          phone: booking.user.phone // Ensure phone is included
+        } : booking.user,
         batch: selectedBatch, // replace batch with the enriched batch object
         trek: {
           _id: trek?._id,
@@ -718,7 +724,30 @@ const getBookings = async (req, res) => {
 
     // Status filter
     if (req.query.status && req.query.status !== 'all') {
+      // If status is pending_payment, return empty result
+      if (req.query.status === 'pending_payment') {
+        return res.json({
+          bookings: [],
+          pagination: {
+            total: 0,
+            page,
+            pages: 0,
+            limit
+          },
+          stats: {
+            totalRevenue: 0,
+            totalBookings: 0,
+            confirmedBookings: 0,
+            cancelledBookings: 0,
+            averageBookingValue: 0,
+            todayParticipantsCount: 0
+          }
+        });
+      }
       filterQuery.status = req.query.status;
+    } else {
+      // Exclude pending_payment bookings from all queries if no specific status is requested
+      filterQuery.status = { $ne: 'pending_payment' };
     }
 
     // Trek filter
@@ -778,7 +807,7 @@ const getBookings = async (req, res) => {
 
     const [bookings, total, stats, todayStats] = await Promise.all([
       Booking.find(filterQuery)
-        .populate("user", "name email")
+        .populate("user", "name email phone") // Add phone to populated fields
         .populate("trek", "name batches")
         .sort({ createdAt: -1 })
         .skip(skip)
@@ -836,6 +865,12 @@ const getBookings = async (req, res) => {
 
       return {
         ...bookingObj,
+        user: booking.user && typeof booking.user === 'object' ? {
+          _id: booking.user._id,
+          name: booking.user.name,
+          email: booking.user.email,
+          phone: booking.user.phone // Ensure phone is included
+        } : booking.user,
         batch: selectedBatch, // replace batch with the enriched batch object
         trek: {
           _id: trek?._id,
