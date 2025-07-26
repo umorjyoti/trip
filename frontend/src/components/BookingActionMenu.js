@@ -89,7 +89,7 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       label: 'Shift to Another Batch',
       icon: <FaExchangeAlt className="w-4 h-4" />,
       color: 'text-indigo-600 hover:bg-indigo-50',
-      showFor: ['confirmed']
+      showFor: ['confirmed', 'payment_confirmed_partial']
     },
     {
       id: 'respond-request',

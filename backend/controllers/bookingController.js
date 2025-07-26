@@ -1898,6 +1898,18 @@ const shiftBookingToBatch = async (req, res) => {
     // Update booking batch
     booking.batch = newBatchId;
 
+    // Update partial payment details if this is a partial payment booking
+    if (booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+      const newBatchStartDate = new Date(newBatch.startDate);
+      const finalPaymentDueDate = new Date(newBatchStartDate);
+      finalPaymentDueDate.setDate(finalPaymentDueDate.getDate() - trek.partialPayment.finalPaymentDueDays);
+      
+      booking.partialPaymentDetails.finalPaymentDueDate = finalPaymentDueDate;
+      
+      // Reset reminder sent flag since we're shifting to a new batch
+      booking.partialPaymentDetails.reminderSent = false;
+    }
+
     // Save changes
     await trek.save();
     await booking.save();
