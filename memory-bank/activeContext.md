@@ -72,6 +72,14 @@
   - Added prominent Payment Summary section with large display of remaining due amount and "Pay Remaining Balance" button
   - `backend/controllers/bookingController.js` - Fixed `getBookingById` to include `paymentMode` and `partialPaymentDetails` fields in response
 
+#### 8. Added Phone Number Update from Booking Input
+- **Problem**: When users create bookings, if they don't have a phone number in their profile, the system doesn't update it from the booking form input
+- **Solution**: Added logic to automatically update user's phone number from booking input if they don't have one
+- **Files Modified**:
+  - `backend/controllers/bookingController.js` - Added phone number update logic in both `createBooking` and `createCustomTrekBooking` functions
+  - The system now checks if the user has a phone number, and if not, updates it from the `userDetails.phone` in the booking input
+  - Added error handling to ensure booking creation doesn't fail if phone number update fails
+
 ### Current Status
 
 ✅ **Completed Features:**
