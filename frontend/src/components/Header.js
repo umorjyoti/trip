@@ -147,18 +147,15 @@ function Header() {
               to="/"
               style={{
                 marginLeft: window.innerWidth < 640 ? "-1rem" : "0rem",
+                maxHeight: "4rem",
               }}
               className="flex-shrink-0 flex items-center sm:ml-0 ml-8"
             >
               <img
                 src={logoTransparent}
                 alt="Bengaluru Trekkers Logo"
-                className="h-36 w-auto hover:opacity-80 transition-opacity mr-2 m-2"
-                style={{
-                  height: window.innerWidth < 640 ? "7rem" : "8rem",
-                  marginTop: "1rem",
-                  marginRight: window.innerWidth < 640 ? "-1rem" : "-1rem",
-                }}
+                className="h-14 w-auto hover:opacity-80 transition-opacity mr-2 m-2"
+               
               />
               <span className="text-lg sm:text-2xl font-bold text-emerald-600 hover:text-emerald-700 transition-colors">
                 Bengaluru Trekkers
@@ -233,11 +230,10 @@ function Header() {
                   <div className="py-1" role="menu" aria-orientation="vertical">
                     {/* Scrollable region list - max 5 items visible */}
                     <div
-                      className={`max-h-40 ${
-                        regions.length > 4
+                      className={`max-h-40 ${regions.length > 4
                           ? "regions-dropdown-scroll"
                           : "overflow-y-auto"
-                      }`}
+                        }`}
                     >
                       {regions.map((region) => (
                         <Link
@@ -608,10 +604,9 @@ const NavLink = ({ to, children }) => (
   <Link
     to={to}
     className={({ isActive }) =>
-      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
-        isActive
-          ? "border-emerald-500 text-gray-900"
-          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+      `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${isActive
+        ? "border-emerald-500 text-gray-900"
+        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
       }`
     }
   >

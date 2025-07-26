@@ -1498,6 +1498,179 @@ function TrekDetail() {
     );
   };
 
+  // Mobile Navigation Component
+  const MobileNavigation = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [activeSection, setActiveSection] = useState('overview');
+    
+    const sections = [
+      { id: 'overview', label: 'Overview', icon: '📋' },
+      { id: 'itinerary', label: 'Itinerary', icon: '🗺️' },
+      { id: 'inclusions', label: 'Inclusions', icon: '✅' },
+      { id: 'cancellationPolicy', label: 'Cancellation', icon: '📋' },
+      { id: 'thingsToPack', label: 'Things to Pack', icon: '🎒' },
+      { id: 'faqs', label: 'FAQs', icon: '❓' }
+    ];
+
+    // Track active section based on scroll position
+    useEffect(() => {
+      const handleScroll = () => {
+        const scrollPosition = window.scrollY + 200; // Offset for better detection
+        
+        for (let i = sections.length - 1; i >= 0; i--) {
+          const element = document.getElementById(sections[i].id);
+          if (element && element.offsetTop <= scrollPosition) {
+            setActiveSection(sections[i].id);
+            break;
+          }
+        }
+      };
+
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    const handleSectionClick = (sectionId) => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        const offset = 120;
+        const elementPosition = element.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - offset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: "smooth",
+        });
+      }
+      setIsOpen(false);
+    };
+
+    // Update sticky header active states
+    useEffect(() => {
+      const updateStickyHeader = () => {
+        const stickyButtons = document.querySelectorAll('[data-sticky-nav-button]');
+        stickyButtons.forEach(button => {
+          const sectionId = button.getAttribute('data-section');
+          if (sectionId === activeSection) {
+            button.className = button.className.replace(/bg-gray-50|bg-emerald-50/g, 'bg-emerald-50');
+            button.className = button.className.replace(/border-gray-200|border-emerald-200/g, 'border-emerald-200');
+            button.className = button.className.replace(/text-gray-700|text-emerald-700/g, 'text-emerald-700');
+          } else {
+            button.className = button.className.replace(/bg-emerald-50/g, 'bg-gray-50');
+            button.className = button.className.replace(/border-emerald-200/g, 'border-gray-200');
+            button.className = button.className.replace(/text-emerald-700/g, 'text-gray-700');
+          }
+        });
+      };
+
+      updateStickyHeader();
+    }, [activeSection]);
+
+    // Listen for custom event to open bottom sheet
+    useEffect(() => {
+      const handleOpenNavigation = () => {
+        setIsOpen(true);
+      };
+
+      document.addEventListener('openMobileNavigation', handleOpenNavigation);
+      return () => {
+        document.removeEventListener('openMobileNavigation', handleOpenNavigation);
+      };
+    }, []);
+
+    return (
+      <>
+        {/* Bottom Sheet Navigation */}
+        {isOpen && ReactDOM.createPortal(
+          <div className="md:hidden fixed inset-0 z-50">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+              onClick={() => setIsOpen(false)}
+            />
+            
+            {/* Bottom Sheet */}
+            <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl transform transition-transform duration-300 ease-out">
+              {/* Handle */}
+              <div className="flex justify-center pt-4 pb-2">
+                <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
+              </div>
+              
+              {/* Header */}
+              <div className="px-6 pb-4 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Navigate to Section</h3>
+                <p className="text-sm text-gray-500 mt-1">Quick jump to any section</p>
+              </div>
+              
+              {/* Navigation Items */}
+              <div className="max-h-96 overflow-y-auto">
+                <div className="grid grid-cols-2 gap-2 p-4">
+                  {sections.map((section) => (
+                    <button
+                      key={section.id}
+                      onClick={() => handleSectionClick(section.id)}
+                      className={`relative p-4 rounded-xl text-left transition-all duration-200 ${
+                        activeSection === section.id
+                          ? 'bg-emerald-50 border-2 border-emerald-200 shadow-sm'
+                          : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                      }`}
+                    >
+                      {/* Active indicator */}
+                      {activeSection === section.id && (
+                        <div className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full"></div>
+                      )}
+                      
+                      <div className="flex items-center space-x-3">
+                        <span className="text-2xl">{section.icon}</span>
+                        <div>
+                          <div className={`font-medium text-sm ${
+                            activeSection === section.id ? 'text-emerald-700' : 'text-gray-900'
+                          }`}>
+                            {section.label}
+                          </div>
+                          <div className={`text-xs ${
+                            activeSection === section.id ? 'text-emerald-600' : 'text-gray-500'
+                          }`}>
+                            {activeSection === section.id ? 'Current' : 'Tap to view'}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Quick Actions */}
+              <div className="px-4 pb-6 border-t border-gray-100 pt-4">
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => {
+                      scrollToBatchSelection();
+                      setIsOpen(false);
+                    }}
+                    className="flex-1 bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium text-sm hover:bg-emerald-700 transition-colors"
+                  >
+                    📅 View Dates
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowEnquiryBanner(true);
+                      setIsOpen(false);
+                    }}
+                    className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium text-sm hover:bg-gray-200 transition-colors"
+                  >
+                    💬 Get Info
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  };
+
   // Footer Book Now button handler
   const handleFooterBookNowClick = () => {
     if (!trek || !trek.batches || trek.batches.length === 0) return;
@@ -1662,9 +1835,9 @@ function TrekDetail() {
 
         {/* Trek header */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Trek Scroll bar */}
-          <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
-            <div className="relative">
+          {/* Desktop Navigation - Hidden on mobile */}
+          <div className="hidden md:block sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
+            <div style={{zIndex:1000}} className="relative">
               <nav
                 className="flex space-x-6 overflow-x-auto py-2 px-2 scrollbar-hide"
                 ref={headerScrollRef}
@@ -1728,6 +1901,84 @@ function TrekDetail() {
                   }}
                 />
               )}
+            </div>
+          </div>
+
+          {/* Mobile Sticky Navigation Header */}
+          <div className="md:hidden sticky top-[64px] z-30 bg-white border-b border-gray-200 mb-4">
+            <div className="relative">
+              <nav className="flex items-center justify-between py-3 px-4">
+                <div className="flex items-center space-x-4 overflow-x-auto scrollbar-hide">
+                  <button
+                    onClick={(e) => handleSmoothScroll(e, "overview")}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm font-medium whitespace-nowrap"
+                    data-sticky-nav-button
+                    data-section="overview"
+                  >
+                    <span>📋</span>
+                    <span>Overview</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleSmoothScroll(e, "itinerary")}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap hover:bg-gray-100"
+                    data-sticky-nav-button
+                    data-section="itinerary"
+                  >
+                    <span>🗺️</span>
+                    <span>Itinerary</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleSmoothScroll(e, "inclusions")}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap hover:bg-gray-100"
+                    data-sticky-nav-button
+                    data-section="inclusions"
+                  >
+                    <span>✅</span>
+                    <span>Inclusions</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleSmoothScroll(e, "cancellationPolicy")}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap hover:bg-gray-100"
+                    data-sticky-nav-button
+                    data-section="cancellationPolicy"
+                  >
+                    <span>📋</span>
+                    <span>Policy</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleSmoothScroll(e, "thingsToPack")}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap hover:bg-gray-100"
+                    data-sticky-nav-button
+                    data-section="thingsToPack"
+                  >
+                    <span>🎒</span>
+                    <span>Pack</span>
+                  </button>
+                  <button
+                    onClick={(e) => handleSmoothScroll(e, "faqs")}
+                    className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-sm font-medium whitespace-nowrap hover:bg-gray-100"
+                    data-sticky-nav-button
+                    data-section="faqs"
+                  >
+                    <span>❓</span>
+                    <span>FAQs</span>
+                  </button>
+                </div>
+                
+                {/* More button for additional actions */}
+                <button
+                  onClick={() => {
+                    // This will trigger the bottom sheet navigation
+                    const event = new CustomEvent('openMobileNavigation');
+                    document.dispatchEvent(event);
+                  }}
+                  className="flex-shrink-0 ml-2 p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                </button>
+              </nav>
             </div>
           </div>
 
@@ -2168,6 +2419,9 @@ function TrekDetail() {
 
         {/* Add the related treks section */}
         {!loading && !error && trek && renderRelatedTreks()}
+
+        {/* Mobile Navigation - Floating button and bottom sheet */}
+        {!loading && !error && trek && <MobileNavigation />}
 
         {/* Mobile Fixed Footer - now using React Portal */}
         {!loading &&

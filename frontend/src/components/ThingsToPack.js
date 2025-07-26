@@ -41,9 +41,9 @@ const ThingsToPack = ({ items }) => {
                   />
                 </div>
               </div>
-              <div className={isSingleLine ? 'text-center' : ''}>
-                <h3 className="text-lg font-semibold text-gray-800 mb-1">{item.title}:</h3>
-                {!isSingleLine && <p className="text-gray-700">{item.description}</p>}
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-800 mb-1 text-left">{item.title}:</h3>
+                {!isSingleLine && <p className="text-gray-700 text-left">{item.description}</p>}
               </div>
             </div>
           );
