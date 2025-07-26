@@ -328,7 +328,7 @@ function Dashboard() {
       // Use the backend dashboard stats for total sales and bookings
       // The backend already calculates these correctly
       setSalesStats({
-        totalSales: data.totalSales || 0,
+        totalSales: data.totalRevenue || 0, // Changed from totalSales to totalRevenue
         confirmedBookings: 0, // We'll calculate this separately if needed
         cancelledBookings: 0, // We'll calculate this separately if needed
       });
@@ -339,8 +339,16 @@ function Dashboard() {
         const allBookingsData = await getAllBookings();
         const bookingsArray = Array.isArray(allBookingsData)
           ? allBookingsData
-          : [];
+          : allBookingsData?.bookings || [];
         setAllBookings(bookingsArray);
+        
+        // Update sales stats from bookings API response
+        if (allBookingsData?.stats?.totalRevenue !== undefined) {
+          setSalesStats(prev => ({
+            ...prev,
+            totalSales: allBookingsData.stats.totalRevenue || 0
+          }));
+        }
       } catch (bookingsError) {
         console.error("Error fetching all bookings:", bookingsError);
         setAllBookings([]);
