@@ -23,7 +23,6 @@ import { FaCheckCircle, FaTimesCircle, FaUsers } from 'react-icons/fa';
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
   { value: 'pending', label: 'Pending' },
-  { value: 'pending_payment', label: 'Pending Payment' },
   { value: 'payment_confirmed_partial', label: 'Partial Payment Confirmed' },
   { value: 'payment_completed', label: 'Payment Completed' },
   { value: 'confirmed', label: 'Confirmed' },
