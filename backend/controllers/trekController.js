@@ -99,8 +99,8 @@ exports.getAllTreks = async (req, res) => {
           const actualCurrentParticipants = batchBookings.reduce((sum, booking) => {
             if (!booking) return sum;
             
-            if (booking.status === 'payment_completed') {
-              // For payment_completed bookings, use numberOfParticipants directly
+            if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+              // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
               return sum + (booking.numberOfParticipants || 0);
             } else if (booking.status === 'confirmed') {
               // For confirmed bookings, check participantDetails and count non-cancelled participants
