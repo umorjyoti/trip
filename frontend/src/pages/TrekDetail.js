@@ -278,13 +278,17 @@ const BatchesTabView = ({
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
                         ${
-                          availability <= 3
-                            ? "bg-yellow-100 text-yellow-800"
+                          availability < 10
+                            ? availability <= 3
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-orange-100 text-orange-800"
                             : "bg-green-100 text-green-800"
                         }`}
                       >
-                        {availability} {availability === 1 ? "spot" : "spots"}{" "}
-                        left
+                        {availability < 10
+                          ? `${availability} ${availability === 1 ? "spot" : "spots"} left`
+                          : "Limited slots available"
+                        }
                       </span>
                     )}
                   </div>
@@ -856,7 +860,7 @@ function TrekDetail() {
                       {formatDate(batch.endDate)}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {isFull ? "Full" : `${spotsLeft} spots left`}
+                      {isFull ? "Full" : spotsLeft < 10 ? `${spotsLeft} spots left` : "Limited slots available"}
                     </p>
                   </div>
                   <div className="text-right">
@@ -920,8 +924,10 @@ function TrekDetail() {
                 {formatDate(selectedBatch.endDate)}
               </p>
               <p className="text-sm text-gray-500">
-                {selectedBatch.maxParticipants - (selectedBatch.actualCurrentParticipants || selectedBatch.currentParticipants)}{" "}
-                spots left
+                {(() => {
+                  const spotsLeft = selectedBatch.maxParticipants - (selectedBatch.actualCurrentParticipants || selectedBatch.currentParticipants);
+                  return spotsLeft < 10 ? `${spotsLeft} spots left` : "Limited slots available";
+                })()}
               </p>
             </div>
             <div className="text-right">
