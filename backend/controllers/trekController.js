@@ -879,6 +879,7 @@ exports.getTreks = async (req, res) => {
     const {
       search,
       region,
+      regionId,
       season,
       duration,
       sort,
@@ -910,7 +911,14 @@ exports.getTreks = async (req, res) => {
       ];
     }
 
-    if (region) filter.regionName = region;
+    // Handle region filtering - prioritize regionId over region
+    if (regionId) {
+      filter.region = regionId;
+    } else if (region) {
+      // For backward compatibility, if regionId is not provided, use region as regionName
+      filter.regionName = region;
+    }
+    
     if (season) filter.season = season;
     if (duration) {
       // Parse duration range

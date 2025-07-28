@@ -145,15 +145,6 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
     <div className="mb-12 relative group">
       <div className="flex justify-between items-center mb-4 px-4 sm:px-0">
         <h2 className="text-2xl font-semibold text-gray-800">{title}</h2>
-        {viewAllLink && (
-          <Link
-            to={viewAllLink}
-            className="text-sm font-medium text-emerald-600 hover:text-emerald-800 transition-colors flex items-center group"
-          >
-            View All
-            <FaArrowRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
-          </Link>
-        )}
       </div>
 
       <div className="relative">

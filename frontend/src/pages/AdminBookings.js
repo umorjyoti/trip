@@ -640,6 +640,14 @@ function AdminBookings() {
                       <div className="text-sm font-medium text-gray-900">{booking.user?.name || 'Unknown User'}</div>
                       <div className="text-sm text-gray-500">{booking.user?.email || 'No email'}</div>
                       <div className="text-sm text-gray-500">{booking.user?.phone || 'No phone'}</div>
+                      {booking.trek && booking.batch && (
+                        <Link 
+                          to={`/admin/treks/${booking.trek._id}/performance?batchId=${booking.batch._id}`}
+                          className="text-sm text-blue-500 hover:underline"
+                        >
+                          {booking.trek.name}
+                        </Link>
+                      )}
                       <div className="text-xs text-gray-400 mt-1">
                         ID: {booking.id ? booking.id.substring(0, 8) + '...' : booking._id.substring(0, 8) + '...'} | Booked: {formatDate(booking.createdAt)}
                       </div>

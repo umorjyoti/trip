@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getTrekStats, getTreks, getActiveOffers } from "../services/api";
-import TrekCard from "../components/TrekCard";
+import { getTrekStats, getActiveOffers } from "../services/api";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -34,7 +33,6 @@ ChartJS.register(
 
 function Home() {
   const [stats, setStats] = useState(null);
-  const [featuredTreks, setFeaturedTreks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeOffers, setActiveOffers] = useState([]);
@@ -48,17 +46,13 @@ function Home() {
         setLoading(true);
         setError(null);
 
-        // Fetch stats and treks
-        const [statsData, treksData, offersData] = await Promise.all([
+        // Fetch stats and offers
+        const [statsData, offersData] = await Promise.all([
           getTrekStats(),
-          getTreks({ limit: 6, featured: true }),
           getActiveOffers(),
         ]);
 
-        console.log("Featured treks data:", treksData);
-
         setStats(statsData);
-        setFeaturedTreks(treksData);
         setActiveOffers(offersData);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -299,18 +293,6 @@ function Home() {
 
       {/* Render the Weekend Getaway Section */}
       <WeekendGetawaySection offers={activeOffers} />
-
-      {/* Featured Treks Section (example) */}
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-extrabold text-gray-900 mb-8">Featured Treks</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredTreks.map(trek => (
-              <TrekCard key={trek._id} trek={trek} offers={activeOffers} />
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Render other existing sections like HomeTrekSections if desired */}
       <HomeTrekSections />

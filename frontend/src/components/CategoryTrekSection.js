@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getTreks } from '../services/api';
 import TrekCard from './TrekCard';
 import LoadingSpinner from './LoadingSpinner';
+import Pagination from './Pagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGlobe, FaCloudRain, FaSun, FaMountain, FaHiking, FaCalendarWeek } from 'react-icons/fa';
 
@@ -58,6 +59,39 @@ function CategoryTrekSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeCategory, setActiveCategory] = useState('all-treks'); // Start with 'all-treks'
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Items per page based on screen size
+  const getItemsPerPage = () => {
+    // For mobile: max 5 treks
+    // For desktop: one row (3-4 treks depending on screen size)
+    if (typeof window !== 'undefined') {
+      const width = window.innerWidth;
+      if (width < 768) { // mobile
+        return 5;
+      } else if (width < 1024) { // tablet
+        return 3;
+      } else if (width < 1280) { // small desktop
+        return 3;
+      } else { // large desktop
+        return 4;
+      }
+    }
+    return 4; // default
+  };
+
+  const [itemsPerPage, setItemsPerPage] = useState(getItemsPerPage());
+
+  // Update items per page on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setItemsPerPage(getItemsPerPage());
+      setCurrentPage(1); // Reset to first page when screen size changes
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchAllTreks = async () => {
@@ -87,12 +121,32 @@ function CategoryTrekSection() {
     return allTreks.filter(trek => trek.category === activeCategory);
   }, [activeCategory, allTreks]);
 
+  // Reset to first page when category changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredTreks.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentTreks = filteredTreks.slice(startIndex, endIndex);
+
   const handleCategoryClick = (category) => {
     setActiveCategory(prev => prev === category ? 'all-treks' : category); // Toggle or set category
   };
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    // Scroll to top of section when page changes
+    const element = document.getElementById('category-trek-section');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
-    <section className="py-12 md:py-16 bg-gray-50">
+    <section id="category-trek-section" className="py-12 md:py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-8 md:mb-12">
           <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
@@ -136,41 +190,54 @@ function CategoryTrekSection() {
             <p className="text-red-700">{error}</p>
           </div>
         ) : (
-          <motion.div
-            key={activeCategory} // Re-trigger animation on category change
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            exit="hidden" // Optional: define exit animation if needed elsewhere
-          >
-            <AnimatePresence mode="sync">
-              {filteredTreks.length > 0 ? (
-                filteredTreks.map(trek => (
-                  <motion.div
-                    key={trek._id}
-                    variants={itemVariants}
-                    layout // Animate layout changes
-                    initial="hidden" // Ensure initial state is set for entering items
-                    animate="visible"
-                    exit="exit"
-                  >
-                    <TrekCard trek={trek} />
-                  </motion.div>
-                ))
-              ) : (
-                 <motion.div
-                    key="no-results"
-                    className="col-span-full text-center py-12"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                 >
-                    <p className="text-gray-500 text-lg">No treks found for the selected category.</p>
-                 </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+          <>
+            <motion.div
+              key={`${activeCategory}-${currentPage}`} // Re-trigger animation on category or page change
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+            >
+              <AnimatePresence mode="sync">
+                {currentTreks.length > 0 ? (
+                  currentTreks.map(trek => (
+                    <motion.div
+                      key={trek._id}
+                      variants={itemVariants}
+                      layout // Animate layout changes
+                      initial="hidden" // Ensure initial state is set for entering items
+                      animate="visible"
+                      exit="exit"
+                    >
+                      <TrekCard trek={trek} />
+                    </motion.div>
+                  ))
+                ) : (
+                   <motion.div
+                      key="no-results"
+                      className="col-span-full text-center py-12"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                   >
+                      <p className="text-gray-500 text-lg">No treks found for the selected category.</p>
+                   </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 md:mt-12">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
         )}
 
         {/* Optional: View All Button */}
