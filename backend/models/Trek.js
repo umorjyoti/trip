@@ -254,9 +254,9 @@ const TrekSchema = new mongoose.Schema({
     min: 1
   },
   season: {
-    type: String,
+    type: [String],
     enum: ['Spring', 'Summer', 'Monsoon', 'Autumn', 'Winter', 'Year-round'],
-    default: 'Year-round'
+    default: ['Year-round']
   },
   distance: {
     type: Number,

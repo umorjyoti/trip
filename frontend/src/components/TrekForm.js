@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getTrekByIdForAdmin, createTrek, updateTrek, getRegions } from '../services/api';
 import { toast } from 'react-toastify';
+import MultiSelectDropdown from './MultiSelectDropdown';
 
 function TrekForm(props) {
   const { id } = useParams();
@@ -12,7 +13,7 @@ function TrekForm(props) {
     name: '',
     description: '',
     region: '',
-    season: 'Summer',
+    season: ['Summer'],
     duration: 1,
     difficulty: 'Moderate',
     maxAltitude: 0,
@@ -237,22 +238,14 @@ function TrekForm(props) {
           
           <div>
             <label htmlFor="season" className="block text-sm font-medium text-gray-700 mb-1">
-              Season *
+              Seasons *
             </label>
-            <select
-              id="season"
-              name="season"
-              required
+            <MultiSelectDropdown
+              options={['Spring', 'Summer', 'Monsoon', 'Autumn', 'Winter', 'Year-round']}
               value={formData.season}
-              onChange={handleChange}
-              className="form-input"
-            >
-              <option value="Spring">Spring</option>
-              <option value="Summer">Summer</option>
-              <option value="Autumn">Autumn</option>
-              <option value="Winter">Winter</option>
-              <option value="All Year">All Year</option>
-            </select>
+              onChange={(value) => setFormData(prev => ({ ...prev, season: value }))}
+              placeholder="Select seasons"
+            />
           </div>
           
           <div>

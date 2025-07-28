@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaTrash, FaArrowLeft } from 'react-icons/fa';
 import ImageUploader from '../components/ImageUploader';
+import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import api from '../services/api';
 
 // Helper: FormSection component
@@ -130,7 +131,7 @@ function TrekForm() {
     region: '',
     difficulty: 'Easy',
     duration: 1,
-    season: 'Spring',
+    season: ['Spring'],
     startingPoint: '',
     endingPoint: '',
     displayPrice: '',
@@ -192,7 +193,7 @@ function TrekForm() {
             region: trekData.region?._id || trekData.region || '',
             difficulty: trekData.difficulty || 'Easy',
             duration: trekData.duration || 1,
-            season: trekData.season || 'Spring',
+            season: Array.isArray(trekData.season) ? trekData.season : [trekData.season || 'Spring'],
             startingPoint: trekData.startingPoint || '',
             endingPoint: trekData.endingPoint || '',
             displayPrice: trekData.displayPrice || '',
@@ -424,7 +425,7 @@ function TrekForm() {
     if (!formData.name?.trim()) errors.name = 'Trek name is required';
     if (!formData.description?.trim()) errors.description = 'Description is required';
     if (!formData.region) errors.region = 'Region is required';
-    if (!formData.season) errors.season = 'Season is required';
+    if (!formData.season || formData.season.length === 0) errors.season = 'At least one season is required';
     if (!formData.duration || formData.duration <= 0) errors.duration = 'Duration must be greater than 0';
     if (!formData.displayPrice || formData.displayPrice < 0) errors.displayPrice = 'Display price must be non-negative';
     if (formData.strikedPrice && (formData.strikedPrice < 0 || formData.strikedPrice < formData.displayPrice)) {
@@ -622,9 +623,18 @@ function TrekForm() {
               <option>Easy</option> <option>Moderate</option> <option>Difficult</option> <option>Challenging</option>
             </SelectField>
             <InputField label="Duration (days)" id="duration" type="number" min="1" value={formData.duration} onChange={handleInputChange} required error={formErrors.duration} />
-            <SelectField label="Best Season" id="season" value={formData.season} onChange={handleInputChange}>
-              <option>Spring</option> <option>Summer</option> <option>Monsoon</option> <option>Autumn</option> <option>Winter</option> <option>Year-round</option>
-            </SelectField>
+            <div>
+              <label htmlFor="season" className="block text-sm font-medium text-gray-700 mb-1">
+                Best Seasons *
+              </label>
+              <MultiSelectDropdown
+                options={['Spring', 'Summer', 'Monsoon', 'Autumn', 'Winter', 'Year-round']}
+                value={formData.season}
+                onChange={(value) => setFormData(prev => ({ ...prev, season: value }))}
+                placeholder="Select seasons"
+                error={formErrors.season}
+              />
+            </div>
             <InputField label="Display Price (INR)" id="displayPrice" type="number" min="0" step="0.01" value={formData.displayPrice} onChange={handleInputChange} required error={formErrors.displayPrice} placeholder="e.g., 26999" />
             <InputField label="Striked Price (INR)" id="strikedPrice" type="number" min="0" step="0.01" value={formData.strikedPrice} onChange={handleInputChange} error={formErrors.strikedPrice} placeholder="e.g., 29999" />
             <InputField label="Starting Point" id="startingPoint" value={formData.startingPoint} onChange={handleInputChange} placeholder="e.g., Lukla" />

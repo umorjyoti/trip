@@ -919,7 +919,14 @@ exports.getTreks = async (req, res) => {
       filter.regionName = region;
     }
     
-    if (season) filter.season = season;
+    if (season) {
+      // Handle both single season and multiple seasons
+      if (Array.isArray(season)) {
+        filter.season = { $in: season };
+      } else {
+        filter.season = season;
+      }
+    }
     if (duration) {
       // Parse duration range
       const [min, max] = duration.split('-').map(Number);

@@ -2018,7 +2018,21 @@ function TrekDetail() {
                     {trek.difficulty}
                   </span>
                 )}
-                {trek.season && (
+                {trek.season && Array.isArray(trek.season) && trek.season.length > 0 && (
+                  <>
+                    {trek.season.map((season, index) => (
+                      <span
+                        key={index}
+                        className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${getSeasonColor(
+                          season
+                        )}`}
+                      >
+                        {season}
+                      </span>
+                    ))}
+                  </>
+                )}
+                {trek.season && !Array.isArray(trek.season) && (
                   <span
                     className={`inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium ${getSeasonColor(
                       trek.season
@@ -2159,10 +2173,10 @@ function TrekDetail() {
                             </div>
                             <div className="ml-3">
                               <p className="text-sm font-medium text-gray-900">
-                                Best Season
+                                Best Seasons
                               </p>
                               <p className="text-sm text-gray-500 break-words overflow-wrap-anywhere">
-                                {trek.season}
+                                {Array.isArray(trek.season) ? trek.season.join(', ') : trek.season}
                               </p>
                             </div>
                           </div>

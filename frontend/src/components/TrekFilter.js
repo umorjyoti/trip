@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getRegions } from '../services/api';
+import MultiSelectDropdown from './MultiSelectDropdown';
 import { FaGlobe, FaCloudRain, FaSun, FaMountain, FaHiking, FaCalendarWeek } from 'react-icons/fa';
 
 function TrekFilter({ filters, setFilters }) {
@@ -107,23 +108,14 @@ function TrekFilter({ filters, setFilters }) {
         
         <div>
           <label htmlFor="season" className="block text-sm font-medium text-gray-700 mb-1">
-            Season
+            Seasons
           </label>
-          <select
-            id="season"
-            name="season"
-            value={filters.season}
-            onChange={handleChange}
-            className="form-input"
-          >
-            <option value="">All Seasons</option>
-            <option value="Spring">Spring</option>
-            <option value="Summer">Summer</option>
-            <option value="Monsoon">Monsoon</option>
-            <option value="Autumn">Autumn</option>
-            <option value="Winter">Winter</option>
-            <option value="Year-round">Year-round</option>
-          </select>
+          <MultiSelectDropdown
+            options={['Spring', 'Summer', 'Monsoon', 'Autumn', 'Winter', 'Year-round']}
+            value={Array.isArray(filters.season) ? filters.season : (filters.season ? [filters.season] : [])}
+            onChange={(value) => setFilters(prev => ({ ...prev, season: value }))}
+            placeholder="All Seasons"
+          />
         </div>
         
         <div>
