@@ -4,7 +4,7 @@ import { getBookingById, downloadInvoice } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import CreateTicketModal from '../components/CreateTicketModal';
-import { FaDownload, FaHistory, FaClock, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaDownload, FaHistory, FaClock, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaCalculator } from 'react-icons/fa';
 
 function BookingDetail() {
   const { id } = useParams();
@@ -485,32 +485,90 @@ function BookingDetail() {
                 </>
               )}
               
-              {booking.status === 'cancelled' && booking.cancelledAt && (
-                <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Cancelled Date</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{formatDate(booking.cancelledAt)}</dd>
-                </div>
-              )}
               {booking.status === 'cancelled' && (
                 <>
-                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                    <dt className="text-sm font-medium text-gray-500">Refund Status</dt>
+                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Cancellation Date</dt>
                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {booking.refundStatus && booking.refundStatus !== 'not_applicable' ? (
-                        <>
-                          <span className="capitalize">{booking.refundStatus}</span>
-                          {booking.refundAmount > 0 && (
-                            <span> &mdash; Amount: <span className="font-semibold">₹{booking.refundAmount}</span></span>
-                          )}
-                          {booking.refundDate && (
-                            <span> &mdash; Date: {formatDate(booking.refundDate)}</span>
-                          )}
-                        </>
-                      ) : (
-                        <span>No refund</span>
-                      )}
+                      {booking.cancelledAt ? formatDate(booking.cancelledAt) : 'Not specified'}
                     </dd>
                   </div>
+                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Cancellation Reason</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      {booking.cancellationReason || 'Not specified'}
+                    </dd>
+                  </div>
+                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Refund Status</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        booking.refundStatus === 'success' ? 'bg-green-100 text-green-800' :
+                        booking.refundStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                        booking.refundStatus === 'failed' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {booking.refundStatus || 'Not applicable'}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Refund Date</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      {booking.refundDate ? formatDate(booking.refundDate) : 'Not applicable'}
+                    </dd>
+                  </div>
+                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Refund Amount</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      <div className="font-medium text-lg text-emerald-600 flex items-center">
+                        <FaCalculator className="mr-1" />
+                        {booking.refundStatus === 'success' ? `₹${booking.refundAmount || 0}` :
+                         booking.refundStatus === 'failed' ? 'Refund Failed' :
+                         booking.refundStatus === 'processing' ? 'Processing...' :
+                         `₹${booking.refundAmount || 0}`}
+                      </div>
+                    </dd>
+                  </div>
+                  <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Refund Type</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        booking.refundStatus === 'failed' ? 'bg-red-100 text-red-800' :
+                        booking.refundStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                        booking.refundAmount === booking.totalPrice ? 'bg-blue-100 text-blue-800' :
+                        booking.refundAmount > 0 ? 'bg-orange-100 text-orange-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {booking.refundStatus === 'failed' ? 'Refund Failed' :
+                         booking.refundStatus === 'processing' ? 'Processing Refund' :
+                         booking.refundAmount === booking.totalPrice ? 'Full Refund (100%)' :
+                         booking.refundAmount > 0 ? 'Partial Refund (Policy-based)' :
+                         'No Refund (Policy-based)'}
+                      </span>
+                    </dd>
+                  </div>
+                  
+                  {/* Additional refund information for participant-level cancellations */}
+                  {booking.participantDetails && booking.participantDetails.some(p => p.refundStatus === 'success') && (
+                    <div className="bg-orange-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-t border-orange-200">
+                      <dt className="text-sm font-medium text-orange-800">Participant-Level Refunds</dt>
+                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        <div className="space-y-2">
+                          {booking.participantDetails
+                            .filter(p => p.refundStatus === 'success')
+                            .map((participant, index) => (
+                              <div key={index} className="flex justify-between items-center text-sm bg-white p-2 rounded border">
+                                <span className="text-gray-700">{participant.name}</span>
+                                <span className="font-medium text-emerald-600">
+                                  ₹{participant.refundAmount || 0}
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </dd>
+                    </div>
+                  )}
                 </>
               )}
             </dl>

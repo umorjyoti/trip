@@ -1,7 +1,7 @@
 import React from 'react';
 import Modal from './Modal';
 import { formatCurrency, formatDate } from '../utils/formatters';
-import { FaUser, FaEnvelope, FaPhone, FaCalendar, FaMoneyBillWave, FaUsers, FaMapMarkerAlt, FaClock, FaStar } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaCalendar, FaMoneyBillWave, FaUsers, FaMapMarkerAlt, FaClock, FaStar, FaTimesCircle, FaCalculator } from 'react-icons/fa';
 
 const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
   if (!isOpen || !booking) return null;
@@ -196,6 +196,92 @@ const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
             <p className="text-gray-700 bg-white p-3 rounded border border-yellow-200">
               {booking.adminRemarks}
             </p>
+          </div>
+        )}
+
+        {/* Cancellation Details - Only show if booking is cancelled */}
+        {booking.status === 'cancelled' && (
+          <div className="bg-red-50 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
+              <FaTimesCircle className="mr-2 text-red-600" />
+              Cancellation Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Cancellation Date</p>
+                <p className="font-medium text-gray-900">
+                  {booking.cancelledAt ? formatDate(booking.cancelledAt) : 'Not specified'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Cancellation Reason</p>
+                <p className="font-medium text-gray-900">
+                  {booking.cancellationReason || 'Not specified'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Refund Status</p>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  booking.refundStatus === 'success' ? 'bg-green-100 text-green-800' :
+                  booking.refundStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                  booking.refundStatus === 'failed' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {booking.refundStatus || 'Not applicable'}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Refund Date</p>
+                <p className="font-medium text-gray-900">
+                  {booking.refundDate ? formatDate(booking.refundDate) : 'Not applicable'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Refund Amount</p>
+                <div className="font-medium text-lg text-emerald-600 flex items-center">
+                  <FaCalculator className="mr-1" />
+                  {booking.refundStatus === 'success' ? formatCurrency(booking.refundAmount || 0) :
+                   booking.refundStatus === 'failed' ? 'Refund Failed' :
+                   booking.refundStatus === 'processing' ? 'Processing...' :
+                   formatCurrency(booking.refundAmount || 0)}
+                </div>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Refund Type</p>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  booking.refundStatus === 'failed' ? 'bg-red-100 text-red-800' :
+                  booking.refundStatus === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                  booking.refundAmount === booking.totalPrice ? 'bg-blue-100 text-blue-800' :
+                  booking.refundAmount > 0 ? 'bg-orange-100 text-orange-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {booking.refundStatus === 'failed' ? 'Refund Failed' :
+                   booking.refundStatus === 'processing' ? 'Processing Refund' :
+                   booking.refundAmount === booking.totalPrice ? 'Full Refund (100%)' :
+                   booking.refundAmount > 0 ? 'Partial Refund (Policy-based)' :
+                   'No Refund (Policy-based)'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Additional refund information for participant-level cancellations */}
+            {booking.participantDetails && booking.participantDetails.some(p => p.refundStatus === 'success') && (
+              <div className="mt-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-sm font-medium text-orange-800 mb-2">Participant-Level Refunds:</p>
+                <div className="space-y-2">
+                  {booking.participantDetails
+                    .filter(p => p.refundStatus === 'success')
+                    .map((participant, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm">
+                        <span className="text-gray-700">{participant.name}</span>
+                        <span className="font-medium text-emerald-600">
+                          {formatCurrency(participant.refundAmount || 0)}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
