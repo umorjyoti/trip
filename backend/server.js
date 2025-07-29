@@ -194,18 +194,50 @@ app.patch('/api/treks/:id/toggle-status', (req, res) => {
 // Database connection
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+  socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
 })
 .then(() => {
-  console.log('MongoDB connected to production database');
+  console.log('✅ MongoDB connected successfully');
   
-  // Setup cron jobs for automated tasks (only in production)
-  if (process.env.NODE_ENV === 'production') {
-    const { setupCronJobs } = require('./scripts/setupCronJobs');
-    setupCronJobs();
+  // Verify connection is ready
+  if (mongoose.connection.readyState === 1) {
+    console.log('✅ MongoDB connection is ready');
+    
+    // Setup cron jobs for automated tasks (only in production)
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const { setupCronJobs } = require('./scripts/setupCronJobs');
+        setupCronJobs();
+        console.log('✅ Cron jobs setup completed');
+      } catch (error) {
+        console.error('❌ Failed to setup cron jobs:', error);
+      }
+    } else {
+      console.log('ℹ️  Cron jobs disabled in development mode');
+    }
+  } else {
+    console.error('❌ MongoDB connection is not ready. State:', mongoose.connection.readyState);
   }
 })
-.catch(err => console.error('MongoDB connection error:', err));
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+  process.exit(1); // Exit if database connection fails
+});
+
+// Handle MongoDB connection events
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️  MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
+});
 
 // Serve blog routes (including sitemap.xml, rss.xml, robots.txt) before static React app
 // Note: This is for public blog access, admin routes are handled via /api/blogs
