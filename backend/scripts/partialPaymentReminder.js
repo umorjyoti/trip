@@ -2,16 +2,24 @@ const mongoose = require('mongoose');
 const { sendPartialPaymentReminderEmail } = require('../utils/email');
 require('dotenv').config();
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
-
 const Booking = require('../models/Booking');
 
 const sendPartialPaymentReminders = async () => {
   try {
+    // Only connect if not already connected (when run standalone)
+    if (require.main === module) {
+      await mongoose.connect(process.env.MONGODB_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+      });
+      console.log('✅ Connected to MongoDB');
+    } else {
+      // Check if connection is healthy when called from server
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error('MongoDB connection is not ready. Please ensure the server is properly connected.');
+      }
+    }
+
     console.log('Starting partial payment reminder process...');
     
     // Find bookings with partial payment that are due in 3 days
@@ -64,7 +72,11 @@ const sendPartialPaymentReminders = async () => {
   } catch (error) {
     console.error('Error in partial payment reminder process:', error);
   } finally {
-    mongoose.connection.close();
+    // Only disconnect if this script is run standalone
+    if (require.main === module) {
+      await mongoose.disconnect();
+      console.log('🔌 Disconnected from MongoDB');
+    }
   }
 };
 
@@ -73,5 +85,13 @@ module.exports = { sendPartialPaymentReminders };
 
 // Run the script if called directly
 if (require.main === module) {
-  sendPartialPaymentReminders();
+  sendPartialPaymentReminders()
+    .then(() => {
+      console.log('🎉 Partial payment reminder script finished');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Partial payment reminder script failed:', error);
+      process.exit(1);
+    });
 } 
