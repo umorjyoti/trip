@@ -3,7 +3,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 const authRoutes = require('./routes/auth.routes');
 const trekRoutes = require('./routes/trek.routes');
 const regionRoutes = require('./routes/regionRoutes');
@@ -118,46 +117,6 @@ app.use(express.urlencoded({
 app.use(morgan('dev'));
 app.use(cookieParser());
 
-// ===== RATE LIMITING CONFIGURATION =====
-
-// Stricter rate limiter for authentication endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
-  message: {
-    error: 'Too many authentication attempts, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      error: 'Too many authentication attempts, please try again later.',
-      retryAfter: '15 minutes'
-    });
-  }
-});
-
-// Rate limiter for booking operations
-const bookingLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Limit each IP to 50 booking requests per windowMs
-  message: {
-    error: 'Too many booking requests, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      error: 'Too many booking requests, please try again later.',
-      retryAfter: '15 minutes'
-    });
-  }
-});
-
-// ===== END RATE LIMITING CONFIGURATION =====
-
 // Add this middleware to log all incoming requests
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
@@ -176,12 +135,12 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/user-groups', userGroupRoutes);
 app.use('/api/regions', regionRoutes);
 app.use('/api/treks', trekRoutes);
-app.use('/api/bookings', bookingLimiter, bookingRoutes);
+app.use('/api/bookings', bookingRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/promos', promoRoutes);
