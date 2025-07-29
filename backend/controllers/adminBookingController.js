@@ -59,11 +59,13 @@ exports.cancelBooking = async (req, res) => {
             participant.refundStatus = 'success';
             participant.refundAmount = participantRefund;
             participant.refundDate = new Date();
+            participant.refundType = refundType || 'auto';
           } else {
             participant.refundStatus = 'failed';
           }
         } else {
           participant.refundStatus = 'not_applicable';
+          participant.refundType = refundType || 'auto';
         }
       }
 
@@ -108,11 +110,13 @@ exports.cancelBooking = async (req, res) => {
           booking.refundStatus = 'success';
           booking.refundAmount = refundAmount;
           booking.refundDate = new Date();
+          booking.refundType = refundType || 'auto';
         } else {
           booking.refundStatus = 'failed';
         }
       } else {
         booking.refundStatus = 'not_applicable';
+        booking.refundType = refundType || 'auto';
       }
 
       // Update batch participant count

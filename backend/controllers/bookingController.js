@@ -599,6 +599,7 @@ const getBookingById = async (req, res) => {
       refundStatus: booking.refundStatus,
       refundAmount: booking.refundAmount,
       refundDate: booking.refundDate,
+      refundType: booking.refundType,
       paymentMode: booking.paymentMode || 'full',
       partialPaymentDetails: booking.partialPaymentDetails || null
     };
@@ -664,11 +665,13 @@ const cancelBooking = async (req, res) => {
         booking.participantDetails.forEach(p => {
           p.refundStatus = 'success';
           p.refundDate = refundDate;
+          p.refundType = refundType || 'auto';
         });
       } else {
         refundStatus = 'failed';
         booking.participantDetails.forEach(p => {
           p.refundStatus = 'failed';
+          p.refundType = refundType || 'auto';
         });
       }
     }
@@ -676,6 +679,7 @@ const cancelBooking = async (req, res) => {
     booking.refundStatus = refundStatus;
     booking.refundAmount = totalRefund;
     booking.refundDate = refundDate;
+    booking.refundType = refundType || 'auto';
     if (batch) {
       try {
         await updateBatchParticipantCount(booking.trek, booking.batch);
@@ -1106,8 +1110,17 @@ const cancelParticipant = async (req, res) => {
       if (razorpayRes.success) {
         refundStatus = 'success';
         refundDate = new Date();
+        booking.participantDetails.forEach(p => {
+          p.refundStatus = 'success';
+          p.refundDate = refundDate;
+          p.refundType = refundType || 'auto';
+        });
       } else {
         refundStatus = 'failed';
+        booking.participantDetails.forEach(p => {
+          p.refundStatus = 'failed';
+          p.refundType = refundType || 'auto';
+        });
       }
     }
     participant.isCancelled = true;
@@ -1116,6 +1129,7 @@ const cancelParticipant = async (req, res) => {
     participant.refundStatus = refundStatus;
     participant.refundAmount = refundAmount;
     participant.refundDate = refundDate;
+    participant.refundType = effectiveRefundType;
     participant.status = 'bookingCancelled';
     if (batch) {
       booking.totalPrice = Math.max(0, booking.totalPrice - perPrice);
