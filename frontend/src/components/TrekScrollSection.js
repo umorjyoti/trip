@@ -62,9 +62,6 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
           } else if (trek.region && typeof trek.region === 'object' && trek.region.name) {
             regionName = trek.region.name;
           }
-
-          const basePrice = trek.basePrice || (trek.batches && trek.batches.length > 0 ? trek.batches[0].price : 0);
-
           const earliestBatch = trek.batches
             ?.filter(batch => new Date(batch.startDate) >= new Date())
             .sort((a, b) => new Date(a.startDate) - new Date(b.startDate))[0];
@@ -72,7 +69,7 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
           return {
             ...trek,
             regionName,
-            displayPrice: basePrice,
+            displayPrice: trek?.displayPrice,
             earliestBatch,
           };
         })
@@ -140,6 +137,8 @@ function TrekScrollSection({ title, treks = [], viewAllLink }) {
   if (!treksWithDetails || treksWithDetails.length === 0) {
     return null;
   }
+
+  console.log("treksWithDetails", treksWithDetails)
 
   return (
     <div className="mb-12 relative group">

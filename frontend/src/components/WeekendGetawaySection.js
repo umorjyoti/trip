@@ -123,9 +123,9 @@ function WeekendGetawaySection({ offers = [] }) {
                 <p className="text-gray-700 leading-relaxed text-base font-medium">
                   Perfect short trips designed for busy professionals and adventure seekers. Escape the city chaos with our carefully curated 2-3 day getaways that offer the perfect balance of adventure, relaxation, and exploration.
                 </p>
-                <p className="text-gray-600 leading-relaxed text-sm mt-3">
+                {/* <p className="text-gray-600 leading-relaxed text-sm mt-3">
                   From misty mountain trails to serene lakeside retreats, discover hidden gems that are just a weekend away. Experience the perfect blend of thrill and tranquility in destinations that feel worlds apart from your daily routine.
-                </p>
+                </p> */}
               </div>
             </div>
           </div>
