@@ -59,6 +59,11 @@ const ParticipantDetailSchema = new mongoose.Schema({
   refundDate: {
     type: Date
   },
+  refundType: {
+    type: String,
+    enum: ['auto', 'custom', 'full'],
+    default: 'auto'
+  },
   cancellationReason: {
     type: String,
     default: ''
@@ -225,6 +230,11 @@ const BookingSchema = new mongoose.Schema({
   refundDate: {
     type: Date
   },
+  refundType: {
+    type: String,
+    enum: ['auto', 'custom', 'full'],
+    default: 'auto'
+  },
   // Add payment details field
   paymentDetails: PaymentDetailsSchema,
   // Add promo code details field
@@ -283,6 +293,11 @@ const BookingSchema = new mongoose.Schema({
     },
     refundDate: {
       type: Date
+    },
+    refundType: {
+      type: String,
+      enum: ['auto', 'custom', 'full'],
+      default: 'auto'
     }
   }],
 
