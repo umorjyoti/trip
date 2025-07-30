@@ -1,23 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { getRegions } from '../services/api';
+import { getRegions, getTreks } from '../services/api';
 import MultiSelectDropdown from './MultiSelectDropdown';
 import { FaGlobe, FaCloudRain, FaSun, FaMountain, FaHiking, FaCalendarWeek } from 'react-icons/fa';
 
 function TrekFilter({ filters, setFilters }) {
   const [regions, setRegions] = useState([]);
+  const [allTreks, setAllTreks] = useState([]);
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
 
   useEffect(() => {
-    const fetchRegions = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getRegions();
-        setRegions(data);
+        const [regionsData, treksData] = await Promise.all([
+          getRegions(),
+          getTreks({ limit: 100 }) // Fetch treks to determine available categories
+        ]);
+        setRegions(regionsData);
+        setAllTreks(Array.isArray(treksData) ? treksData : []);
       } catch (err) {
-        console.error('Error fetching regions:', err);
+        console.error('Error fetching data:', err);
       }
     };
     
-    fetchRegions();
+    fetchData();
   }, []);
 
   const handleChange = (e) => {
@@ -55,35 +60,45 @@ function TrekFilter({ filters, setFilters }) {
     'long-weekend': 'Long Weekend'
   };
 
+  // Get available categories based on actual trek data
+  const availableCategories = React.useMemo(() => {
+    const categories = ['all-treks']; // Always include 'all-treks'
+    
+    // Get unique categories from treks that have treks
+    const trekCategories = [...new Set(allTreks.map(trek => trek.category).filter(Boolean))];
+    
+    // Add categories that have treks
+    trekCategories.forEach(category => {
+      if (!categories.includes(category)) {
+        categories.push(category);
+      }
+    });
+    
+    return categories;
+  }, [allTreks]);
+
   return (
     <div className="bg-white p-6 rounded-lg shadow">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter Treks</h2>
       
-      {/* Category filter buttons */}
-      <div className="mb-6">
-        <div className="flex flex-wrap gap-2 mb-4">
-          <button
-            onClick={() => handleCategoryClick('all-treks')}
-            className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              !filters.category || filters.category === 'all-treks' ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-            }`}
-          >
-            🌍 All Treks
-          </button>
-          
-          {Object.keys(categoryNames).map(category => (
-            <button
-              key={category}
-              onClick={() => handleCategoryClick(category)}
-              className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                filters.category === category ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              }`}
-            >
-              {categoryIcons[category]} {categoryNames[category]}
-            </button>
-          ))}
+      {/* Category filter buttons - Only show available categories */}
+      {availableCategories.length > 1 && (
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {availableCategories.map(category => (
+              <button
+                key={category}
+                onClick={() => handleCategoryClick(category)}
+                className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  !filters.category || filters.category === category ? 'bg-emerald-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                }`}
+              >
+                {categoryIcons[category]} {categoryNames[category]}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       
       <div className="space-y-4">
         <div>
@@ -150,10 +165,10 @@ function TrekFilter({ filters, setFilters }) {
           >
             <option value="name-asc">Name (A-Z)</option>
             <option value="name-desc">Name (Z-A)</option>
-            <option value="duration-asc">Duration (Low to High)</option>
-            <option value="duration-desc">Duration (High to Low)</option>
-            <option value="difficulty-asc">Difficulty (Easy to Hard)</option>
-            <option value="difficulty-desc">Difficulty (Hard to Easy)</option>
+            <option value="price-asc">Price (Low to High)</option>
+            <option value="price-desc">Price (High to Low)</option>
+            <option value="duration-asc">Duration (Short to Long)</option>
+            <option value="duration-desc">Duration (Long to Short)</option>
           </select>
         </div>
       </div>

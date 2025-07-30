@@ -1,8 +1,27 @@
 # Active Context
 
-## Current Focus: Partial Payment Feature Implementation
+## Current Focus: Trek Section Banner Integration
 
 ### Recent Changes (Latest Session)
+
+#### 1. Integrated Banner Management into Trek Section System
+- **Problem**: User wanted to manage banners directly from the trek section dashboard, allowing mixed ordering of trek sections and banner sections
+- **Solution**: Extended the existing TrekSection model and system to support both trek sections and banner sections with a unified interface
+- **Files Modified**:
+  - `backend/models/TrekSection.js` - Added type field and banner-specific fields (bannerImage, overlayText, overlayColor, textColor, linkToTrek, couponCode, discountPercentage, mobileOptimized)
+  - `backend/controllers/trekSectionController.js` - Updated to handle both trek and banner section types with proper validation
+  - `frontend/src/components/TrekSectionManager.js` - Enhanced with type selector and conditional form fields for banner configuration
+  - `frontend/src/components/TrekBannerSection.js` - New component for displaying banner sections with mobile-responsive design
+  - `frontend/src/components/HomeTrekSections.js` - Updated to render both trek sections and banner sections based on type
+- **Features Added**:
+  - Type selector (Trek Section vs Banner Section) in the admin interface
+  - Banner image upload with overlay text and color customization
+  - Coupon code and discount percentage support
+  - Mobile optimization toggle
+  - Link to specific trek detail pages
+  - Unified ordering system for mixed content
+
+#### 2. Previous: Partial Payment Feature Implementation
 
 #### 1. Created Custom Dropdown Component for iOS Compatibility
 - **Problem**: Native select elements have compatibility issues on iOS devices in the enquiry form and support ticket creation
@@ -83,20 +102,33 @@
 ### Current Status
 
 ✅ **Completed Features:**
-- Partial payment configuration in trek creation/editing
-- Partial payment selection in booking form
-- Payment processing for partial payments
-- Remaining balance payment functionality
-- Automatic reminders for due partial payments
-- Admin panel display of partial payment information
-- Route conflict resolution for pending booking checks
-- Delete pending booking functionality for users
+- Integrated banner management into trek section system
+- Type selector for trek sections vs banner sections
+- Banner image upload with overlay customization
+- Coupon code and discount percentage support
+- Mobile-responsive banner display
+- Unified ordering system for mixed content
+- Link to specific trek detail pages from banners
 
 🔄 **Ready for Testing:**
-- End-to-end partial payment flow
-- Trek editing with partial payment settings
-- Pending booking management (check, continue, delete)
-- Reminder system for due payments
+- Banner creation and editing in trek section manager
+- Mixed ordering of trek sections and banner sections
+- Banner display on homepage with proper styling
+- Mobile responsiveness of banner sections
+- Coupon code and discount display functionality
+
+### Next Steps
+
+1. **Test the complete banner flow**:
+   - Create banner sections in the trek section manager
+   - Test mixed ordering (trek section → banner → trek section)
+   - Verify banner display on homepage
+   - Test mobile responsiveness
+
+2. **Enhance banner features**:
+   - Add banner scheduling (start/end dates)
+   - Implement banner analytics tracking
+   - Add more banner templates/styles
 
 ### Next Steps
 

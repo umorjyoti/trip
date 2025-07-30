@@ -52,8 +52,6 @@ const categoryNames = {
   'long-weekend': 'Long Weekend'
 };
 
-const categories = Object.keys(categoryNames);
-
 function CategoryTrekSection() {
   const [allTreks, setAllTreks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -113,6 +111,23 @@ function CategoryTrekSection() {
     fetchAllTreks();
   }, []);
 
+  // Get available categories based on actual trek data
+  const availableCategories = useMemo(() => {
+    const categories = ['all-treks']; // Always include 'all-treks'
+    
+    // Get unique categories from treks that have treks
+    const trekCategories = [...new Set(allTreks.map(trek => trek.category).filter(Boolean))];
+    
+    // Add categories that have treks
+    trekCategories.forEach(category => {
+      if (!categories.includes(category)) {
+        categories.push(category);
+      }
+    });
+    
+    return categories;
+  }, [allTreks]);
+
   const filteredTreks = useMemo(() => {
     if (activeCategory === 'all-treks') {
       return allTreks; // Show all if 'all-treks' is selected
@@ -157,79 +172,76 @@ function CategoryTrekSection() {
           </p>
         </div>
 
-        {/* Category Filter Buttons */}
-        <motion.div
-          className="flex flex-wrap justify-center gap-2 md:gap-3 mb-8 md:mb-12"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          {categories.map(category => (
-            <motion.button
-              key={category}
-              variants={itemVariants}
-              onClick={() => handleCategoryClick(category)}
-              className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ease-in-out shadow-sm hover:shadow-md ${
-                activeCategory === category ? 'bg-emerald-600 text-white scale-105 shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {categoryIcons[category]} {categoryNames[category]}
-            </motion.button>
-          ))}
-        </motion.div>
+        {/* Category Filter Buttons - Only show available categories */}
+        {availableCategories.length > 1 && (
+          <motion.div
+            className="flex flex-wrap justify-center gap-2 md:gap-3 mb-8 md:mb-12"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {availableCategories.map(category => (
+              <motion.button
+                key={category}
+                variants={itemVariants}
+                onClick={() => handleCategoryClick(category)}
+                className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ease-in-out shadow-sm hover:shadow-md ${
+                  activeCategory === category ? 'bg-emerald-600 text-white scale-105 shadow-lg' : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {categoryIcons[category]} {categoryNames[category]}
+              </motion.button>
+            ))}
+          </motion.div>
+        )}
 
         {/* Trek Cards Grid */}
         {loading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex justify-center py-12">
             <LoadingSpinner />
           </div>
         ) : error ? (
-          <div className="text-center py-10 px-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-red-700">{error}</p>
+          <div className="text-center py-12">
+            <p className="text-red-600">{error}</p>
+          </div>
+        ) : currentTreks.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">
+              {activeCategory === 'all-treks' 
+                ? 'No treks available at the moment.' 
+                : `No treks found in the "${categoryNames[activeCategory]}" category.`
+              }
+            </p>
           </div>
         ) : (
           <>
             <motion.div
-              key={`${activeCategory}-${currentPage}`} // Re-trigger animation on category or page change
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8"
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              exit="hidden"
             >
-              <AnimatePresence mode="sync">
-                {currentTreks.length > 0 ? (
-                  currentTreks.map(trek => (
-                    <motion.div
-                      key={trek._id}
-                      variants={itemVariants}
-                      layout // Animate layout changes
-                      initial="hidden" // Ensure initial state is set for entering items
-                      animate="visible"
-                      exit="exit"
-                    >
-                      <TrekCard trek={trek} />
-                    </motion.div>
-                  ))
-                ) : (
-                   <motion.div
-                      key="no-results"
-                      className="col-span-full text-center py-12"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                   >
-                      <p className="text-gray-500 text-lg">No treks found for the selected category.</p>
-                   </motion.div>
-                )}
+              <AnimatePresence mode="wait">
+                {currentTreks.map((trek) => (
+                  <motion.div
+                    key={trek._id}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    layout
+                  >
+                    <TrekCard trek={trek} />
+                  </motion.div>
+                ))}
               </AnimatePresence>
             </motion.div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="mt-8 md:mt-12">
+              <div className="mt-8 flex justify-center">
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -239,16 +251,6 @@ function CategoryTrekSection() {
             )}
           </>
         )}
-
-        {/* Optional: View All Button */}
-        <div className="mt-12 text-center">
-          <Link
-            to="/treks"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
-          >
-            View All Treks
-          </Link>
-        </div>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getActiveTrekSections } from '../services/api';
 import TrekScrollSection from './TrekScrollSection';
+import TrekBannerSection from './TrekBannerSection';
 import LoadingSpinner from './LoadingSpinner';
 
 function HomeTrekSections() {
@@ -61,14 +62,26 @@ function HomeTrekSections() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {sections.map(section => (
-        <TrekScrollSection 
-          key={section._id}
-          title={section.title}
-          treks={section.treks}
-          viewAllLink="/treks"
-        />
-      ))}
+      {sections.map(section => {
+        // Render banner section
+        if (section.type === 'banner') {
+          return (
+            <div key={section._id} className="mb-8">
+              <TrekBannerSection banner={section} />
+            </div>
+          );
+        }
+        
+        // Render trek section (default)
+        return (
+          <TrekScrollSection 
+            key={section._id}
+            title={section.title}
+            treks={section.treks}
+            viewAllLink="/treks"
+          />
+        );
+      })}
     </div>
   );
 }

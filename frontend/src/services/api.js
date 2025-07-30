@@ -1672,3 +1672,4 @@ export const getBatchById = async (batchId) => {
   const response = await api.get(`/batches/${batchId}`);
   return response.data;
 };
+
