@@ -25,6 +25,7 @@ import {
 } from "react-icons/fa";
 import { createRegionSlug } from "../services/api";
 import logoTransparent from "../assets/logo-transperant.png";
+import { isMobile } from "../utils/mobileNavigation";
 
 const MobileNavLink = ({ to, icon: Icon, children, onClick }) => (
   <Link
@@ -98,16 +99,23 @@ function Header() {
 
   const handleLogout = async () => {
     try {
-      console.log("Logout initiated from Header");
       await logout();
-
-      setMobileMenuOpen(false);
-      setIsDropdownOpen(false);
-
-      navigate("/");
+      navigate('/');
     } catch (error) {
-      console.error("Logout error in Header:", error);
-      toast.error("Failed to log out");
+      console.error('Logout error:', error);
+      toast.error('Failed to log out');
+    }
+  };
+
+  // Mobile-specific navigation handler
+  const handleMobileNavigation = (to) => {
+    if (isMobile()) {
+      // Add a small delay for mobile to prevent refresh
+      setTimeout(() => {
+        navigate(to);
+      }, 50);
+    } else {
+      navigate(to);
     }
   };
 

@@ -3,7 +3,7 @@ import axios from 'axios';
 // Remove accidental wrapping quotes that sometimes appear when an env variable
 // is defined like REACT_APP_API_URL="https://example.com/api" (the quotes end
 // up being part of the final bundled string).
-let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 if (API_URL) {
   API_URL = API_URL.replace(/^['"](.*)['"]$/, '$1');
 }

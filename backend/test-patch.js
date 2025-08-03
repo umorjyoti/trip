@@ -3,7 +3,7 @@ const axios = require('axios');
 async function testPatch() {
   try {
     const token = 'YOUR_ADMIN_TOKEN_HERE'; // Replace with a valid admin token
-    const response = await axios.patch('http://localhost:5000/api/treks/test', 
+    const response = await axios.patch('http://localhost:3001/api/treks/test', 
       { test: true },
       {
         headers: {

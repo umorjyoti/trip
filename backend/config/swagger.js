@@ -20,7 +20,7 @@ const options = {
       {
         url: process.env.NODE_ENV === 'production' 
           ? 'https://your-production-domain.com/api' 
-          : 'http://localhost:5000/api',
+          : 'http://localhost:3001/api',
         description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
       }
     ],

@@ -2,6 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-specific fixes to prevent refresh issues */
+@media (max-width: 768px) {
+  /* Prevent pull-to-refresh on mobile */
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent double-tap zoom on buttons and links */
+  button, a, input, select, textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Prevent unwanted scrolling during navigation */
+  .page-transition {
+    overflow: hidden;
+  }
+  
+  /* Improve touch response */
+  * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+  
+  /* Allow text selection in input fields */
+  input, textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+}
+
+/* Prevent page refresh on mobile navigation */
+.nav-link {
+  touch-action: manipulation;
+}
+
+/* Smooth transitions for mobile */
+@media (max-width: 768px) {
+  .page-transition-enter {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  
+  .page-transition-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 200ms, transform 200ms;
+  }
+  
+  .page-transition-exit {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .page-transition-exit-active {
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 200ms, transform 200ms;
+  }
+}
+
 /* Custom scrollbar hiding */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* Internet Explorer 10+ */

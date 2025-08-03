@@ -36,7 +36,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 
 // When running behind a proxy (e.g. Render, Heroku, Vercel) we need to tell
 // Express to trust the first proxy hop so that `req.secure` is accurate. This

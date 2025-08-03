@@ -48,7 +48,7 @@ function OTPVerification() {
     try {
       setLoading(true);
       
-      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
       const endpoint = type === 'register' ? '/auth/verify-register-otp' : '/auth/verify-login-otp';
       
       const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -84,7 +84,7 @@ function OTPVerification() {
     try {
       setResendLoading(true);
       
-      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
       const endpoint = type === 'register' ? '/auth/resend-register-otp' : '/auth/resend-login-otp';
       
       const response = await fetch(`${baseUrl}${endpoint}`, {

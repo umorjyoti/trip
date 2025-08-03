@@ -16,6 +16,9 @@ import ProtectedRoutes from "./routes/ProtectedRoutes";
 import OTPVerification from "./components/OTPVerification";
 import ScrollToTop from "./components/ScrollToTop";
 
+// Utilities
+import { initMobileBehaviors } from "./utils/mobileNavigation";
+
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -80,6 +83,7 @@ import TermsConditions from './pages/TermsConditions';
 import ComingSoon from './pages/ComingSoon';
 import SocialMediaLeads from './pages/SocialMediaLeads';
 import CustomDropdownDemo from './components/CustomDropdownDemo';
+import MobileNavigationTest from './components/MobileNavigationTest';
 
 // Context
 import { useAuth } from "./contexts/AuthContext";
@@ -94,6 +98,11 @@ function App() {
   const { currentUser, loading, refreshUser } = useAuth();
   const permissions = currentUser?.group?.permissions;
   const location = useLocation();
+
+  // Initialize mobile-specific behaviors
+  useEffect(() => {
+    initMobileBehaviors();
+  }, []);
 
   // Remove this useEffect as AuthContext already handles user refresh on mount
   // useEffect(() => {
@@ -129,7 +138,7 @@ function App() {
       <ScrollToTop />
       <Header />
       <main className="flex-grow">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync">
           <motion.div
             key={location.pathname}
             initial="initial"
@@ -164,6 +173,7 @@ function App() {
               <Route path="/coming-soon" element={<ComingSoon />} />
               <Route path="/social-media-leads" element={<SocialMediaLeads />} />
               <Route path="/dropdown-demo" element={<CustomDropdownDemo />} />
+              <Route path="/mobile-test" element={<MobileNavigationTest />} />
               <Route path="/treks" element={<SearchResults />} />
               <Route path="/treks/:name" element={<TrekDetail />} />
               <Route path="/treks/:name/book" element={<BookingPage />} />
