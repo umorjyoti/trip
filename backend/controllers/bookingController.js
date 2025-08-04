@@ -246,8 +246,11 @@ const createBooking = async (req, res) => {
     console.log("Requested participants:", participantsCount);
     console.log("Max participants:", batch.maxParticipants);
     
-    // Check if batch is full using actual participant count
-    if (actualCurrentParticipants + participantsCount > batch.maxParticipants) {
+    // Check if batch is full using actual participant count and reserved slots
+    const reservedSlots = batch.reservedSlots || 0;
+    const publiclyAvailableSlots = batch.maxParticipants - actualCurrentParticipants - reservedSlots;
+    
+    if (participantsCount > publiclyAvailableSlots) {
       return res
         .status(400)
         .json({ message: "Not enough spots available in this batch" });

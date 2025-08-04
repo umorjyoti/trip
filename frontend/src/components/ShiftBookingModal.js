@@ -20,12 +20,14 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
     try {
       const trek = await getTrekByIdForAdmin(trekId);
       if (trek && trek.batches) {
-        // Filter out the current batch and only show future batches
+        // Filter out the current batch and only show future batches with available spots
         const currentDate = new Date();
         const availableBatches = trek.batches.filter(batch => {
           const batchStartDate = new Date(batch.startDate);
           const currentBatchId = booking?.batch?._id || booking?.batch;
-          return batchStartDate > currentDate && batch._id !== currentBatchId;
+          const reservedSlots = batch.reservedSlots || 0;
+          const hasAvailableSpots = batch.currentParticipants < (batch.maxParticipants - reservedSlots);
+          return batchStartDate > currentDate && batch._id !== currentBatchId && hasAvailableSpots;
         });
         // Sort batches by start date in ascending order
         availableBatches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
@@ -145,7 +147,10 @@ const ShiftBookingModal = ({ isOpen, onClose, booking, trekId, onUpdate }) => {
                         <div className="text-sm text-gray-600 space-y-1">
                           <p><strong>Dates:</strong> {formatDate(selectedBatch.startDate)} - {formatDate(selectedBatch.endDate)}</p>
                           <p><strong>Price per person:</strong> ₹{selectedBatch.price}</p>
-                          <p><strong>Available spots:</strong> {selectedBatch.maxParticipants - selectedBatch.currentParticipants}</p>
+                          <p><strong>Available spots:</strong> {(() => {
+                            const reservedSlots = selectedBatch.reservedSlots || 0;
+                            return selectedBatch.maxParticipants - selectedBatch.currentParticipants - reservedSlots;
+                          })()}</p>
                           <p><strong>Current participants:</strong> {selectedBatch.currentParticipants}/{selectedBatch.maxParticipants}</p>
                           
                           {booking?.paymentMode === 'partial' && booking?.trek?.partialPayment && (

@@ -240,9 +240,10 @@ const BatchesTabView = ({
       {/* Batches for selected month */}
       <div className="mt-4">
         {batchesByMonth[format(selectedMonth, "yyyy-MM")]?.map((batch) => {
-          const isFull = batch.currentParticipants >= batch.maxParticipants;
+          const reservedSlots = batch.reservedSlots || 0;
+          const isFull = batch.currentParticipants >= (batch.maxParticipants - reservedSlots);
           const isDisabled = isTrekDisabled || isFull;
-          const availability = (batch.maxParticipants - batch.currentParticipants);
+          const availability = (batch.maxParticipants - batch.currentParticipants - reservedSlots);
           const isSelected = selectedBatch?._id === batch._id;
 
           return (
@@ -435,7 +436,10 @@ function TrekDetail() {
     trek.batches &&
     trek.batches.length > 0 &&
     trek.batches.some(
-      (batch) => batch.currentParticipants < batch.maxParticipants
+      (batch) => {
+        const reservedSlots = batch.reservedSlots || 0;
+        return batch.currentParticipants < (batch.maxParticipants - reservedSlots);
+      }
     );
 
   useEffect(() => {
@@ -639,7 +643,8 @@ function TrekDetail() {
     }
 
     // Check if the batch is full
-    if (batch.currentParticipants >= batch.maxParticipants) {
+    const reservedSlots = batch.reservedSlots || 0;
+    if (batch.currentParticipants >= (batch.maxParticipants - reservedSlots)) {
       toast.error("This batch is already full");
       return;
     }
@@ -844,9 +849,10 @@ function TrekDetail() {
         <h3 className="text-lg font-medium text-gray-900">Upcoming Batches</h3>
         <div className="mt-4 space-y-4">
           {sortedBatches.map((batch) => {
-            const isFull = (batch.currentParticipants) >= batch.maxParticipants;
+            const reservedSlots = batch.reservedSlots || 0;
+            const isFull = (batch.currentParticipants) >= (batch.maxParticipants - reservedSlots);
             const isDisabled = isTrekDisabled || isFull;
-            const spotsLeft = batch.maxParticipants - (batch.currentParticipants);
+            const spotsLeft = batch.maxParticipants - (batch.currentParticipants) - reservedSlots;
 
             return (
               <div
@@ -925,7 +931,8 @@ function TrekDetail() {
               </p>
               <p className="text-sm text-gray-500">
                 {(() => {
-                  const spotsLeft = selectedBatch.maxParticipants - (selectedBatch.actualCurrentParticipants || selectedBatch.currentParticipants);
+                  const reservedSlots = selectedBatch.reservedSlots || 0;
+                  const spotsLeft = selectedBatch.maxParticipants - selectedBatch.currentParticipants - reservedSlots;
                   return spotsLeft < 10 ? `${spotsLeft} spots left` : "Limited slots available";
                 })()}
               </p>
@@ -1698,7 +1705,10 @@ function TrekDetail() {
     if (!trek || !trek.batches || trek.batches.length === 0) return;
     // Find the batch with the lowest price that is not full
     const availableBatches = trek.batches.filter(
-      (batch) => batch.currentParticipants < batch.maxParticipants
+      (batch) => {
+        const reservedSlots = batch.reservedSlots || 0;
+        return batch.currentParticipants < (batch.maxParticipants - reservedSlots);
+      }
     );
     if (availableBatches.length === 0) {
       toast.error("All batches are full.");

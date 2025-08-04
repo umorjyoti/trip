@@ -58,8 +58,10 @@ function Booking() {
       return;
     }
     
-    if (formData.participants > batch.maxParticipants - batch.currentParticipants) {
-      toast.error(`Only ${batch.maxParticipants - batch.currentParticipants} spots available for this batch`);
+    const reservedSlots = batch.reservedSlots || 0;
+    const availableSpots = batch.maxParticipants - batch.currentParticipants - reservedSlots;
+    if (formData.participants > availableSpots) {
+      toast.error(`Only ${availableSpots} spots available for this batch`);
       return;
     }
     
@@ -130,7 +132,8 @@ function Booking() {
     );
   }
 
-  const availableSpots = batch.maxParticipants - batch.currentParticipants;
+  const reservedSlots = batch.reservedSlots || 0;
+  const availableSpots = batch.maxParticipants - batch.currentParticipants - reservedSlots;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">

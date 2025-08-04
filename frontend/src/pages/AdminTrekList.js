@@ -6,6 +6,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Modal from '../components/Modal';
 import { PlusIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { FaEye, FaEyeSlash, FaEdit, FaTrash, FaChartLine, FaThList, FaThLarge, FaSearch } from 'react-icons/fa';
+import BatchStatusManager from '../components/BatchStatusManager';
 
 
 function AdminTrekList() {
@@ -280,6 +281,10 @@ function AdminTrekList() {
     }
   };
 
+  const handleBatchUpdated = () => {
+    fetchTreks(); // Refresh the treks data when a batch is updated
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -507,6 +512,13 @@ function AdminTrekList() {
                                 editingBatchId === batch._id 
                                   ? 'cursor-default' 
                                   : 'cursor-pointer hover:border-emerald-500'
+                              } ${
+                                (() => {
+                                  const reservedSlots = batch.reservedSlots || 0;
+                                  return (batch.maxParticipants - (batch.actualCurrentParticipants || batch.currentParticipants || 0) - reservedSlots) <= 0;
+                                })() 
+                                  ? 'border-red-300 bg-red-50' 
+                                  : ''
                               }`}
                               onClick={() => {
                                 if (editingBatchId !== batch._id) {
@@ -598,9 +610,11 @@ function AdminTrekList() {
                                   <>
                                     <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{new Date(batch.startDate).toLocaleDateString('en-GB')} - {new Date(batch.endDate).toLocaleDateString('en-GB')}</h4>
                                     <div className="text-xs text-gray-500 mb-2">Price: <span className="font-semibold">₹{batch.price}</span></div>
-                                    <div className="text-xs text-gray-500 mb-2">Slots: <span className="font-semibold">{batch.maxParticipants}</span></div>
-                                    <div className="text-xs text-gray-500 mb-2">Available: <span className="font-semibold">{batch.maxParticipants - (batch.actualCurrentParticipants || batch.currentParticipants || 0)}</span></div>
-                                    <div className="text-xs text-blue-700 font-semibold mt-auto">{batch.actualCurrentParticipants || batch.currentParticipants || 0} Bookings</div>
+                                    <BatchStatusManager 
+                                      batch={batch} 
+                                      trekId={trek._id} 
+                                      onBatchUpdated={handleBatchUpdated}
+                                    />
                                   </>
                                 )}
                               </div>

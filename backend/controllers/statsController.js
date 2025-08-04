@@ -88,7 +88,7 @@ exports.getSalesStats = async (req, res) => {
     }
     
     // Calculate basic stats - only subtract successful refunds
-    const totalRevenue = bookings.reduce((sum, booking) => {
+    const bookingRevenue = bookings.reduce((sum, booking) => {
       const paid = booking.totalPrice || 0;
       // Only subtract refunds if they were successfully processed
       let refunded = 0;
@@ -106,6 +106,37 @@ exports.getSalesStats = async (req, res) => {
       }
       return sum + (paid - refunded);
     }, 0);
+
+    // Add revenue from reserved slots
+    let reservedRevenue = 0;
+    if (trekId) {
+      // If specific trek is requested, get its reserved slots
+      const trek = await Trek.findById(trekId);
+      if (trek && trek.batches) {
+        reservedRevenue = trek.batches.reduce((sum, batch) => {
+          if (batch && batch.reservedSlots && batch.price) {
+            return sum + (batch.reservedSlots * batch.price);
+          }
+          return sum;
+        }, 0);
+      }
+    } else {
+      // If no specific trek, get reserved slots from all treks
+      const allTreks = await Trek.find({});
+      reservedRevenue = allTreks.reduce((sum, trek) => {
+        if (trek.batches) {
+          return sum + trek.batches.reduce((batchSum, batch) => {
+            if (batch && batch.reservedSlots && batch.price) {
+              return batchSum + (batch.reservedSlots * batch.price);
+            }
+            return batchSum;
+          }, 0);
+        }
+        return sum;
+      }, 0);
+    }
+
+    const totalRevenue = bookingRevenue + reservedRevenue;
     const totalBookings = bookings.length;
     const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
     const totalParticipants = bookings.reduce((sum, booking) => sum + booking.participants, 0);
@@ -190,6 +221,43 @@ exports.getSalesStats = async (req, res) => {
       }
     });
     
+    // Add reserved slots revenue to each trek
+    const allTreks = await Trek.find({});
+    allTreks.forEach(trek => {
+      const trekId = trek._id.toString();
+      if (trekMap.has(trekId)) {
+        const trekData = trekMap.get(trekId);
+        // Add reserved slots revenue
+        if (trek.batches) {
+          const reservedRevenue = trek.batches.reduce((sum, batch) => {
+            if (batch && batch.reservedSlots && batch.price) {
+              return sum + (batch.reservedSlots * batch.price);
+            }
+            return sum;
+          }, 0);
+          trekData.revenue += reservedRevenue;
+        }
+      } else if (trek.batches) {
+        // If trek has no bookings but has reserved slots, add it to the list
+        const reservedRevenue = trek.batches.reduce((sum, batch) => {
+          if (batch && batch.reservedSlots && batch.price) {
+            return sum + (batch.reservedSlots * batch.price);
+          }
+          return sum;
+        }, 0);
+        
+        if (reservedRevenue > 0) {
+          trekMap.set(trekId, {
+            id: trekId,
+            name: trek.name,
+            region: trek.regionName || 'Unknown Region',
+            revenue: reservedRevenue,
+            bookings: 0
+          });
+        }
+      }
+    });
+
     trekMap.forEach((trek) => {
       revenueByTrek.push(trek);
     });
@@ -267,6 +335,41 @@ exports.getSalesStats = async (req, res) => {
       }
     });
     
+    // Add reserved slots revenue to each batch
+    allTreks.forEach(trek => {
+      if (trek.batches) {
+        trek.batches.forEach(batch => {
+          const batchId = batch._id.toString();
+          const reservedRevenue = (batch.reservedSlots || 0) * (batch.price || 0);
+          
+          if (reservedRevenue > 0) {
+            if (batchMap.has(batchId)) {
+              const batchData = batchMap.get(batchId);
+              batchData.revenue += reservedRevenue;
+            } else {
+              // If batch has no bookings but has reserved slots, add it to the list
+              const startDate = new Date(batch.startDate);
+              const formattedDate = startDate.toLocaleDateString('en-IN', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+              });
+              
+              batchMap.set(batchId, {
+                id: batchId,
+                trekName: trek.name,
+                startDate: startDate,
+                formattedDate: formattedDate,
+                displayName: `${formattedDate}\n${trek.name}`,
+                revenue: reservedRevenue,
+                bookings: 0
+              });
+            }
+          }
+        });
+      }
+    });
+
     batchMap.forEach((batch) => {
       revenueByBatch.push(batch);
     });

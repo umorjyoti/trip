@@ -136,11 +136,14 @@ function BookingPage() {
 
   const handleParticipantsChange = (e) => {
     const value = parseInt(e.target.value);
-    if (selectedBatch && value > 0 && value <= (selectedBatch.maxParticipants - selectedBatch.currentParticipants)) {
-      setFormData(prev => ({
-        ...prev,
-        numberOfParticipants: value
-      }));
+    if (selectedBatch) {
+      const reservedSlots = selectedBatch.reservedSlots || 0;
+      if (value > 0 && value <= (selectedBatch.maxParticipants - selectedBatch.currentParticipants - reservedSlots)) {
+        setFormData(prev => ({
+          ...prev,
+          numberOfParticipants: value
+        }));
+      }
     }
   };
 
@@ -549,7 +552,10 @@ function BookingPage() {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
                   required
                 >
-                  {[...Array(selectedBatch ? selectedBatch.maxParticipants - selectedBatch.currentParticipants : 0)].map((_, i) => (
+                  {[...Array(selectedBatch ? (() => {
+                    const reservedSlots = selectedBatch.reservedSlots || 0;
+                    return selectedBatch.maxParticipants - selectedBatch.currentParticipants - reservedSlots;
+                  })() : 0)].map((_, i) => (
                     <option key={i + 1} value={i + 1}>{i + 1}</option>
                   ))}
                 </select>
@@ -934,11 +940,12 @@ function BookingPage() {
             <div className="border-t border-gray-200">
               <div className="divide-y divide-gray-200">
                 {trek.batches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((batch) => {
+                  const reservedSlots = batch.reservedSlots || 0;
                   const isFull =
-                    batch.currentParticipants >= batch.maxParticipants;
+                    batch.currentParticipants >= (batch.maxParticipants - reservedSlots);
                   const isSelected = selectedBatch?._id === batch._id;
                   const spotsLeft =
-                    batch.maxParticipants - batch.currentParticipants;
+                    batch.maxParticipants - batch.currentParticipants - reservedSlots;
 
                   return (
                     <div

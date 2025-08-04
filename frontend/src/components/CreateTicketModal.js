@@ -37,7 +37,8 @@ function CreateTicketModal({ bookingId, onClose, onSuccess }) {
           const currentBatchId = booking.batch?._id || booking.batch;
           const available = trek.batches.filter(batch => {
             const isNotCurrentBatch = batch._id.toString() !== currentBatchId?.toString();
-            const hasAvailableSpots = batch.currentParticipants < batch.maxParticipants;
+            const reservedSlots = batch.reservedSlots || 0;
+            const hasAvailableSpots = batch.currentParticipants < (batch.maxParticipants - reservedSlots);
             const isFutureBatch = new Date(batch.startDate) > new Date();
             
             return isNotCurrentBatch && hasAvailableSpots && isFutureBatch;

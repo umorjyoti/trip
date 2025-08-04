@@ -122,7 +122,8 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
 
   const handleParticipantsChange = (e) => {
     const value = parseInt(e.target.value);
-    if (value > 0 && value <= (batch.maxParticipants - batch.currentParticipants)) {
+    const reservedSlots = batch.reservedSlots || 0;
+    if (value > 0 && value <= (batch.maxParticipants - batch.currentParticipants - reservedSlots)) {
       setParticipants(value);
     }
   };
@@ -241,7 +242,8 @@ function BookingForm({ trek, batch, onClose, onSuccess }) {
     }).format(amount);
   };
 
-  const availableSpots = batch.maxParticipants - batch.currentParticipants;
+  const reservedSlots = batch.reservedSlots || 0;
+  const availableSpots = batch.maxParticipants - batch.currentParticipants - reservedSlots;
 
   return (
     <div className="bg-white rounded-lg shadow-xl overflow-hidden max-w-2xl w-full">

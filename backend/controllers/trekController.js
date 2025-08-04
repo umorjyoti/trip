@@ -208,8 +208,9 @@ exports.getTrekById = async (req, res) => {
         return sum;
       }, 0);
 
-      // Calculate available spots based on confirmed booking count (not participant count)
-      const availableSpots = Math.max(0, batch.maxParticipants - bookingCountConfirmed);
+      // Calculate available spots based on confirmed booking count and reserved slots
+      const reservedSlots = batch.reservedSlots || 0;
+      const availableSpots = Math.max(0, batch.maxParticipants - bookingCountConfirmed - reservedSlots);
 
       return {
         ...batch.toObject(),
@@ -400,8 +401,9 @@ exports.getTrekByCustomToken = async (req, res) => {
         return sum;
       }, 0);
 
-      // Calculate available spots
-      const availableSpots = Math.max(0, batch.maxParticipants - actualCurrentParticipants);
+      // Calculate available spots including reserved slots
+      const reservedSlots = batch.reservedSlots || 0;
+      const availableSpots = Math.max(0, batch.maxParticipants - actualCurrentParticipants - reservedSlots);
       
       return {
         ...batch.toObject(),
@@ -1368,41 +1370,50 @@ exports.getBatchPerformance = async (req, res) => {
         completed: safeBookings.filter(b => b && b.status === 'completed').length
       },
       revenue: {
-        total: safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
-          // Calculate actual amount paid based on payment mode
-          let paid = 0;
-          if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
-            if (booking.status === 'payment_confirmed_partial') {
-              // For partial payments in progress, use initial payment amount
-              paid = booking.partialPaymentDetails.initialAmount || 0;
-            } else if (booking.status === 'confirmed') {
-              // For completed partial payments, use total amount
-              paid = booking.totalPrice || 0;
-            } else {
-              // For other statuses, use total amount
-              paid = booking.totalPrice || 0;
-            }
-          } else {
-            // For full payments, use total amount
-            paid = booking && booking.totalPrice ? booking.totalPrice : 0;
-          }
-          
-          // Only subtract refunds if they were successfully processed
-          let refunded = 0;
-          if (booking && booking.refundStatus === 'success') {
-            refunded += booking.refundAmount || 0;
-          }
-          // Participant-level refunds (for partial cancellations) - only successful ones
-          if (booking && Array.isArray(booking.participantDetails)) {
-            refunded += booking.participantDetails.reduce((rSum, p) => {
-              if (p.refundStatus === 'success') {
-                return rSum + (p.refundAmount || 0);
+        total: (() => {
+          // Calculate revenue from actual bookings
+          const bookingRevenue = safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
+            // Calculate actual amount paid based on payment mode
+            let paid = 0;
+            if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+              if (booking.status === 'payment_confirmed_partial') {
+                // For partial payments in progress, use initial payment amount
+                paid = booking.partialPaymentDetails.initialAmount || 0;
+              } else if (booking.status === 'confirmed') {
+                // For completed partial payments, use total amount
+                paid = booking.totalPrice || 0;
+              } else {
+                // For other statuses, use total amount
+                paid = booking.totalPrice || 0;
               }
-              return rSum;
-            }, 0);
-          }
-          return sum + (paid - refunded);
-        }, 0),
+            } else {
+              // For full payments, use total amount
+              paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+            }
+            
+            // Only subtract refunds if they were successfully processed
+            let refunded = 0;
+            if (booking && booking.refundStatus === 'success') {
+              refunded += booking.refundAmount || 0;
+            }
+            // Participant-level refunds (for partial cancellations) - only successful ones
+            if (booking && Array.isArray(booking.participantDetails)) {
+              refunded += booking.participantDetails.reduce((rSum, p) => {
+                if (p.refundStatus === 'success') {
+                  return rSum + (p.refundAmount || 0);
+                }
+                return rSum;
+              }, 0);
+            }
+            return sum + (paid - refunded);
+          }, 0);
+
+          // Add revenue from reserved slots (treated as full payment)
+          const reservedSlots = batch.reservedSlots || 0;
+          const reservedRevenue = reservedSlots * (batch.price || 0);
+
+          return bookingRevenue + reservedRevenue;
+        })(),
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
@@ -1466,25 +1477,32 @@ exports.getBatchPerformance = async (req, res) => {
           }, 0)
       },
       participants: {
-        total: safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
-          if (!booking) return sum;
-          
-          if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
-            // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
-            return sum + (booking.numberOfParticipants || 0);
-          } else if (booking.status === 'confirmed') {
-            // For confirmed bookings, check participantDetails and count non-cancelled participants
-            if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
-              const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
-              return sum + activeParticipants;
-            } else {
-              // Fallback to numberOfParticipants if no participantDetails
+        total: (() => {
+          // Calculate participants from actual bookings
+          const bookingParticipants = safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
+            if (!booking) return sum;
+            
+            if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+              // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
               return sum + (booking.numberOfParticipants || 0);
+            } else if (booking.status === 'confirmed') {
+              // For confirmed bookings, check participantDetails and count non-cancelled participants
+              if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+                const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+                return sum + activeParticipants;
+              } else {
+                // Fallback to numberOfParticipants if no participantDetails
+                return sum + (booking.numberOfParticipants || 0);
+              }
             }
-          }
-          
-          return sum;
-        }, 0),
+            
+            return sum;
+          }, 0);
+
+          // Add reserved slots as participants
+          const reservedSlots = batch.reservedSlots || 0;
+          return bookingParticipants + reservedSlots;
+        })(),
         confirmed: safeBookings
           .filter(b => b && b.status === 'confirmed')
           .reduce((sum, booking) => {
@@ -1644,41 +1662,54 @@ exports.getTrekPerformance = async (req, res) => {
     const safeBookings = bookings.filter(booking => booking != null);
 
     // Calculate total revenue and bookings with null safety (excluding pending_payment)
-    const totalRevenue = safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
-      // Calculate actual amount paid based on payment mode
-      let paid = 0;
-      if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
-        if (booking.status === 'payment_confirmed_partial') {
-          // For partial payments in progress, use initial payment amount
-          paid = booking.partialPaymentDetails.initialAmount || 0;
-        } else if (booking.status === 'confirmed') {
-          // For completed partial payments, use total amount
-          paid = booking.totalPrice || 0;
-        } else {
-          // For other statuses, use total amount
-          paid = booking.totalPrice || 0;
-        }
-      } else {
-        // For full payments, use total amount
-        paid = booking && booking.totalPrice ? booking.totalPrice : 0;
-      }
-      
-      // Only subtract refunds if they were successfully processed
-      let refunded = 0;
-      if (booking && booking.refundStatus === 'success') {
-        refunded += booking.refundAmount || 0;
-      }
-      // Participant-level refunds (for partial cancellations) - only successful ones
-      if (booking && Array.isArray(booking.participantDetails)) {
-        refunded += booking.participantDetails.reduce((rSum, p) => {
-          if (p.refundStatus === 'success') {
-            return rSum + (p.refundAmount || 0);
+    const totalRevenue = (() => {
+      // Calculate revenue from actual bookings
+      const bookingRevenue = safeBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
+        // Calculate actual amount paid based on payment mode
+        let paid = 0;
+        if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+          if (booking.status === 'payment_confirmed_partial') {
+            // For partial payments in progress, use initial payment amount
+            paid = booking.partialPaymentDetails.initialAmount || 0;
+          } else if (booking.status === 'confirmed') {
+            // For completed partial payments, use total amount
+            paid = booking.totalPrice || 0;
+          } else {
+            // For other statuses, use total amount
+            paid = booking.totalPrice || 0;
           }
-          return rSum;
-        }, 0);
-      }
-      return sum + (paid - refunded);
-    }, 0);
+        } else {
+          // For full payments, use total amount
+          paid = booking && booking.totalPrice ? booking.totalPrice : 0;
+        }
+        
+        // Only subtract refunds if they were successfully processed
+        let refunded = 0;
+        if (booking && booking.refundStatus === 'success') {
+          refunded += booking.refundAmount || 0;
+        }
+        // Participant-level refunds (for partial cancellations) - only successful ones
+        if (booking && Array.isArray(booking.participantDetails)) {
+          refunded += booking.participantDetails.reduce((rSum, p) => {
+            if (p.refundStatus === 'success') {
+              return rSum + (p.refundAmount || 0);
+            }
+            return rSum;
+          }, 0);
+        }
+        return sum + (paid - refunded);
+      }, 0);
+
+      // Add revenue from reserved slots across all batches
+      const reservedRevenue = trek.batches.reduce((sum, batch) => {
+        if (batch && batch.reservedSlots && batch.price) {
+          return sum + (batch.reservedSlots * batch.price);
+        }
+        return sum;
+      }, 0);
+
+      return bookingRevenue + reservedRevenue;
+    })();
     const totalBookings = safeBookings.filter(b => b && b.status !== 'pending_payment').length;
 
     // Calculate batch-specific metrics with comprehensive null checks
@@ -1698,60 +1729,76 @@ exports.getTrekPerformance = async (req, res) => {
             return bookingBatchId === batchId;
           });
           
-          const revenue = batchBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
-            // Calculate actual amount paid based on payment mode
-            let paid = 0;
-            if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
-              if (booking.status === 'payment_confirmed_partial') {
-                // For partial payments in progress, use initial payment amount
-                paid = booking.partialPaymentDetails.initialAmount || 0;
-              } else if (booking.status === 'confirmed') {
-                // For completed partial payments, use total amount
-                paid = booking.totalPrice || 0;
-              } else {
-                // For other statuses, use total amount
-                paid = booking.totalPrice || 0;
-              }
-            } else {
-              // For full payments, use total amount
-              paid = booking && booking.totalPrice ? booking.totalPrice : 0;
-            }
-            
-            // Only subtract refunds if they were successfully processed
-            let refunded = 0;
-            if (booking && booking.refundStatus === 'success') {
-              refunded += booking.refundAmount || 0;
-            }
-            if (booking && Array.isArray(booking.participantDetails)) {
-              refunded += booking.participantDetails.reduce((rSum, p) => {
-                if (p.refundStatus === 'success') {
-                  return rSum + (p.refundAmount || 0);
+          const revenue = (() => {
+            // Calculate revenue from actual bookings
+            const bookingRevenue = batchBookings.filter(b => b && b.status !== 'pending_payment').reduce((sum, booking) => {
+              // Calculate actual amount paid based on payment mode
+              let paid = 0;
+              if (booking && booking.paymentMode === 'partial' && booking.partialPaymentDetails) {
+                if (booking.status === 'payment_confirmed_partial') {
+                  // For partial payments in progress, use initial payment amount
+                  paid = booking.partialPaymentDetails.initialAmount || 0;
+                } else if (booking.status === 'confirmed') {
+                  // For completed partial payments, use total amount
+                  paid = booking.totalPrice || 0;
+                } else {
+                  // For other statuses, use total amount
+                  paid = booking.totalPrice || 0;
                 }
-                return rSum;
-              }, 0);
-            }
-            return sum + (paid - refunded);
-          }, 0);
-          
-          const currentParticipants = batchBookings.reduce((sum, booking) => {
-            if (!booking) return sum;
-            
-            if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
-              // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
-              return sum + (booking.numberOfParticipants || 0);
-            } else if (booking.status === 'confirmed') {
-              // For confirmed bookings, check participantDetails and count non-cancelled participants
-              if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
-                const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
-                return sum + activeParticipants;
               } else {
-                // Fallback to numberOfParticipants if no participantDetails
-                return sum + (booking.numberOfParticipants || 0);
+                // For full payments, use total amount
+                paid = booking && booking.totalPrice ? booking.totalPrice : 0;
               }
-            }
-            
-            return sum;
-          }, 0);
+              
+              // Only subtract refunds if they were successfully processed
+              let refunded = 0;
+              if (booking && booking.refundStatus === 'success') {
+                refunded += booking.refundAmount || 0;
+              }
+              if (booking && Array.isArray(booking.participantDetails)) {
+                refunded += booking.participantDetails.reduce((rSum, p) => {
+                  if (p.refundStatus === 'success') {
+                    return rSum + (p.refundAmount || 0);
+                  }
+                  return rSum;
+                }, 0);
+              }
+              return sum + (paid - refunded);
+            }, 0);
+
+            // Add revenue from reserved slots (treated as full payment)
+            const reservedSlots = batch.reservedSlots || 0;
+            const reservedRevenue = reservedSlots * (batch.price || 0);
+
+            return bookingRevenue + reservedRevenue;
+          })();
+          
+          const currentParticipants = (() => {
+            // Calculate participants from actual bookings
+            const bookingParticipants = batchBookings.reduce((sum, booking) => {
+              if (!booking) return sum;
+              
+              if (booking.status === 'payment_completed' || booking.status === 'payment_confirmed_partial') {
+                // For payment_completed and payment_confirmed_partial bookings, use numberOfParticipants directly
+                return sum + (booking.numberOfParticipants || 0);
+              } else if (booking.status === 'confirmed') {
+                // For confirmed bookings, check participantDetails and count non-cancelled participants
+                if (booking.participantDetails && Array.isArray(booking.participantDetails)) {
+                  const activeParticipants = booking.participantDetails.filter(p => !p.isCancelled).length;
+                  return sum + activeParticipants;
+                } else {
+                  // Fallback to numberOfParticipants if no participantDetails
+                  return sum + (booking.numberOfParticipants || 0);
+                }
+              }
+              
+              return sum;
+            }, 0);
+
+            // Add reserved slots as participants
+            const reservedSlots = batch.reservedSlots || 0;
+            return bookingParticipants + reservedSlots;
+          })();
 
           let status = 'upcoming';
           try {
