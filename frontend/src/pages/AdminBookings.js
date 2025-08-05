@@ -11,6 +11,7 @@ import ParticipantExportModal from '../components/ParticipantExportModal';
 import RemarksModal from '../components/RemarksModal';
 import BookingActionMenu from '../components/BookingActionMenu';
 import EditBookingModal from '../components/EditBookingModal';
+import ManualBookingModal from '../components/ManualBookingModal';
 
 import ViewBookingModal from '../components/ViewBookingModal';
 import CancellationModal from '../components/CancellationModal';
@@ -18,7 +19,7 @@ import RequestResponseModal from '../components/RequestResponseModal';
 import { formatCurrency, formatCurrencyWithSuffix, formatNumberWithSuffix, formatDate } from '../utils/formatters';
 import CustomTooltip from '../components/CustomTooltip';
 import MetricTooltip from '../components/MetricTooltip';
-import { FaCheckCircle, FaTimesCircle, FaUsers } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaUsers, FaPlus } from 'react-icons/fa';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
@@ -65,6 +66,7 @@ function AdminBookings() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showRemarksModal, setShowRemarksModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showManualBookingModal, setShowManualBookingModal] = useState(false);
 
   const [showViewModal, setShowViewModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
@@ -426,6 +428,11 @@ function AdminBookings() {
     }
   };
 
+  const handleManualBookingSuccess = (booking) => {
+    toast.success(`Manual booking created successfully! Booking ID: ${booking.bookingId}`);
+    fetchBookings(); // Refresh the bookings list
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -438,12 +445,21 @@ function AdminBookings() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
-        <button
-          onClick={() => setIsExportModalOpen(true)}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-        >
-          Export Bookings
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowManualBookingModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center space-x-2"
+          >
+            <FaPlus size={16} />
+            <span>Create Manual Booking</span>
+          </button>
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          >
+            Export Bookings
+          </button>
+        </div>
       </div>
 
       {/* Performance Metrics Cards */}
@@ -865,6 +881,13 @@ function AdminBookings() {
         onClose={() => setShowRequestResponseModal(false)}
         booking={selectedBooking}
         onSuccess={fetchBookings}
+      />
+
+      {/* Manual Booking Modal */}
+      <ManualBookingModal
+        isOpen={showManualBookingModal}
+        onClose={() => setShowManualBookingModal(false)}
+        onSuccess={handleManualBookingSuccess}
       />
     </div>
   );

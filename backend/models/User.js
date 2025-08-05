@@ -90,6 +90,10 @@ const userSchema = new mongoose.Schema({
   group: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'UserGroup'
+  },
+  adminCreated: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

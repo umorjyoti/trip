@@ -274,4 +274,27 @@ router.post('/cleanup-expired',
   bookingController.cleanupExpiredBookings
 );
 
+// Manual Booking Routes (Admin Only)
+
+// Validate user by phone number
+router.post('/manual/validate-user', 
+  protect, 
+  admin, 
+  bookingController.validateUserByPhone
+);
+
+// Create new user for manual booking
+router.post('/manual/create-user', 
+  protect, 
+  admin, 
+  bookingController.createUserForManualBooking
+);
+
+// Create manual booking
+router.post('/manual/create-booking', 
+  protect, 
+  admin, 
+  bookingController.createManualBooking
+);
+
 module.exports = router; 

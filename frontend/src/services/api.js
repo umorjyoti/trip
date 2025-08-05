@@ -1669,7 +1669,47 @@ export const calculateRefund = async (refundData) => {
 
 // Fetch a batch by its ID (requires backend endpoint to exist)
 export const getBatchById = async (batchId) => {
-  const response = await api.get(`/batches/${batchId}`);
-  return response.data;
+  try {
+    const response = await api.get(`/batches/${batchId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching batch:', error);
+    throw error;
+  }
+};
+
+// Manual Booking API Functions
+
+// Validate user by phone number
+export const validateUserByPhone = async (phone) => {
+  try {
+    const response = await api.post('/bookings/manual/validate-user', { phone });
+    return response.data;
+  } catch (error) {
+    console.error('Error validating user by phone:', error);
+    throw error;
+  }
+};
+
+// Create new user for manual booking
+export const createUserForManualBooking = async (userData) => {
+  try {
+    const response = await api.post('/bookings/manual/create-user', userData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating user for manual booking:', error);
+    throw error;
+  }
+};
+
+// Create manual booking
+export const createManualBooking = async (bookingData) => {
+  try {
+    const response = await api.post('/bookings/manual/create-booking', bookingData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating manual booking:', error);
+    throw error;
+  }
 };
 
