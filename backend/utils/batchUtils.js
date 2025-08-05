@@ -47,12 +47,16 @@ const updateBatchParticipantCount = async (trekId, batchId) => {
   try {
     const Trek = require('../models/Trek');
     
+    console.log('updateBatchParticipantCount - Trek ID:', trekId);
+    console.log('updateBatchParticipantCount - Batch ID:', batchId);
+    
     // Recalculate the participant count
     const newCount = await recalculateBatchParticipants(batchId, trekId);
     
     // Update the batch's currentParticipants field
     const trek = await Trek.findById(trekId);
     if (!trek) {
+      console.log('updateBatchParticipantCount - Trek not found for ID:', trekId);
       throw new Error('Trek not found');
     }
     

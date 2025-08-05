@@ -2439,7 +2439,285 @@ const markPartialPaymentComplete = async (req, res) => {
   }
 };
 
+// Manual Booking Functions
+
+// Validate user by phone number
+const validateUserByPhone = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    // Find user by phone number
+    const user = await User.findOne({ phone });
+
+    console.log(user);
+
+    if (user) {
+      return res.status(200).json({
+        exists: true,
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          address: user.address,
+          city: user.city,
+          state: user.state,
+          zipCode: user.zipCode,
+          country: user.country,
+          adminCreated: user.adminCreated
+        }
+      });
+    } else {
+      return res.status(200).json({
+        exists: false,
+        message: "User not found. Please create a new user."
+      });
+    }
+  } catch (error) {
+    console.error('Error validating user by phone:', error);
+    res.status(500).json({ message: "Error validating user" });
+  }
+};
+
+// Create new user for manual booking
+const createUserForManualBooking = async (req, res) => {
+  try {
+    const { name, email, phone, address, city, state, zipCode, country } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !phone) {
+      return res.status(400).json({ message: "Name, email, and phone are required" });
+    }
+
+    // Check if user already exists with this phone or email
+    const existingUser = await User.findOne({
+      $or: [{ phone }, { email }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: "User with this phone number or email already exists" 
+      });
+    }
+
+    // Generate a unique username
+    const baseUsername = name.toLowerCase().replace(/\s+/g, '');
+    let username = baseUsername;
+    let counter = 1;
+    
+    while (await User.findOne({ username })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    // Create new user with a temporary password
+    const tempPassword = Math.random().toString(36).slice(-8);
+    
+    const newUser = new User({
+      name,
+      email,
+      phone,
+      username,
+      password: tempPassword, // Will be hashed by pre-save middleware
+      address,
+      city,
+      state,
+      zipCode,
+      country,
+      isVerified: true, // Admin created users are verified by default
+      adminCreated: true // Flag to identify admin-created users
+    });
+
+    await newUser.save();
+
+    res.status(201).json({
+      message: "User created successfully",
+      user: {
+        _id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        address: newUser.address,
+        city: newUser.city,
+        state: newUser.state,
+        zipCode: newUser.zipCode,
+        country: newUser.country,
+        adminCreated: newUser.adminCreated
+      }
+    });
+  } catch (error) {
+    console.error('Error creating user for manual booking:', error);
+    res.status(500).json({ message: "Error creating user" });
+  }
+};
+
+// Create manual booking (admin created)
+const createManualBooking = async (req, res) => {
+  try {
+    const {
+      userId,
+      trekId,
+      batchId,
+      numberOfParticipants,
+      userDetails,
+      emergencyContact,
+      participantDetails,
+      totalPrice,
+      paymentStatus,
+      additionalRequests
+    } = req.body;
+
+    console.log('Manual booking request body:', req.body);
+    console.log('Manual booking - Received trekId:', trekId);
+    console.log('Manual booking - Received batchId:', batchId);
+
+    // Validate required fields
+    if (!userId || !trekId || !batchId || !numberOfParticipants || !userDetails || !totalPrice || !paymentStatus) {
+      return res.status(400).json({ message: "Please provide all required fields" });
+    }
+
+    // Validate user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Validate trek exists
+    const trek = await Trek.findById(trekId);
+    if (!trek) {
+      return res.status(404).json({ message: "Trek not found" });
+    }
+
+    // Validate batch exists in trek
+    const batch = trek.batches.find(b => b._id.toString() === batchId.toString());
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found in trek" });
+    }
+
+    console.log('Manual booking - Trek ID:', trekId);
+    console.log('Manual booking - Batch ID:', batchId);
+    console.log('Manual booking - Trek ID type:', typeof trekId);
+    console.log('Manual booking - Batch ID type:', typeof batchId);
+    console.log('Manual booking - Trek found:', trek ? 'Yes' : 'No');
+    console.log('Manual booking - Batch found:', batch ? 'Yes' : 'No');
+    console.log('Manual booking - Trek batches:', trek.batches.map(b => ({ id: b._id.toString(), startDate: b.startDate })));
+
+    // Check if batch has available slots
+    const confirmedBookings = await Booking.find({
+      batch: batchId.toString(),
+      status: 'confirmed'
+    });
+    
+    const actualCurrentParticipants = confirmedBookings.reduce((sum, booking) => {
+      if (booking && booking.status === 'confirmed') {
+        const activeParticipants = booking.participantDetails ? 
+          booking.participantDetails.filter(p => !p.isCancelled).length : 
+          booking.numberOfParticipants || 0;
+        return sum + activeParticipants;
+      }
+      return sum;
+    }, 0);
+
+    if (actualCurrentParticipants + numberOfParticipants > batch.maxParticipants) {
+      return res.status(400).json({ message: "Not enough spots available in this batch" });
+    }
+
+    // Determine booking status based on payment status
+    let bookingStatus;
+    let paymentMode = 'full';
+    let partialPaymentDetails = {};
+
+    switch (paymentStatus) {
+      case 'payment_completed':
+        bookingStatus = 'confirmed';
+        break;
+      case 'payment_confirmed_partial':
+        bookingStatus = 'payment_confirmed_partial';
+        paymentMode = 'partial';
+        partialPaymentDetails = {
+          initialAmount: totalPrice * 0.5, // 50% initial payment
+          remainingAmount: totalPrice * 0.5,
+          finalPaymentDueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+        };
+        break;
+      case 'unpaid':
+        bookingStatus = 'pending';
+        break;
+      default:
+        bookingStatus = 'pending';
+    }
+
+    // Create the booking
+    const booking = new Booking({
+      user: userId.toString(),
+      trek: trekId.toString(),
+      batch: batchId.toString(),
+      numberOfParticipants,
+      userDetails,
+      emergencyContact,
+      participantDetails: participantDetails || [],
+      totalPrice,
+      status: bookingStatus,
+      paymentMode,
+      partialPaymentDetails,
+      additionalRequests,
+      adminRemarks: "Admin Created Booking"
+    });
+
+    await booking.save();
+
+    // Update batch participant count
+    console.log('Manual booking - Calling updateBatchParticipantCount with trekId:', trekId, 'batchId:', batchId);
+    // Convert string IDs to ObjectIds if needed
+    const trekObjectId = mongoose.Types.ObjectId.isValid(trekId) ? trekId : new mongoose.Types.ObjectId(trekId);
+    const batchObjectId = mongoose.Types.ObjectId.isValid(batchId) ? batchId : new mongoose.Types.ObjectId(batchId);
+    await updateBatchParticipantCount(trekObjectId, batchObjectId);
+
+    // Send confirmation email if payment is completed
+    if (bookingStatus === 'confirmed') {
+      try {
+        await sendBookingConfirmationEmail(booking);
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+      }
+    }
+
+    res.status(201).json({
+      message: "Manual booking created successfully",
+      booking: {
+        _id: booking._id,
+        bookingId: booking.bookingId,
+        status: booking.status,
+        totalPrice: booking.totalPrice,
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone
+        },
+        trek: {
+          _id: trek._id,
+          name: trek.name
+        },
+        batch: {
+          _id: batch._id,
+          startDate: batch.startDate,
+          endDate: batch.endDate
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error creating manual booking:', error);
+    res.status(500).json({ message: "Error creating manual booking" });
+  }
+};
+
 module.exports = {
+  createCustomTrekBooking,
   createBooking,
   getUserBookings,
   getBookingById,
@@ -2454,9 +2732,8 @@ module.exports = {
   exportBookings,
   updateParticipantDetails,
   markTrekCompleted,
-  createCustomTrekBooking,
-  downloadInvoice,
   updateAdminRemarks,
+  downloadInvoice,
   sendReminderEmail,
   sendConfirmationEmail,
   sendInvoiceEmail,
@@ -2464,8 +2741,11 @@ module.exports = {
   createCancellationRequest,
   updateCancellationRequest,
   calculateRefund,
-
   cleanupExpiredBookings,
   sendPartialPaymentReminder,
-  markPartialPaymentComplete
+  markPartialPaymentComplete,
+  // Manual booking functions
+  validateUserByPhone,
+  createUserForManualBooking,
+  createManualBooking
 };
