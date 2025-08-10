@@ -689,6 +689,11 @@ function AdminBookings() {
                           {booking.trek.name}
                         </Link>
                       )}
+                      {booking.batch && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Batch: {formatDate(booking.batch.startDate)} - {formatDate(booking.batch.endDate)}
+                        </div>
+                      )}
                       <div className="text-xs text-gray-400 mt-1">
                         ID: {booking.id ? booking.id.substring(0, 8) + '...' : booking._id.substring(0, 8) + '...'} | Booked: {formatDate(booking.createdAt)}
                       </div>
