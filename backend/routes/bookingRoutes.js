@@ -252,6 +252,9 @@ router.post('/:bookingId/send-confirmation', protect, admin, bookingController.s
 // Send invoice email (admin only)
 router.post('/:bookingId/send-invoice', protect, admin, bookingController.sendInvoiceEmail);
 
+// Send participant details reminder (admin only)
+router.post('/:bookingId/send-participant-reminder', protect, admin, bookingController.sendParticipantDetailsReminder);
+
 // Shift booking to another batch (admin only)
 router.put('/:bookingId/shift-batch', protect, admin, bookingController.shiftBookingToBatch);
 

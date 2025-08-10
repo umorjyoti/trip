@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllBookings, updateBookingStatus, getAllTreks, exportBookings, adminCancelBooking, sendReminderEmail, sendConfirmationEmail, sendInvoiceEmail, cancelBooking, sendPartialPaymentReminder, markPartialPaymentComplete } from '../services/api';
+import { getAllBookings, updateBookingStatus, getAllTreks, exportBookings, adminCancelBooking, sendReminderEmail, sendConfirmationEmail, sendInvoiceEmail, sendParticipantDetailsReminder, cancelBooking, sendPartialPaymentReminder, markPartialPaymentComplete } from '../services/api';
 import { toast } from 'react-toastify';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DatePicker from 'react-datepicker';
@@ -400,6 +400,16 @@ function AdminBookings() {
         } catch (error) {
           console.error('Error sending invoice email:', error);
           toast.error(error.response?.data?.message || 'Failed to send invoice email');
+        }
+        break;
+        
+      case 'participant-reminder':
+        try {
+          await sendParticipantDetailsReminder(booking._id);
+          toast.success('Participant details reminder sent successfully');
+        } catch (error) {
+          console.error('Error sending participant details reminder:', error);
+          toast.error(error.response?.data?.message || 'Failed to send participant details reminder');
         }
         break;
         

@@ -38,7 +38,7 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       label: 'Send Reminder Email',
       icon: <FaEnvelope className="w-4 h-4" />,
       color: 'text-blue-600 hover:bg-blue-50',
-      showFor: ['confirmed']
+      showFor: ['confirmed', 'payment_completed', 'payment_confirmed_partial']
     },
     {
       id: 'partial-reminder',
@@ -47,6 +47,14 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       color: 'text-yellow-600 hover:bg-yellow-50',
       showFor: ['payment_confirmed_partial'],
       showCondition: (booking) => booking.paymentMode === 'partial' && !booking.partialPaymentDetails?.reminderSent
+    },
+    {
+      id: 'participant-reminder',
+      label: 'Send Participant Details Reminder',
+      icon: <FaEnvelope className="w-4 h-4" />,
+      color: 'text-cyan-600 hover:bg-cyan-50',
+      showFor: ['payment_completed', 'payment_confirmed_partial'],
+      showCondition: (booking) => !booking.participantDetails || booking.participantDetails.length === 0
     },
     {
       id: 'mark-partial-complete',
@@ -61,14 +69,14 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       label: 'Send Confirmation Email Again',
       icon: <FaCheck className="w-4 h-4" />,
       color: 'text-green-600 hover:bg-green-50',
-      showFor: ['confirmed', 'trek_completed']
+      showFor: ['confirmed', 'payment_completed', 'payment_confirmed_partial', 'trek_completed']
     },
     {
       id: 'invoice',
       label: 'Send Invoice Again',
       icon: <FaFileInvoice className="w-4 h-4" />,
       color: 'text-purple-600 hover:bg-purple-50',
-      showFor: ['confirmed', 'trek_completed']
+      showFor: ['confirmed', 'payment_completed', 'payment_confirmed_partial', 'trek_completed']
     },
     {
       id: 'edit',
@@ -97,7 +105,7 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       label: 'Shift to Another Batch',
       icon: <FaExchangeAlt className="w-4 h-4" />,
       color: 'text-indigo-600 hover:bg-indigo-50',
-      showFor: ['confirmed', 'payment_confirmed_partial']
+      showFor: ['confirmed', 'payment_completed', 'payment_confirmed_partial']
     },
     {
       id: 'respond-request',

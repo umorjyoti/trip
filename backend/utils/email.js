@@ -3455,6 +3455,207 @@ For support, contact us through our website or mobile app.
   };
 };
 
+/**
+ * Send participant details reminder email
+ * @param {Object} booking - Booking object
+ * @param {Object} trek - Trek object
+ * @param {Object} user - User object
+ * @param {Object} batch - Batch object
+ */
+const sendParticipantDetailsReminderEmail = async (booking, trek, user, batch) => {
+  const emailSubject = `📝 Complete Your Participant Details - ${trek.name}`;
+  
+  const emailContent = `Dear ${user.name},
+
+We noticed that you haven't completed the participant details for your upcoming trek "${trek.name}" scheduled for ${batch.startDate ? new Date(batch.startDate).toLocaleDateString('en-IN') : 'TBD'}.
+
+To ensure a smooth experience, please complete the following:
+
+1. Log in to your account at our website
+2. Go to "My Bookings" section
+3. Find this booking and click on "Fill Participant Details"
+4. Provide complete information for all participants
+
+This information is crucial for:
+- Trek permits and documentation
+- Emergency contact details
+- Dietary requirements
+- Medical information
+- Equipment sizing
+
+Please complete this within the next 48 hours to avoid any delays.
+
+If you have any questions, please contact us at 9449493112.
+
+Best regards,
+The Bengaluru Trekkers Team`;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Participant Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #10b981;
+        }
+        .header h1 {
+            color: #10b981;
+            margin: 0;
+            font-size: 24px;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #10b981;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .urgent {
+            background-color: #fef3c7;
+            border-left-color: #f59e0b;
+        }
+        .urgent .section-title {
+            color: #d97706;
+        }
+        .steps {
+            background-color: #ecfdf5;
+            border-left-color: #10b981;
+        }
+        .steps .section-title {
+            color: #059669;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+        }
+        .button {
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .button:hover {
+            background-color: #059669;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Complete Your Participant Details</h1>
+            <p><strong>Trek:</strong> ${trek.name}</p>
+        </div>
+
+        <div class="section urgent">
+            <div class="section-title">⚠️ Action Required</div>
+            <p>We noticed that you haven't completed the participant details for your upcoming trek. This information is essential for a smooth experience.</p>
+        </div>
+
+        <div class="section steps">
+            <div class="section-title">📋 How to Complete</div>
+            <ol>
+                <li>Log in to your account at our website</li>
+                <li>Go to "My Bookings" section</li>
+                <li>Find this booking and click on "Fill Participant Details"</li>
+                <li>Provide complete information for all participants</li>
+            </ol>
+        </div>
+
+        <div class="section">
+            <div class="section-title">🎯 Why This Matters</div>
+            <p>Complete participant details are crucial for:</p>
+            <ul>
+                <li>🏔️ Trek permits and documentation</li>
+                <li>📞 Emergency contact details</li>
+                <li>🍽️ Dietary requirements</li>
+                <li>🏥 Medical information</li>
+                <li>👕 Equipment sizing</li>
+            </ul>
+        </div>
+
+        <div class="section urgent">
+            <div class="section-title">⏰ Time Sensitive</div>
+            <p>Please complete this within the next <strong>48 hours</strong> to avoid any delays or complications.</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">❓ Need Help?</div>
+            <p>If you have any questions or need assistance, please contact us:</p>
+            <p><strong>WhatsApp:</strong> 9449493112</p>
+            <p><strong>Email:</strong> Support through our website</p>
+        </div>
+
+        <p style="text-align: center; font-size: 18px; color: #10b981; margin: 30px 0;">
+            🏔️ We look forward to an amazing trek with you!
+        </p>
+
+        <div class="footer">
+            <p><strong>Best regards,</strong><br>
+            The Bengaluru Trekkers Team<br>
+            Your Adventure Awaits!</p>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <p style="font-size: 12px; color: #9ca3af;">
+                This is an automated message. Please do not reply to this email.<br>
+                For support, contact us through our website or mobile app.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+  // Send email to the user
+  const result = await sendEmail({
+    to: user.email,
+    subject: emailSubject,
+    text: emailContent,
+    html: htmlContent,
+  });
+
+  if (result) {
+    console.log(`Participant details reminder email sent to ${user.email}`);
+    return result;
+  } else {
+    console.error(`Failed to send participant details reminder email to ${user.email}`);
+    return null;
+  }
+};
+
 module.exports = {
   sendEmail,
   sendBookingConfirmationEmail,
@@ -3469,4 +3670,5 @@ module.exports = {
   sendPartialPaymentConfirmationEmail,
   sendEmailWithAttachment,
   sendConfirmationEmailToAllParticipants,
+  sendParticipantDetailsReminderEmail,
 };

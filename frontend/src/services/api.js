@@ -465,6 +465,17 @@ export const sendInvoiceEmail = async (bookingId) => {
   return response.data;
 };
 
+// Send participant details reminder
+export const sendParticipantDetailsReminder = async (bookingId) => {
+  try {
+    const response = await api.post(`/bookings/${bookingId}/send-participant-reminder`);
+    return response.data;
+  } catch (error) {
+    console.error('Error sending participant details reminder:', error);
+    throw error;
+  }
+};
+
 
 
 // Shift booking to another batch

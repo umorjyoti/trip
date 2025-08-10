@@ -1,7 +1,7 @@
 const { Booking, Batch, Trek, User } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
-const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail, sendPartialPaymentReminderEmail, sendConfirmationEmailToAllParticipants } = require('../utils/email');
+const { sendEmail, sendBookingConfirmationEmail, sendEmailWithAttachment, sendBatchShiftNotificationEmail, sendBookingReminderEmail, sendProfessionalInvoiceEmail, sendCancellationEmail, sendParticipantCancellationEmails, sendRescheduleApprovalEmail, sendPartialPaymentReminderEmail, sendConfirmationEmailToAllParticipants, sendParticipantDetailsReminderEmail } = require('../utils/email');
 const { updateBatchParticipantCount } = require('../utils/batchUtils');
 const { generateInvoicePDF } = require('../utils/invoiceGenerator');
 const { getRefundAmount } = require('../utils/refundUtils');
@@ -1834,18 +1834,27 @@ const sendReminderEmail = async (req, res) => {
   try {
     const { bookingId } = req.params;
     
-    const booking = await Booking.findById(bookingId).populate('user trek');
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+      
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Send reminder email logic here
-    // You can implement the actual email sending logic
-    
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send reminder emails" });
+    }
+
+    // Send reminder email using the proper template
+    await sendBookingReminderEmail(booking, booking.trek, booking.user, booking.batch);
+
     res.json({ message: 'Reminder email sent successfully' });
   } catch (error) {
     console.error('Error sending reminder email:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
@@ -1926,6 +1935,40 @@ const sendInvoiceEmail = async (req, res) => {
     res.json({ message: 'Invoice email sent successfully' });
   } catch (error) {
     console.error('Error sending invoice email:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Send participant details reminder
+const sendParticipantDetailsReminder = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    
+    const booking = await Booking.findById(bookingId)
+      .populate('user')
+      .populate('trek')
+      .populate('batch');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user is admin
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only admins can send participant details reminders" });
+    }
+
+    // Check if participant details are missing
+    if (booking.participantDetails && booking.participantDetails.length > 0) {
+      return res.status(400).json({ message: 'Participant details are already provided for this booking' });
+    }
+
+    // Send participant details reminder email
+    await sendParticipantDetailsReminderEmail(booking, booking.trek, booking.user, booking.batch);
+
+    res.json({ message: 'Participant details reminder sent successfully' });
+  } catch (error) {
+    console.error('Error sending participant details reminder:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -2820,6 +2863,7 @@ module.exports = {
   sendReminderEmail,
   sendConfirmationEmail,
   sendInvoiceEmail,
+  sendParticipantDetailsReminder,
   shiftBookingToBatch,
   createCancellationRequest,
   updateCancellationRequest,
