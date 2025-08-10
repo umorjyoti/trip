@@ -176,13 +176,6 @@ router.put('/:id/status',
   bookingController.updateBookingStatus
 );
 
-// Update admin-created booking status and payment status
-router.put('/:id/admin-status', 
-  protect, 
-  admin, 
-  bookingController.updateAdminCreatedBookingStatus
-);
-
 // Cancel booking
 router.put('/:id/cancel', 
   protect, 

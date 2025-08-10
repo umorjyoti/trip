@@ -64,22 +64,12 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [isOpen]);
 
-  // Fetch batches when trek is selected
   useEffect(() => {
-    console.log('useEffect triggered - selectedTrek:', selectedTrek, 'treks:', treks);
     if (selectedTrek) {
       const trek = treks.find(t => t._id === selectedTrek);
-      console.log('Found trek:', trek);
       if (trek && trek.batches) {
-        console.log('Setting batches:', trek.batches);
-        setBatches(trek.batches);
-      } else {
-        console.log('No trek found or no batches');
-        setBatches([]);
+        setBatches(trek.batches.filter(batch => new Date(batch.startDate) > new Date()));
       }
-    } else {
-      console.log('No trek selected, clearing batches');
-      setBatches([]);
     }
   }, [selectedTrek, treks]);
 
@@ -98,10 +88,7 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
   const fetchTreks = async () => {
     try {
       const data = await getAllTreks();
-      console.log('Fetched treks:', data);
-      const enabledTreks = data.filter(trek => trek.isEnabled);
-      console.log('Enabled treks:', enabledTreks);
-      setTreks(enabledTreks);
+      setTreks(data.filter(trek => trek.isEnabled));
     } catch (error) {
       console.error('Error fetching treks:', error);
       toast.error('Failed to load treks');
@@ -298,151 +285,61 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     } else if (!validateEmail(newUserData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-    
-    // Optional fields validation
-    if (newUserData.address && newUserData.address.trim().length > 200) {
-      newErrors.address = 'Address must be less than 200 characters';
-      newTouched.address = true;
-    }
-    if (newUserData.city && newUserData.city.trim().length > 50) {
-      newErrors.city = 'City must be less than 50 characters';
-      newTouched.city = true;
-    }
-    if (newUserData.state && newUserData.state.trim().length > 50) {
-      newErrors.state = 'State must be less than 50 characters';
-      newTouched.state = true;
+
+    if (!validateRequired(newUserData.phone, 'phone')) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!validatePhone(newUserData.phone)) {
+      newErrors.phone = 'Please enter a valid 10-digit phone number';
     }
 
-    console.log('Final validation errors:', newErrors);
-    console.log('Validation failed fields:', Object.keys(newErrors));
-    console.log('Validation result:', Object.keys(newErrors).length === 0 ? 'PASSED' : 'FAILED');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const validateStep3 = () => {
     const newErrors = {};
-    const newTouched = { ...touched };
     
-    console.log('Validating Step 3 with data:', {
-      userDetails: bookingData.userDetails,
-      emergencyContact: bookingData.emergencyContact,
-      participantDetails: bookingData.participantDetails,
-      selectedTrek,
-      selectedBatch
-    });
-    
-    // User details validation
-    const userNameError = validateName(bookingData.userDetails.name);
-    if (userNameError) {
-      newErrors.userName = userNameError;
-      newTouched.userName = true;
-      console.log('User name validation error:', userNameError);
-    }
-    
-    const userEmailError = validateEmail(bookingData.userDetails.email);
-    if (userEmailError) {
-      newErrors.userEmail = userEmailError;
-      newTouched.userEmail = true;
-      console.log('User email validation error:', userEmailError);
-    }
-    
-    const userPhoneError = validatePhone(bookingData.userDetails.phone);
-    if (userPhoneError) {
-      newErrors.userPhone = userPhoneError;
-      newTouched.userPhone = true;
-      console.log('User phone validation error:', userPhoneError);
-    }
-    
-    // Emergency contact validation - only validate if any field is filled
-    const hasEmergencyContact = bookingData.emergencyContact.name.trim() || 
-                               bookingData.emergencyContact.phone.trim() || 
-                               bookingData.emergencyContact.relation.trim();
-    
-    if (hasEmergencyContact) {
-      // If any emergency contact field is filled, all are required
-      if (!bookingData.emergencyContact.name.trim()) {
-        newErrors.emergencyName = 'Emergency contact name is required';
-        newTouched.emergencyName = true;
-        console.log('Emergency name validation error: Emergency contact name is required');
-      } else {
-        const emergencyNameError = validateName(bookingData.emergencyContact.name);
-        if (emergencyNameError) {
-          newErrors.emergencyName = emergencyNameError;
-          newTouched.emergencyName = true;
-          console.log('Emergency name validation error:', emergencyNameError);
-        }
-      }
-      
-      if (!bookingData.emergencyContact.phone.trim()) {
-        newErrors.emergencyPhone = 'Emergency contact phone is required';
-        newTouched.emergencyPhone = true;
-        console.log('Emergency phone validation error: Emergency contact phone is required');
-      } else {
-        const emergencyPhoneError = validatePhone(bookingData.emergencyContact.phone);
-        if (emergencyPhoneError) {
-          newErrors.emergencyPhone = emergencyPhoneError;
-          newTouched.emergencyPhone = true;
-          console.log('Emergency phone validation error:', emergencyPhoneError);
-        }
-      }
-      
-      if (!bookingData.emergencyContact.relation.trim()) {
-        newErrors.emergencyRelation = 'Emergency contact relation is required';
-        newTouched.emergencyRelation = true;
-        console.log('Emergency relation validation error: Emergency contact relation is required');
-      }
-    }
-    // If no emergency contact fields are filled, skip validation entirely
-    
-    // Participant details validation
-    bookingData.participantDetails.forEach((participant, index) => {
-      if (!participant.name || !participant.name.trim()) {
-        newErrors[`participant${index}Name`] = 'Participant name is required';
-        newTouched[`participant${index}Name`] = true;
-        console.log(`Participant ${index + 1} name validation error: Participant name is required`);
-      } else {
-        const participantNameError = validateName(participant.name);
-        if (participantNameError) {
-          newErrors[`participant${index}Name`] = participantNameError;
-          newTouched[`participant${index}Name`] = true;
-          console.log(`Participant ${index + 1} name validation error:`, participantNameError);
-        }
-      }
-      
-      if (!participant.age) {
-        newErrors[`participant${index}Age`] = 'Participant age is required';
-        newTouched[`participant${index}Age`] = true;
-        console.log(`Participant ${index + 1} age validation error: Participant age is required`);
-      } else {
-        const participantAgeError = validateAge(participant.age);
-        if (participantAgeError) {
-          newErrors[`participant${index}Age`] = participantAgeError;
-          newTouched[`participant${index}Age`] = true;
-          console.log(`Participant ${index + 1} age validation error:`, participantAgeError);
-        }
-      }
-      
-      if (!participant.gender) {
-        newErrors[`participant${index}Gender`] = 'Please select gender';
-        newTouched[`participant${index}Gender`] = true;
-        console.log(`Participant ${index + 1} gender validation error: Please select gender`);
-      }
-    });
-    
-    // Trek and batch validation
     if (!selectedTrek) {
       newErrors.trek = 'Please select a trek';
-      newTouched.trek = true;
-      console.log('Trek validation error: Please select a trek');
-    }
-    if (!selectedBatch) {
-      newErrors.batch = 'Please select a batch';
-      newTouched.batch = true;
-      console.log('Batch validation error: Please select a batch');
     }
 
-    console.log('Final validation errors:', newErrors);
+    if (!selectedBatch) {
+      newErrors.batch = 'Please select a batch';
+    }
+
+    if (!validateRequired(bookingData.userDetails.name, 'userName')) {
+      newErrors.userName = 'Customer name is required';
+    }
+
+    if (!validateRequired(bookingData.userDetails.email, 'userEmail')) {
+      newErrors.userEmail = 'Customer email is required';
+    } else if (!validateEmail(bookingData.userDetails.email)) {
+      newErrors.userEmail = 'Please enter a valid email address';
+    }
+
+    if (!validateRequired(bookingData.userDetails.phone, 'userPhone')) {
+      newErrors.userPhone = 'Customer phone is required';
+    } else if (!validatePhone(bookingData.userDetails.phone)) {
+      newErrors.userPhone = 'Please enter a valid 10-digit phone number';
+    }
+
+    // Validate participant details
+    bookingData.participantDetails.forEach((participant, index) => {
+      if (!validateRequired(participant.name, `participant${index}Name`)) {
+        newErrors[`participant${index}Name`] = `Participant ${index + 1} name is required`;
+      }
+
+      if (!validateRequired(participant.age, `participant${index}Age`)) {
+        newErrors[`participant${index}Age`] = `Participant ${index + 1} age is required`;
+      } else if (!validateAge(participant.age)) {
+        newErrors[`participant${index}Age`] = `Participant ${index + 1} age must be between 1 and 120`;
+      }
+
+      if (!validateRequired(participant.gender, `participant${index}Gender`)) {
+        newErrors[`participant${index}Gender`] = `Participant ${index + 1} gender is required`;
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -712,85 +609,71 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
             <p className="text-gray-600">Select trek, batch, and enter booking information</p>
           </div>
 
-            {/* Trek and Batch Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Trek *
-                </label>
-                {process.env.NODE_ENV === 'development' && (
-                  <div className="text-xs text-gray-500 mb-2">
-                    Available treks: {treks.length} | Selected: {selectedTrek || 'None'}
-                  </div>
-                )}
-                <select
-                  value={selectedTrek}
-                  onChange={(e) => {
-                    console.log('Trek selected:', e.target.value);
-                    setSelectedTrek(e.target.value);
-                    setSelectedBatch('');
-                  }}
-                  onBlur={() => handleFieldBlur('trek')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    errors.trek && touched.trek 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                >
-                  <option value="">Select a trek</option>
-                  {treks.map(trek => (
-                    <option key={trek._id} value={trek._id}>
-                      {trek.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.trek && touched.trek && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <FaExclamationTriangle className="mr-1" size={12} />
-                    {errors.trek}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Batch *
-                </label>
-                {process.env.NODE_ENV === 'development' && (
-                  <div className="text-xs text-gray-500 mb-2">
-                    Available batches: {batches.length} | Selected: {selectedBatch || 'None'}
-                  </div>
-                )}
-                <select
-                  value={selectedBatch}
-                  onChange={(e) => {
-                    console.log('Batch selected:', e.target.value);
-                    setSelectedBatch(e.target.value);
-                  }}
-                  onBlur={() => handleFieldBlur('batch')}
-                  disabled={!selectedTrek}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
-                    errors.batch && touched.batch 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                >
-                  <option value="">Select a batch</option>
-                  {batches.map(batch => (
-                    <option key={batch._id} value={batch._id}>
-                      {new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()} 
-                      (₹{batch.price})
-                    </option>
-                  ))}
-                </select>
-                {errors.batch && touched.batch && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <FaExclamationTriangle className="mr-1" size={12} />
-                    {errors.batch}
-                  </div>
-                )}
-              </div>
+          {/* Trek and Batch Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Trek *
+              </label>
+              <select
+                value={selectedTrek}
+                onChange={(e) => {
+                  setSelectedTrek(e.target.value);
+                  setSelectedBatch('');
+                }}
+                onBlur={() => handleFieldBlur('trek')}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                  errors.trek && touched.trek 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+              >
+                <option value="">Select a trek</option>
+                {treks.map(trek => (
+                  <option key={trek._id} value={trek._id}>
+                    {trek.name}
+                  </option>
+                ))}
+              </select>
+              {errors.trek && touched.trek && (
+                <div className="flex items-center mt-1 text-red-600 text-sm">
+                  <FaExclamationTriangle className="mr-1" size={12} />
+                  {errors.trek}
+                </div>
+              )}
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Batch *
+              </label>
+              <select
+                value={selectedBatch}
+                onChange={(e) => setSelectedBatch(e.target.value)}
+                onBlur={() => handleFieldBlur('batch')}
+                disabled={!selectedTrek}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
+                  errors.batch && touched.batch 
+                    ? 'border-red-500 focus:ring-red-500' 
+                    : 'border-gray-300 focus:ring-blue-500'
+                }`}
+              >
+                <option value="">Select a batch</option>
+                {batches.map(batch => (
+                  <option key={batch._id} value={batch._id}>
+                    {new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()} 
+                    (₹{batch.price})
+                  </option>
+                ))}
+              </select>
+              {errors.batch && touched.batch && (
+                <div className="flex items-center mt-1 text-red-600 text-sm">
+                  <FaExclamationTriangle className="mr-1" size={12} />
+                  {errors.batch}
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* User Details */}
           <div className="bg-gray-50 p-4 rounded-md">
