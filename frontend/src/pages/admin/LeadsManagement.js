@@ -367,6 +367,11 @@ const LeadsManagement = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-medium text-gray-900">{lead.name}</h3>
+                      {lead.trekId && (
+                        <div className="text-sm text-emerald-600 font-medium mt-1">
+                          {lead.trekId.name}
+                        </div>
+                      )}
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${getStatusBadgeClass(lead.status)}`}>
                         {lead.status ? (lead.status.charAt(0).toUpperCase() + lead.status.slice(1)) : 'New'}
                       </span>

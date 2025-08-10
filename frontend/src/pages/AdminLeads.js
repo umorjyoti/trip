@@ -860,6 +860,11 @@ function AdminLeads() {
                             <div className="text-sm font-medium text-gray-900">
                               {lead.name || 'No Name'}
                             </div>
+                            {lead.trekId && (
+                              <div className="text-sm text-emerald-600 font-medium">
+                                {lead.trekId.name}
+                              </div>
+                            )}
                             <div className="text-sm text-gray-500">
                               {lead.email}
                             </div>

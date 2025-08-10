@@ -112,7 +112,16 @@ const Leads = () => {
                 <tbody className="divide-y divide-gray-200 bg-white">
                   {leads.map((lead) => (
                     <tr key={lead._id}>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{lead.name}</td>
+                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">
+                        <div>
+                          <div>{lead.name}</div>
+                          {lead.trekId && (
+                            <div className="text-sm text-emerald-600 font-medium">
+                              {lead.trekId.name}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{lead.email}</td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{lead.phone}</td>
                       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{lead.status}</td>

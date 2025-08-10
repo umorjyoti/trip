@@ -146,12 +146,13 @@ exports.getLeads = async (req, res) => {
       if (endDate) filter.createdAt.$lte = new Date(endDate);
     }
 
-    // Search by name or email
+    // Search by name, email, phone, or trek name
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
         { phone: { $regex: search, $options: "i" } },
+        { "trekId.name": { $regex: search, $options: "i" } },
       ];
     }
 

@@ -9,6 +9,7 @@ import {
   formatCurrency,
   createTrekSlug,
   createRegionSlug,
+  createLead,
 } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -34,6 +35,7 @@ import ThingsToPack from "../components/ThingsToPack";
 import TrekFAQs from "../components/TrekFAQs";
 import Modal from "../components/Modal";
 import CancellationPolicy from "../components/CancellationPolicy";
+import ItineraryDownloadModal from "../components/ItineraryDownloadModal";
 import { format, parseISO, addMonths, isSameMonth } from "date-fns";
 import CustomTrekBookingForm from "../components/CustomTrekBookingForm";
 import EnquiryBanner from "../components/EnquiryBanner";
@@ -342,6 +344,7 @@ function TrekDetail() {
   const [showEnquiryBanner, setShowEnquiryBanner] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const galleryModalRef = useRef(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -770,23 +773,54 @@ function TrekDetail() {
   const handleDownloadItinerary = async () => {
     if (!trek) return;
 
-    try {
-      setDownloading(true);
+    // Check if user is logged in
+    if (currentUser) {
+      // User is logged in, create lead and download
+      try {
+        setDownloading(true);
+        
+        // Create lead for logged-in user
+        await createLead({
+          name: currentUser.name || currentUser.username,
+          email: currentUser.email,
+          phone: currentUser.phone,
+          trekId: trek._id,
+          source: 'Trek Detail Page - Itinerary Download',
+          notes: `Logged-in user downloaded itinerary for trek: ${trek.name}`
+        });
 
-      if (!trek.itineraryPdfUrl) {
-        toast.error("Itinerary PDF is not available for this trek.");
-        return;
+        // Download the itinerary
+        if (!trek.itineraryPdfUrl) {
+          toast.error("Itinerary PDF is not available for this trek.");
+          return;
+        }
+
+        window.open(trek.itineraryPdfUrl, "_blank");
+        toast.success("Itinerary downloaded successfully!");
+        
+      } catch (error) {
+        console.error("Error creating lead or downloading itinerary:", error);
+        toast.error("Failed to download itinerary. Please try again.");
+      } finally {
+        setDownloading(false);
       }
-
-      // Open the PDF URL in a new tab
-      window.open(trek.itineraryPdfUrl, "_blank");
-      toast.success("Itinerary downloaded successfully!");
-    } catch (error) {
-      console.error("Error downloading itinerary:", error);
-      toast.error("Failed to download itinerary. Please try again.");
-    } finally {
-      setDownloading(false);
+    } else {
+      // User is not logged in, show modal
+      setShowItineraryModal(true);
     }
+  };
+
+  const handleItineraryDownloadAfterLead = () => {
+    if (!trek) return;
+    
+    if (!trek.itineraryPdfUrl) {
+      toast.error("Itinerary PDF is not available for this trek.");
+      return;
+    }
+
+    // Download the itinerary
+    window.open(trek.itineraryPdfUrl, "_blank");
+    toast.success("Itinerary downloaded successfully!");
   };
 
   const handleOpenGallery = (idx) => {
@@ -2484,6 +2518,15 @@ function TrekDetail() {
               isTrekDisabled={isTrekDisabled}
             />
           )}
+
+        {/* Itinerary Download Modal */}
+        <ItineraryDownloadModal
+          trekId={trek?._id}
+          trekName={trek?.name}
+          isOpen={showItineraryModal}
+          onClose={() => setShowItineraryModal(false)}
+          onDownload={handleItineraryDownloadAfterLead}
+        />
       </div>
     </>
   );

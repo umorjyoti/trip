@@ -25,7 +25,7 @@ const leadSchema = new mongoose.Schema({
   },
   source: {
     type: String,
-    enum: ['Trek Detail Page', 'Landing Page', 'Newsletter', 'Referral', 'Social Media', 'Other'],
+    enum: ['Trek Detail Page', 'Trek Detail Page - Itinerary Download', 'Landing Page', 'Newsletter', 'Referral', 'Social Media', 'Other'],
     default: 'Trek Detail Page'
   },
   notes: {

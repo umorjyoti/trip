@@ -42,7 +42,8 @@ const LeadList = () => {
     const matchesSource = filters.source === 'all' || lead.source === filters.source;
     const matchesSearch = lead.name.toLowerCase().includes(filters.search.toLowerCase()) ||
                          lead.email.toLowerCase().includes(filters.search.toLowerCase()) ||
-                         lead.phone.toLowerCase().includes(filters.search.toLowerCase());
+                         lead.phone.toLowerCase().includes(filters.search.toLowerCase()) ||
+                         (lead.trekId && lead.trekId.name && lead.trekId.name.toLowerCase().includes(filters.search.toLowerCase()));
     return matchesStatus && matchesSource && matchesSearch;
   });
 
@@ -110,9 +111,16 @@ const LeadList = () => {
                 <div className="px-4 py-4 sm:px-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <p className="text-sm font-medium text-emerald-600 truncate">
-                        {lead.name}
-                      </p>
+                      <div>
+                        <p className="text-sm font-medium text-emerald-600 truncate">
+                          {lead.name}
+                        </p>
+                        {lead.trekId && (
+                          <p className="text-sm text-gray-600 font-medium">
+                            {lead.trekId.name}
+                          </p>
+                        )}
+                      </div>
                       <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         lead.status === 'new' ? 'bg-blue-100 text-blue-800' :
                         lead.status === 'contacted' ? 'bg-yellow-100 text-yellow-800' :
