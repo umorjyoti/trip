@@ -315,6 +315,11 @@ const BookingSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  // Flag to identify admin-created bookings
+  adminCreated: {
+    type: Boolean,
+    default: false
+  },
   // Cancellation/Reschedule request fields
   cancellationRequest: {
     type: {

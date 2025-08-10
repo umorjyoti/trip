@@ -63,12 +63,22 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [isOpen]);
 
+  // Fetch batches when trek is selected
   useEffect(() => {
+    console.log('useEffect triggered - selectedTrek:', selectedTrek, 'treks:', treks);
     if (selectedTrek) {
       const trek = treks.find(t => t._id === selectedTrek);
+      console.log('Found trek:', trek);
       if (trek && trek.batches) {
-        setBatches(trek.batches.filter(batch => new Date(batch.startDate) > new Date()));
+        console.log('Setting batches:', trek.batches);
+        setBatches(trek.batches);
+      } else {
+        console.log('No trek found or no batches');
+        setBatches([]);
       }
+    } else {
+      console.log('No trek selected, clearing batches');
+      setBatches([]);
     }
   }, [selectedTrek, treks]);
 
@@ -87,7 +97,10 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
   const fetchTreks = async () => {
     try {
       const data = await getAllTreks();
-      setTreks(data.filter(trek => trek.isEnabled));
+      console.log('Fetched treks:', data);
+      const enabledTreks = data.filter(trek => trek.isEnabled);
+      console.log('Enabled treks:', enabledTreks);
+      setTreks(enabledTreks);
     } catch (error) {
       console.error('Error fetching treks:', error);
       toast.error('Failed to load treks');
@@ -357,6 +370,8 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
 
     console.log('Final validation errors:', newErrors);
+    console.log('Validation failed fields:', Object.keys(newErrors));
+    console.log('Validation result:', Object.keys(newErrors).length === 0 ? 'PASSED' : 'FAILED');
     setErrors(newErrors);
     setTouched(newTouched);
     return Object.keys(newErrors).length === 0;
@@ -366,73 +381,109 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     const newErrors = {};
     const newTouched = { ...touched };
     
+    console.log('Validating Step 3 with data:', {
+      userDetails: bookingData.userDetails,
+      emergencyContact: bookingData.emergencyContact,
+      participantDetails: bookingData.participantDetails,
+      selectedTrek,
+      selectedBatch
+    });
+    
     // User details validation
     const userNameError = validateName(bookingData.userDetails.name);
     if (userNameError) {
       newErrors.userName = userNameError;
       newTouched.userName = true;
+      console.log('User name validation error:', userNameError);
     }
     
     const userEmailError = validateEmail(bookingData.userDetails.email);
     if (userEmailError) {
       newErrors.userEmail = userEmailError;
       newTouched.userEmail = true;
+      console.log('User email validation error:', userEmailError);
     }
     
     const userPhoneError = validatePhone(bookingData.userDetails.phone);
     if (userPhoneError) {
       newErrors.userPhone = userPhoneError;
       newTouched.userPhone = true;
+      console.log('User phone validation error:', userPhoneError);
     }
     
-    // Emergency contact validation
-    if (bookingData.emergencyContact.name.trim()) {
-      const emergencyNameError = validateName(bookingData.emergencyContact.name);
-      if (emergencyNameError) {
-        newErrors.emergencyName = emergencyNameError;
+    // Emergency contact validation - only validate if any field is filled
+    const hasEmergencyContact = bookingData.emergencyContact.name.trim() || 
+                               bookingData.emergencyContact.phone.trim() || 
+                               bookingData.emergencyContact.relation.trim();
+    
+    if (hasEmergencyContact) {
+      // If any emergency contact field is filled, all are required
+      if (!bookingData.emergencyContact.name.trim()) {
+        newErrors.emergencyName = 'Emergency contact name is required';
         newTouched.emergencyName = true;
+        console.log('Emergency name validation error: Emergency contact name is required');
+      } else {
+        const emergencyNameError = validateName(bookingData.emergencyContact.name);
+        if (emergencyNameError) {
+          newErrors.emergencyName = emergencyNameError;
+          newTouched.emergencyName = true;
+          console.log('Emergency name validation error:', emergencyNameError);
+        }
       }
       
-      const emergencyPhoneError = validatePhone(bookingData.emergencyContact.phone);
-      if (emergencyPhoneError) {
-        newErrors.emergencyPhone = emergencyPhoneError;
+      if (!bookingData.emergencyContact.phone.trim()) {
+        newErrors.emergencyPhone = 'Emergency contact phone is required';
         newTouched.emergencyPhone = true;
+        console.log('Emergency phone validation error: Emergency contact phone is required');
+      } else {
+        const emergencyPhoneError = validatePhone(bookingData.emergencyContact.phone);
+        if (emergencyPhoneError) {
+          newErrors.emergencyPhone = emergencyPhoneError;
+          newTouched.emergencyPhone = true;
+          console.log('Emergency phone validation error:', emergencyPhoneError);
+        }
       }
       
-      const emergencyRelationError = validateRequired(bookingData.emergencyContact.relation, 'Relation');
-      if (emergencyRelationError) {
-        newErrors.emergencyRelation = emergencyRelationError;
+      if (!bookingData.emergencyContact.relation.trim()) {
+        newErrors.emergencyRelation = 'Emergency contact relation is required';
         newTouched.emergencyRelation = true;
+        console.log('Emergency relation validation error: Emergency contact relation is required');
       }
     }
+    // If no emergency contact fields are filled, skip validation entirely
     
     // Participant details validation
     bookingData.participantDetails.forEach((participant, index) => {
-      if (!participant.name.trim()) {
+      if (!participant.name || !participant.name.trim()) {
         newErrors[`participant${index}Name`] = 'Participant name is required';
         newTouched[`participant${index}Name`] = true;
+        console.log(`Participant ${index + 1} name validation error: Participant name is required`);
       } else {
         const participantNameError = validateName(participant.name);
         if (participantNameError) {
           newErrors[`participant${index}Name`] = participantNameError;
           newTouched[`participant${index}Name`] = true;
+          console.log(`Participant ${index + 1} name validation error:`, participantNameError);
         }
       }
       
       if (!participant.age) {
         newErrors[`participant${index}Age`] = 'Participant age is required';
         newTouched[`participant${index}Age`] = true;
+        console.log(`Participant ${index + 1} age validation error: Participant age is required`);
       } else {
         const participantAgeError = validateAge(participant.age);
         if (participantAgeError) {
           newErrors[`participant${index}Age`] = participantAgeError;
           newTouched[`participant${index}Age`] = true;
+          console.log(`Participant ${index + 1} age validation error:`, participantAgeError);
         }
       }
       
       if (!participant.gender) {
         newErrors[`participant${index}Gender`] = 'Please select gender';
         newTouched[`participant${index}Gender`] = true;
+        console.log(`Participant ${index + 1} gender validation error: Please select gender`);
       }
     });
     
@@ -440,12 +491,15 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     if (!selectedTrek) {
       newErrors.trek = 'Please select a trek';
       newTouched.trek = true;
+      console.log('Trek validation error: Please select a trek');
     }
     if (!selectedBatch) {
       newErrors.batch = 'Please select a batch';
       newTouched.batch = true;
+      console.log('Batch validation error: Please select a batch');
     }
 
+    console.log('Final validation errors:', newErrors);
     setErrors(newErrors);
     setTouched(newTouched);
     return Object.keys(newErrors).length === 0;
@@ -728,9 +782,15 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Trek *
                 </label>
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="text-xs text-gray-500 mb-2">
+                    Available treks: {treks.length} | Selected: {selectedTrek || 'None'}
+                  </div>
+                )}
                 <select
                   value={selectedTrek}
                   onChange={(e) => {
+                    console.log('Trek selected:', e.target.value);
                     setSelectedTrek(e.target.value);
                     setSelectedBatch('');
                   }}
@@ -760,9 +820,17 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Batch *
                 </label>
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="text-xs text-gray-500 mb-2">
+                    Available batches: {batches.length} | Selected: {selectedBatch || 'None'}
+                  </div>
+                )}
                 <select
                   value={selectedBatch}
-                  onChange={(e) => setSelectedBatch(e.target.value)}
+                  onChange={(e) => {
+                    console.log('Batch selected:', e.target.value);
+                    setSelectedBatch(e.target.value);
+                  }}
                   onBlur={() => handleFieldBlur('batch')}
                   disabled={!selectedTrek}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-100 ${

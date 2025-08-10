@@ -78,6 +78,14 @@ const BookingActionMenu = ({ booking, onAction, hideShiftAction = false }) => {
       showFor: ['pending', 'pending_payment', 'payment_completed', 'payment_confirmed_partial', 'confirmed']
     },
     {
+      id: 'update-admin-status',
+      label: 'Update Status & Payment',
+      icon: <FaEdit className="w-4 h-4" />,
+      color: 'text-blue-600 hover:bg-blue-50',
+      showFor: ['pending', 'pending_payment', 'payment_completed', 'payment_confirmed_partial', 'confirmed', 'trek_completed', 'cancelled'],
+      showCondition: (booking) => booking.adminCreated === true
+    },
+    {
       id: 'cancel',
       label: 'Cancel Booking',
       icon: <FaTimes className="w-4 h-4" />,
