@@ -552,15 +552,6 @@ export const updateBookingStatus = async (bookingId, status) => {
   }
 };
 
-export const updateAdminCreatedBookingStatus = async (bookingId, updateData) => {
-  try {
-    const response = await api.put(`/bookings/${bookingId}/admin-status`, updateData);
-    return response.data;
-  } catch (error) {
-    const errorMessage = error.response?.data?.message || 'Failed to update admin-created booking status';
-    throw new Error(errorMessage);
-  }
-};
 
 
 export const cleanupExpiredBookings = async () => {

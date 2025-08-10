@@ -12,7 +12,6 @@ import RemarksModal from '../components/RemarksModal';
 import BookingActionMenu from '../components/BookingActionMenu';
 import EditBookingModal from '../components/EditBookingModal';
 import ManualBookingModal from '../components/ManualBookingModal';
-import UpdateAdminBookingModal from '../components/UpdateAdminBookingModal';
 
 import ViewBookingModal from '../components/ViewBookingModal';
 import CancellationModal from '../components/CancellationModal';
@@ -68,7 +67,6 @@ function AdminBookings() {
   const [showRemarksModal, setShowRemarksModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showManualBookingModal, setShowManualBookingModal] = useState(false);
-  const [showUpdateBookingModal, setShowUpdateBookingModal] = useState(false);
 
   const [showViewModal, setShowViewModal] = useState(false);
   const [showCancellationModal, setShowCancellationModal] = useState(false);
@@ -396,10 +394,6 @@ function AdminBookings() {
         
       case 'edit':
         setShowEditModal(true);
-        break;
-        
-      case 'update-admin-status':
-        setShowUpdateBookingModal(true);
         break;
         
       case 'cancel':
@@ -865,13 +859,6 @@ function AdminBookings() {
         onUpdate={handleBookingUpdate}
       />
 
-      <UpdateAdminBookingModal
-        isOpen={showUpdateBookingModal}
-        onClose={() => setShowUpdateBookingModal(false)}
-        booking={selectedBooking}
-        trekData={selectedBooking ? treks.find(t => t._id === selectedBooking.trek) : null}
-        onUpdate={handleBookingUpdate}
-      />
 
 
       <ViewBookingModal
