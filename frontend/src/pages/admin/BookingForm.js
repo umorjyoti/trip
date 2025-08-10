@@ -232,9 +232,9 @@ const BookingForm = () => {
                 className="rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
               >
                 <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
               </select>
               {index > 0 && (
                 <button
