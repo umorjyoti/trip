@@ -2665,7 +2665,8 @@ const createManualBooking = async (req, res) => {
       paymentMode,
       partialPaymentDetails,
       additionalRequests,
-      adminRemarks: "Admin Created Booking"
+      adminRemarks: "Admin Created Booking",
+      adminCreated: true // Flag to identify admin-created bookings
     });
 
     await booking.save();
@@ -2716,6 +2717,88 @@ const createManualBooking = async (req, res) => {
   }
 };
 
+// Update admin-created booking status and payment status (admin only)
+const updateAdminCreatedBookingStatus = async (req, res) => {
+  try {
+    const { status, paymentStatus, adminRemarks } = req.body;
+    const { id } = req.params;
+
+    // Check if user is authorized (admin only)
+    if (!req.user.isAdmin && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to update admin-created booking status" });
+    }
+
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Check if this is an admin-created booking
+    if (!booking.adminCreated) {
+      return res.status(400).json({ message: "This booking was not created by an admin" });
+    }
+
+    // Validate status if provided
+    if (status) {
+      const validStatuses = ["pending", "pending_payment", "payment_completed", "payment_confirmed_partial", "confirmed", "trek_completed", "cancelled"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+      booking.status = status;
+    }
+
+    // Validate payment status if provided
+    if (paymentStatus) {
+      const validPaymentStatuses = ["payment_completed", "payment_confirmed_partial", "unpaid"];
+      if (!validPaymentStatuses.includes(paymentStatus)) {
+        return res.status(400).json({ message: "Invalid payment status" });
+      }
+
+      // Update payment mode and details based on payment status
+      if (paymentStatus === 'payment_completed') {
+        booking.paymentMode = 'full';
+        booking.partialPaymentDetails = {};
+      } else if (paymentStatus === 'payment_confirmed_partial') {
+        booking.paymentMode = 'partial';
+        booking.partialPaymentDetails = {
+          initialAmount: booking.totalPrice * 0.5,
+          remainingAmount: booking.totalPrice * 0.5,
+          finalPaymentDueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          reminderSent: false
+        };
+      } else if (paymentStatus === 'unpaid') {
+        booking.paymentMode = 'full';
+        booking.partialPaymentDetails = {};
+      }
+    }
+
+    // Update admin remarks if provided
+    if (adminRemarks !== undefined) {
+      booking.adminRemarks = adminRemarks;
+    }
+
+    // Update the booking
+    await booking.save();
+
+    // If status transitions to confirmed/paid, update batch participant count
+    if (['confirmed', 'payment_completed', 'payment_confirmed_partial'].includes(booking.status)) {
+      await updateBatchParticipantCount(booking.trek, booking.batch);
+    }
+
+    // Populate user and trek for response
+    await booking.populate('user', 'name email phone');
+    await booking.populate('trek', 'name');
+
+    res.json({
+      message: "Admin-created booking updated successfully",
+      booking
+    });
+  } catch (error) {
+    console.error("Error updating admin-created booking status:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 module.exports = {
   createCustomTrekBooking,
   createBooking,
@@ -2747,5 +2830,6 @@ module.exports = {
   // Manual booking functions
   validateUserByPhone,
   createUserForManualBooking,
-  createManualBooking
+  createManualBooking,
+  updateAdminCreatedBookingStatus
 };
