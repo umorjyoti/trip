@@ -315,6 +315,27 @@ const BookingSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  // Remarks history to track all remarks with timestamps and usernames
+  remarksHistory: [{
+    remarks: {
+      type: String,
+      trim: true,
+      required: true
+    },
+    addedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    addedByUsername: {
+      type: String,
+      required: true
+    },
+    addedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   // Flag to identify admin-created bookings
   adminCreated: {
     type: Boolean,

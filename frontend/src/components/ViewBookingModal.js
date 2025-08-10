@@ -193,9 +193,37 @@ const ViewBookingModal = ({ isOpen, onClose, booking, trekData }) => {
               <FaStar className="mr-2 text-yellow-600" />
               Admin Remarks
             </h3>
-            <p className="text-gray-700 bg-white p-3 rounded border border-yellow-200">
+            <p className="text-gray-700 bg-white p-3 rounded border border-yellow-200 mb-3">
               {booking.adminRemarks}
             </p>
+            
+            {/* Show remarks history if available */}
+            {booking.remarksHistory && booking.remarksHistory.length > 0 && (
+              <div className="mt-3">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Remarks History:</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {[...booking.remarksHistory].reverse().map((entry, index) => (
+                    <div key={index} className="bg-white rounded p-2 border border-yellow-200 text-xs">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-medium text-gray-900">
+                          {entry.addedByUsername}
+                        </span>
+                        <span className="text-gray-500">
+                          {new Date(entry.addedAt).toLocaleString('en-IN', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-gray-700">{entry.remarks}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

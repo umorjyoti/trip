@@ -580,7 +580,12 @@ const TrekPerformance = () => {
                           {booking.adminRemarks ? (
                             <div className="max-w-40">
                               <p className="text-gray-900 truncate text-xs">{booking.adminRemarks}</p>
-                              <p className="text-xs text-gray-400 mt-1">Click to edit</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {booking.remarksHistory && booking.remarksHistory.length > 1 
+                                  ? `${booking.remarksHistory.length} remarks` 
+                                  : 'Click to edit'
+                                }
+                              </p>
                             </div>
                           ) : (
                             <div className="text-gray-400 italic">

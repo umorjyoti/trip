@@ -205,6 +205,34 @@ const UpdateAdminBookingModal = ({ isOpen, onClose, booking, onUpdate }) => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Add any additional remarks..."
               />
+              
+              {/* Show remarks history if available */}
+              {booking?.remarksHistory && booking.remarksHistory.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-sm font-medium text-gray-900 mb-2">Remarks History:</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
+                    {[...booking.remarksHistory].reverse().map((entry, index) => (
+                      <div key={index} className="bg-white rounded p-2 border border-gray-200 text-xs">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-medium text-gray-900">
+                            {entry.addedByUsername}
+                          </span>
+                          <span className="text-gray-500">
+                            {new Date(entry.addedAt).toLocaleString('en-IN', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-gray-700">{entry.remarks}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

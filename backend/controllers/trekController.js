@@ -1561,6 +1561,7 @@ exports.getBatchPerformance = async (req, res) => {
               status: booking.status || 'unknown',
               bookingDate: booking.createdAt || null,
               adminRemarks: booking.adminRemarks || '',
+              remarksHistory: booking.remarksHistory || [],
               cancellationRequest: booking.cancellationRequest || null,
               refundStatus: booking.refundStatus || null,
               refundAmount: booking.refundAmount || 0

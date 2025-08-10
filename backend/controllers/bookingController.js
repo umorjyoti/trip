@@ -514,7 +514,8 @@ const getBookingById = async (req, res) => {
     const booking = await Booking.findById(req.params.id)
       .populate("user", "name email")
       .populate("trek", "name imageUrl batches")
-      .populate("batch");
+      .populate("batch")
+      .populate("remarksHistory.addedBy", "name email"); // Populate user details for remarks history
 
     console.log("booking", booking.batch);
 
@@ -840,6 +841,7 @@ const getBookings = async (req, res) => {
       Booking.find(filterQuery)
         .populate("user", "name email phone") // Add phone to populated fields
         .populate("trek", "name batches")
+        .populate("remarksHistory.addedBy", "name email") // Populate user details for remarks history
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
@@ -1773,15 +1775,33 @@ const updateAdminRemarks = async (req, res) => {
       return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Update admin remarks
-    booking.adminRemarks = adminRemarks || '';
+    // Add new remarks to history if remarks are provided
+    if (adminRemarks && adminRemarks.trim()) {
+      const newRemarkEntry = {
+        remarks: adminRemarks.trim(),
+        addedBy: req.user._id,
+        addedByUsername: req.user.name || req.user.email,
+        addedAt: new Date()
+      };
+      
+      // Add to remarks history
+      if (!booking.remarksHistory) {
+        booking.remarksHistory = [];
+      }
+      booking.remarksHistory.push(newRemarkEntry);
+      
+      // Update the current adminRemarks field for backward compatibility
+      booking.adminRemarks = adminRemarks.trim();
+    }
+
     await booking.save();
 
     res.json({ 
       message: "Admin remarks updated successfully",
       booking: {
         _id: booking._id,
-        adminRemarks: booking.adminRemarks
+        adminRemarks: booking.adminRemarks,
+        remarksHistory: booking.remarksHistory
       }
     });
   } catch (error) {

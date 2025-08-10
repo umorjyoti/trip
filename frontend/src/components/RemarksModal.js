@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 import Modal from './Modal';
 
 const RemarksModal = ({ isOpen, onClose, booking, onUpdate }) => {
-  const [remarks, setRemarks] = useState(booking?.adminRemarks || '');
+  const [remarks, setRemarks] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -13,7 +13,7 @@ const RemarksModal = ({ isOpen, onClose, booking, onUpdate }) => {
 
     setLoading(true);
     try {
-      await updateAdminRemarks(booking.id || booking.bookingId, remarks);
+      const response = await updateAdminRemarks(booking.id || booking.bookingId, remarks);
       toast.success('Remarks updated successfully');
       onUpdate(remarks);
       onClose();
@@ -26,8 +26,20 @@ const RemarksModal = ({ isOpen, onClose, booking, onUpdate }) => {
   };
 
   const handleClose = () => {
-    setRemarks(booking?.adminRemarks || '');
+    setRemarks('');
     onClose();
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -40,7 +52,7 @@ const RemarksModal = ({ isOpen, onClose, booking, onUpdate }) => {
       <div className="space-y-6">
         <div>
           <p className="text-gray-600 mb-4">
-            Add or edit remarks for this booking. These remarks are only visible to administrators.
+            Add new remarks for this booking. New remarks will be added to the history and will not replace existing ones. These remarks are only visible to administrators.
           </p>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -86,6 +98,28 @@ const RemarksModal = ({ isOpen, onClose, booking, onUpdate }) => {
             </div>
           </form>
         </div>
+
+        {/* Show remarks history if available */}
+        {booking?.remarksHistory && booking.remarksHistory.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-3">Remarks History</h3>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {[...booking.remarksHistory].reverse().map((entry, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-3 border-l-4 border-emerald-500">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-sm font-medium text-gray-900">
+                      {entry.addedByUsername}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatDate(entry.addedAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700">{entry.remarks}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         
         <div className="mt-4 text-xs text-gray-500">
           <p>These remarks are for internal use only and will not be visible to customers.</p>
