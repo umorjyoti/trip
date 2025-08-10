@@ -31,22 +31,34 @@ const Leads = () => {
     try {
       const response = await exportLeads({ fields, fileType });
       
-      // Create a blob from the response
-      const blob = await response.blob();
-      
-      // Create a download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `leads-export.${fileType === 'excel' ? 'xlsx' : 'pdf'}`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast.success('Export completed successfully');
+      if (fileType === 'pdf') {
+        // For PDF: Open in new browser tab
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        
+        // Clean up the URL object after a delay to ensure the PDF loads
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+        
+        toast.success('PDF opened in new tab!');
+      } else {
+        // For Excel: Download as before
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `leads-export.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast.success('Excel file downloaded successfully!');
+      }
     } catch (error) {
       console.error('Error exporting leads:', error);
       toast.error('Failed to export leads');

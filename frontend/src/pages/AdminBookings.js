@@ -219,16 +219,25 @@ function AdminBookings() {
         }
       });
 
-      // Create a download link
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `bookings_export.${exportOptions.fileType}`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      
-      toast.success('Bookings exported successfully');
+      if (exportOptions.fileType === 'pdf') {
+        // For PDFs, open in new browser tab
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        window.URL.revokeObjectURL(url);
+        toast.success('PDF opened in new tab');
+      } else {
+        // For other file types (Excel), download as before
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `bookings_export.${exportOptions.fileType}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success('Bookings exported successfully');
+      }
     } catch (err) {
       console.error('Error exporting bookings:', err);
       toast.error('Failed to export bookings');

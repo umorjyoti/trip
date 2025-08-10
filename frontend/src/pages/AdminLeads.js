@@ -368,32 +368,43 @@ function AdminLeads() {
     try {
       const response = await exportLeads({ fields, fileType, dateRange });
       
-      // Get the filename from the response headers or use a default
-      const contentDisposition = response.headers['content-disposition'];
-      const filename = contentDisposition
-        ? contentDisposition.split('filename=')[1]
-        : `leads-export.${fileType === 'excel' ? 'xlsx' : 'pdf'}`;
+      if (fileType === 'pdf') {
+        // For PDF: Open in new browser tab
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        
+        // Clean up the URL object after a delay to ensure the PDF loads
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+        
+        toast.success('PDF opened in new tab!');
+      } else {
+        // For Excel: Download as before
+        const contentDisposition = response.headers['content-disposition'];
+        const filename = contentDisposition
+          ? contentDisposition.split('filename=')[1]
+          : 'leads-export.xlsx';
 
-      // Create a blob from the response data
-      const blob = new Blob([response.data], {
-        type: fileType === 'excel' 
-          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-          : 'application/pdf'
-      });
+        const blob = new Blob([response.data], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
 
-      // Create a download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
+        // Create a download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
 
-      // Cleanup
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
 
-      toast.success('Export completed successfully');
+        toast.success('Excel file downloaded successfully!');
+      }
     } catch (error) {
       console.error('Error exporting leads:', error);
       toast.error(error.response?.data?.message || 'Failed to export leads');

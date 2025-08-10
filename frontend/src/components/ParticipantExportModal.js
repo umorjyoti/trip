@@ -257,20 +257,33 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
       setLoading(true);
       const response = await exportBatchParticipants(trekId, batchId, selectedFields, fileType);
       
-      // Create download link
-      const mimeType = fileType === 'csv' ? 'text/csv' : 'application/pdf';
-      const fileExtension = fileType === 'csv' ? 'csv' : 'pdf';
-      const blob = new Blob([response.data], { type: mimeType });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `batch-participants-${localTrekData?.name || 'trek'}-${new Date().toISOString().split('T')[0]}.${fileExtension}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      toast.success(`${fileType.toUpperCase()} exported successfully!`);
+      if (fileType === 'pdf') {
+        // For PDF: Open in new browser tab
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+        
+        // Clean up the URL object after a delay to ensure the PDF loads
+        setTimeout(() => {
+          window.URL.revokeObjectURL(url);
+        }, 1000);
+        
+        toast.success('PDF opened in new tab!');
+      } else {
+        // For CSV: Download as before
+        const blob = new Blob([response.data], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `batch-participants-${localTrekData?.name || 'trek'}-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast.success('CSV downloaded successfully!');
+      }
+      
       onClose();
     } catch (error) {
       console.error('Export error:', error);
@@ -477,7 +490,7 @@ const ParticipantExportModal = ({ isOpen, onClose, trekId, batchId, trekData }) 
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Export {fileType.toUpperCase()}
+                  {fileType === 'pdf' ? 'Open PDF' : `Export ${fileType.toUpperCase()}`}
                 </>
               )}
             </button>
