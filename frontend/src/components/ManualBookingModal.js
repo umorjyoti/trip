@@ -1,20 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { validateUserByPhone, createUserForManualBooking, createManualBooking, getAllTreks } from '../services/api';
-import { FaPhone, FaUser, FaCalendar, FaUsers, FaMoneyBillWave, FaCheckCircle, FaTimesCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaPhone, FaUser, FaCalendar, FaUsers, FaMoneyBillWave, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaSearch, FaUserPlus } from 'react-icons/fa';
 import Modal from './Modal';
+
+/**
+ * ManualBookingModal - Streamlined manual booking system for admins
+ * 
+ * Flow:
+ * 1. User Lookup: Search by phone number
+ * 2. User Creation: Create new user if not found (with adminCreated: true flag)
+ * 3. Booking Flow: Trek selection, batch selection, participants, emergency contact
+ * 4. Payment Status: Manual entry according to DB enums
+ */
 
 const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [userCreating, setUserCreating] = useState(false);
   const [treks, setTreks] = useState([]);
   const [selectedTrek, setSelectedTrek] = useState('');
   const [selectedBatch, setSelectedBatch] = useState('');
   const [batches, setBatches] = useState([]);
 
-  // Step 1: Phone validation
+  // Step 1: Phone validation and user lookup/creation
   const [phone, setPhone] = useState('');
   const [userValidationResult, setUserValidationResult] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
 
   // Step 2: User creation (if needed)
   const [newUserData, setNewUserData] = useState({
@@ -28,7 +40,7 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     country: ''
   });
 
-  // Step 3: Booking details
+  // Step 3: Booking details (matching standard booking flow)
   const [bookingData, setBookingData] = useState({
     numberOfParticipants: 1,
     userDetails: {
@@ -38,8 +50,8 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     },
     emergencyContact: {
       name: '',
-      phone: '',
-      relation: ''
+      relationship: '',
+      phone: ''
     },
     participantDetails: [{
       name: '',
@@ -49,10 +61,8 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }],
     totalPrice: 0,
     paymentStatus: 'payment_completed',
-    additionalRequests: ''
+    specialRequirements: ''
   });
-
-  const [selectedUser, setSelectedUser] = useState(null);
 
   // Validation states
   const [errors, setErrors] = useState({});
@@ -66,23 +76,19 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
 
   // Fetch batches when trek is selected
   useEffect(() => {
-    console.log('useEffect triggered - selectedTrek:', selectedTrek, 'treks:', treks);
     if (selectedTrek) {
       const trek = treks.find(t => t._id === selectedTrek);
-      console.log('Found trek:', trek);
       if (trek && trek.batches) {
-        console.log('Setting batches:', trek.batches);
         setBatches(trek.batches);
       } else {
-        console.log('No trek found or no batches');
         setBatches([]);
       }
     } else {
-      console.log('No trek selected, clearing batches');
       setBatches([]);
     }
   }, [selectedTrek, treks]);
 
+  // Update total price when batch or participants change
   useEffect(() => {
     if (selectedBatch && selectedUser) {
       const batch = batches.find(b => b._id === selectedBatch);
@@ -95,12 +101,49 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [selectedBatch, selectedUser, bookingData.numberOfParticipants]);
 
+  // Sync user details when user is selected/created
+  useEffect(() => {
+    if (selectedUser && (selectedUser._id || selectedUser.id)) {
+      setBookingData(prev => ({
+        ...prev,
+        userDetails: {
+          name: selectedUser.name || '',
+          email: selectedUser.email || '',
+          phone: selectedUser.phone || ''
+        },
+        participantDetails: prev.participantDetails.map((participant, index) => ({
+          ...participant,
+          name: index === 0 ? selectedUser.name || '' : participant.name
+        }))
+      }));
+    }
+  }, [selectedUser]);
+
+  // Additional safety check: ensure user details are populated when reaching Step 3
+  useEffect(() => {
+    if (currentStep === 3 && selectedUser && (selectedUser._id || selectedUser.id)) {
+      // Check if userDetails are empty and populate them
+      if (!bookingData.userDetails.name || !bookingData.userDetails.email || !bookingData.userDetails.phone) {
+        setBookingData(prev => ({
+          ...prev,
+          userDetails: {
+            name: selectedUser.name || '',
+            email: selectedUser.email || '',
+            phone: selectedUser.phone || ''
+          },
+          participantDetails: prev.participantDetails.map((participant, index) => ({
+            ...participant,
+            name: index === 0 ? selectedUser.name || '' : participant.name
+          }))
+        }));
+      }
+    }
+  }, [currentStep, selectedUser, bookingData.userDetails.name, bookingData.userDetails.email, bookingData.userDetails.phone]);
+
   const fetchTreks = async () => {
     try {
       const data = await getAllTreks();
-      console.log('Fetched treks:', data);
       const enabledTreks = data.filter(trek => trek.isEnabled);
-      console.log('Enabled treks:', enabledTreks);
       setTreks(enabledTreks);
     } catch (error) {
       console.error('Error fetching treks:', error);
@@ -108,6 +151,7 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
+  // Step 1: Phone validation and user lookup
   const handlePhoneValidation = async () => {
     if (!validateStep1()) {
       toast.error('Please fix the validation errors');
@@ -120,17 +164,34 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
       setUserValidationResult(result);
       
       if (result.exists) {
-        setSelectedUser(result.user);
+        // User exists - set selected user and proceed to booking
+        const userObject = {
+          _id: result.user._id || result.user.id,
+          name: result.user.name,
+          email: result.user.email,
+          phone: result.user.phone
+        };
+        
+        setSelectedUser(userObject);
+        
+        // Immediately populate booking data with user details
         setBookingData(prev => ({
           ...prev,
           userDetails: {
-            name: result.user.name,
-            email: result.user.email,
-            phone: result.user.phone
-          }
+            name: userObject.name || '',
+            email: userObject.email || '',
+            phone: userObject.phone || ''
+          },
+          participantDetails: prev.participantDetails.map((participant, index) => ({
+            ...participant,
+            name: index === 0 ? userObject.name || '' : participant.name
+          }))
         }));
+        
         setCurrentStep(3);
+        toast.success(`User found: ${userObject.name}`);
       } else {
+        // User doesn't exist - proceed to user creation
         setNewUserData(prev => ({ ...prev, phone }));
         setCurrentStep(2);
       }
@@ -142,56 +203,94 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
+  // Step 2: Create new user
   const handleCreateUser = async () => {
     if (!validateStep2()) {
       toast.error('Please fix the validation errors');
       return;
     }
 
-    setLoading(true);
+    setUserCreating(true);
     try {
       const user = await createUserForManualBooking(newUserData);
-      setSelectedUser(user);
+      
+      // Set the created user and proceed to booking
+      const userObject = {
+        _id: user._id || user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      };
+      
+      setSelectedUser(userObject);
+      
+      // Immediately populate booking data with user details
       setBookingData(prev => ({
         ...prev,
         userDetails: {
-          name: user.name,
-          email: user.email,
-          phone: user.phone
-        }
+          name: userObject.name || '',
+          email: userObject.email || '',
+          phone: userObject.phone || ''
+        },
+        participantDetails: prev.participantDetails.map((participant, index) => ({
+          ...participant,
+          name: index === 0 ? userObject.name || '' : participant.name
+        }))
       }));
+      
       setCurrentStep(3);
       toast.success('User created successfully');
     } catch (error) {
       console.error('Error creating user:', error);
       toast.error('Failed to create user');
     } finally {
-      setLoading(false);
+      setUserCreating(false);
     }
   };
 
+  // Step 3: Create booking
   const handleCreateBooking = async () => {
     if (!validateStep3()) {
       toast.error('Please fix the validation errors');
       return;
     }
 
+    // Validate user exists
+    if (!selectedUser || !(selectedUser._id || selectedUser.id)) {
+      toast.error('User information is missing. Please try again.');
+      return;
+    }
+
+    // Validate trek and batch selection
+    if (!selectedTrek || !selectedBatch) {
+      toast.error('Please select both trek and batch.');
+      return;
+    }
+
+    const userId = selectedUser._id || selectedUser.id;
+    
+    const bookingPayload = {
+      ...bookingData,
+      userId: userId,
+      trekId: selectedTrek,
+      batchId: selectedBatch
+    };
+
     setLoading(true);
     try {
-      const booking = await createManualBooking({
-        ...bookingData,
-        trekId: selectedTrek,
-        batchId: selectedBatch,
-        userId: selectedUser._id
-      });
+      const booking = await createManualBooking(bookingPayload);
       
       toast.success('Booking created successfully');
       onSuccess(booking);
       resetModal();
-      onClose(); // Close the modal after successful booking creation
+      onClose();
     } catch (error) {
       console.error('Error creating booking:', error);
-      toast.error('Failed to create booking');
+      if (error.response && error.response.status === 400) {
+        toast.error('Booking validation failed. Please check all required fields.');
+      } else {
+        toast.error('Failed to create booking');
+      }
     } finally {
       setLoading(false);
     }
@@ -234,16 +333,17 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     setBookingData({
       numberOfParticipants: 1,
       userDetails: { name: '', email: '', phone: '' },
-      emergencyContact: { name: '', phone: '', relation: '' },
+      emergencyContact: { name: '', relationship: '', phone: '' },
       participantDetails: [{ name: '', age: '', gender: '', medicalConditions: '' }],
       totalPrice: 0,
       paymentStatus: 'payment_completed',
-      additionalRequests: ''
+      specialRequirements: ''
     });
     setErrors({});
     setTouched({});
   };
 
+  // Validation functions
   const validatePhone = (phone) => {
     const phoneRegex = /^[6-9]\d{9}$/;
     return phoneRegex.test(phone);
@@ -263,14 +363,6 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     return numAge >= 1 && numAge <= 120;
   };
 
-  const validateRequired = (value, fieldName) => {
-    if (!value || value.trim() === '') {
-      setErrors(prev => ({ ...prev, [fieldName]: `${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} is required` }));
-      return false;
-    }
-    return true;
-  };
-
   const validateStep1 = () => {
     const newErrors = {};
     
@@ -287,162 +379,105 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
   const validateStep2 = () => {
     const newErrors = {};
     
-    if (!validateRequired(newUserData.name, 'name')) {
+    if (!newUserData.name || !newUserData.name.trim()) {
       newErrors.name = 'Name is required';
     } else if (!validateName(newUserData.name)) {
       newErrors.name = 'Name must be at least 2 characters long';
     }
 
-    if (!validateRequired(newUserData.email, 'email')) {
+    if (!newUserData.email || !newUserData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!validateEmail(newUserData.email)) {
       newErrors.email = 'Please enter a valid email address';
+    }
+
+    if (!newUserData.phone || !newUserData.phone.trim()) {
+      newErrors.phone = 'Phone is required';
+    } else if (!validatePhone(newUserData.phone)) {
+      newErrors.phone = 'Please enter a valid 10-digit phone number';
     }
     
     // Optional fields validation
     if (newUserData.address && newUserData.address.trim().length > 200) {
       newErrors.address = 'Address must be less than 200 characters';
-      newTouched.address = true;
     }
     if (newUserData.city && newUserData.city.trim().length > 50) {
       newErrors.city = 'City must be less than 50 characters';
-      newTouched.city = true;
     }
     if (newUserData.state && newUserData.state.trim().length > 50) {
       newErrors.state = 'State must be less than 50 characters';
-      newTouched.state = true;
     }
 
-    console.log('Final validation errors:', newErrors);
-    console.log('Validation failed fields:', Object.keys(newErrors));
-    console.log('Validation result:', Object.keys(newErrors).length === 0 ? 'PASSED' : 'FAILED');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const validateStep3 = () => {
     const newErrors = {};
-    const newTouched = { ...touched };
-    
-    console.log('Validating Step 3 with data:', {
-      userDetails: bookingData.userDetails,
-      emergencyContact: bookingData.emergencyContact,
-      participantDetails: bookingData.participantDetails,
-      selectedTrek,
-      selectedBatch
-    });
     
     // User details validation
-    const userNameError = validateName(bookingData.userDetails.name);
-    if (userNameError) {
-      newErrors.userName = userNameError;
-      newTouched.userName = true;
-      console.log('User name validation error:', userNameError);
+    if (!validateName(bookingData.userDetails.name)) {
+      newErrors.userName = 'Name must be at least 2 characters long';
     }
     
-    const userEmailError = validateEmail(bookingData.userDetails.email);
-    if (userEmailError) {
-      newErrors.userEmail = userEmailError;
-      newTouched.userEmail = true;
-      console.log('User email validation error:', userEmailError);
+    if (!validateEmail(bookingData.userDetails.email)) {
+      newErrors.userEmail = 'Please enter a valid email address';
     }
     
-    const userPhoneError = validatePhone(bookingData.userDetails.phone);
-    if (userPhoneError) {
-      newErrors.userPhone = userPhoneError;
-      newTouched.userPhone = true;
-      console.log('User phone validation error:', userPhoneError);
+    if (!validatePhone(bookingData.userDetails.phone)) {
+      newErrors.userPhone = 'Please enter a valid 10-digit phone number';
     }
     
     // Emergency contact validation - only validate if any field is filled
     const hasEmergencyContact = bookingData.emergencyContact.name.trim() || 
                                bookingData.emergencyContact.phone.trim() || 
-                               bookingData.emergencyContact.relation.trim();
+                               bookingData.emergencyContact.relationship.trim();
     
     if (hasEmergencyContact) {
-      // If any emergency contact field is filled, all are required
       if (!bookingData.emergencyContact.name.trim()) {
         newErrors.emergencyName = 'Emergency contact name is required';
-        newTouched.emergencyName = true;
-        console.log('Emergency name validation error: Emergency contact name is required');
-      } else {
-        const emergencyNameError = validateName(bookingData.emergencyContact.name);
-        if (emergencyNameError) {
-          newErrors.emergencyName = emergencyNameError;
-          newTouched.emergencyName = true;
-          console.log('Emergency name validation error:', emergencyNameError);
-        }
+      } else if (!validateName(bookingData.emergencyContact.name)) {
+        newErrors.emergencyName = 'Name must be at least 2 characters long';
       }
       
       if (!bookingData.emergencyContact.phone.trim()) {
         newErrors.emergencyPhone = 'Emergency contact phone is required';
-        newTouched.emergencyPhone = true;
-        console.log('Emergency phone validation error: Emergency contact phone is required');
-      } else {
-        const emergencyPhoneError = validatePhone(bookingData.emergencyContact.phone);
-        if (emergencyPhoneError) {
-          newErrors.emergencyPhone = emergencyPhoneError;
-          newTouched.emergencyPhone = true;
-          console.log('Emergency phone validation error:', emergencyPhoneError);
-        }
+      } else if (!validatePhone(bookingData.emergencyContact.phone)) {
+        newErrors.emergencyPhone = 'Please enter a valid 10-digit phone number';
       }
       
-      if (!bookingData.emergencyContact.relation.trim()) {
-        newErrors.emergencyRelation = 'Emergency contact relation is required';
-        newTouched.emergencyRelation = true;
-        console.log('Emergency relation validation error: Emergency contact relation is required');
+      if (!bookingData.emergencyContact.relationship.trim()) {
+        newErrors.emergencyRelationship = 'Emergency contact relationship is required';
       }
     }
-    // If no emergency contact fields are filled, skip validation entirely
     
     // Participant details validation
     bookingData.participantDetails.forEach((participant, index) => {
       if (!participant.name || !participant.name.trim()) {
         newErrors[`participant${index}Name`] = 'Participant name is required';
-        newTouched[`participant${index}Name`] = true;
-        console.log(`Participant ${index + 1} name validation error: Participant name is required`);
-      } else {
-        const participantNameError = validateName(participant.name);
-        if (participantNameError) {
-          newErrors[`participant${index}Name`] = participantNameError;
-          newTouched[`participant${index}Name`] = true;
-          console.log(`Participant ${index + 1} name validation error:`, participantNameError);
-        }
+      } else if (!validateName(participant.name)) {
+        newErrors[`participant${index}Name`] = 'Name must be at least 2 characters long';
       }
       
       if (!participant.age) {
         newErrors[`participant${index}Age`] = 'Participant age is required';
-        newTouched[`participant${index}Age`] = true;
-        console.log(`Participant ${index + 1} age validation error: Participant age is required`);
-      } else {
-        const participantAgeError = validateAge(participant.age);
-        if (participantAgeError) {
-          newErrors[`participant${index}Age`] = participantAgeError;
-          newTouched[`participant${index}Age`] = true;
-          console.log(`Participant ${index + 1} age validation error:`, participantAgeError);
-        }
+      } else if (!validateAge(participant.age)) {
+        newErrors[`participant${index}Age`] = 'Age must be between 1 and 120';
       }
       
       if (!participant.gender) {
         newErrors[`participant${index}Gender`] = 'Please select gender';
-        newTouched[`participant${index}Gender`] = true;
-        console.log(`Participant ${index + 1} gender validation error: Please select gender`);
       }
     });
     
     // Trek and batch validation
     if (!selectedTrek) {
       newErrors.trek = 'Please select a trek';
-      newTouched.trek = true;
-      console.log('Trek validation error: Please select a trek');
     }
     if (!selectedBatch) {
       newErrors.batch = 'Please select a batch';
-      newTouched.batch = true;
-      console.log('Batch validation error: Please select a batch');
     }
 
-    console.log('Final validation errors:', newErrors);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -485,13 +520,13 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
         </div>
       </div>
 
-      {/* Step 1: Phone Validation */}
+      {/* Step 1: Phone Validation & User Lookup */}
       {currentStep === 1 && (
         <div className="space-y-4">
           <div className="text-center mb-6">
             <FaPhone className="mx-auto text-4xl text-blue-500 mb-4" />
-            <h3 className="text-xl font-semibold">Enter Customer Phone Number</h3>
-            <p className="text-gray-600">We'll check if this customer already exists in our system</p>
+            <h3 className="text-xl font-semibold">Customer Phone Lookup</h3>
+            <p className="text-gray-600">Enter phone number to find existing customer or create new one</p>
           </div>
 
           <div className="max-w-md mx-auto">
@@ -503,7 +538,7 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               onBlur={() => handleFieldBlur('phone')}
-              placeholder="Enter phone number"
+              placeholder="Enter 10-digit phone number"
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
                 errors.phone && touched.phone 
                   ? 'border-red-500 focus:ring-red-500' 
@@ -528,21 +563,31 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
             <button
               onClick={handlePhoneValidation}
               disabled={loading || !phone.trim()}
-              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              {loading ? 'Validating...' : 'Continue'}
+              {loading ? (
+                <>
+                  <FaSearch className="animate-spin" />
+                  <span>Looking up...</span>
+                </>
+              ) : (
+                <>
+                  <FaSearch />
+                  <span>Find Customer</span>
+                </>
+              )}
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 2: Create User */}
+      {/* Step 2: Create New User */}
       {currentStep === 2 && (
         <div className="space-y-4">
           <div className="text-center mb-6">
-            <FaUser className="mx-auto text-4xl text-blue-500 mb-4" />
+            <FaUserPlus className="mx-auto text-4xl text-blue-500 mb-4" />
             <h3 className="text-xl font-semibold">Create New Customer</h3>
-            <p className="text-gray-600">This customer doesn't exist. Please create a new account.</p>
+            <p className="text-gray-600">Customer not found. Please create a new account.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -694,10 +739,20 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
             </button>
             <button
               onClick={handleCreateUser}
-              disabled={loading || !newUserData.name || !newUserData.email || !newUserData.phone}
-              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={userCreating || !newUserData.name || !newUserData.email || !newUserData.phone}
+              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
             >
-              {loading ? 'Creating...' : 'Create User & Continue'}
+              {userCreating ? (
+                <>
+                  <FaUserPlus className="animate-spin" />
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <FaUserPlus />
+                  <span>Create Customer & Continue</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -706,411 +761,437 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
       {/* Step 3: Booking Details */}
       {currentStep === 3 && (
         <div className="space-y-6">
-          <div className="text-center mb-6">
-            <FaCalendar className="mx-auto text-4xl text-blue-500 mb-4" />
-            <h3 className="text-xl font-semibold">Booking Details</h3>
-            <p className="text-gray-600">Select trek, batch, and enter booking information</p>
-          </div>
-
-            {/* Trek and Batch Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Trek *
-                </label>
-                {process.env.NODE_ENV === 'development' && (
-                  <div className="text-xs text-gray-500 mb-2">
-                    Available treks: {treks.length} | Selected: {selectedTrek || 'None'}
-                  </div>
-                )}
-                <select
-                  value={selectedTrek}
-                  onChange={(e) => {
-                    console.log('Trek selected:', e.target.value);
-                    setSelectedTrek(e.target.value);
-                    setSelectedBatch('');
-                  }}
-                  onBlur={() => handleFieldBlur('trek')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    errors.trek && touched.trek 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                >
-                  <option value="">Select a trek</option>
-                  {treks.map(trek => (
-                    <option key={trek._id} value={trek._id}>
-                      {trek.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.trek && touched.trek && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <FaExclamationTriangle className="mr-1" size={12} />
-                    {errors.trek}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Batch *
-                </label>
-                {process.env.NODE_ENV === 'development' && (
-                  <div className="text-xs text-gray-500 mb-2">
-                    Available batches: {batches.length} | Selected: {selectedBatch || 'None'}
-                  </div>
-                )}
-                <select
-                  value={selectedBatch}
-                  onChange={(e) => {
-                    console.log('Batch selected:', e.target.value);
-                    setSelectedBatch(e.target.value);
-                  }}
-                  onBlur={() => handleFieldBlur('batch')}
-                  disabled={!selectedTrek}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
-                    errors.batch && touched.batch 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                >
-                  <option value="">Select a batch</option>
-                  {batches.map(batch => (
-                    <option key={batch._id} value={batch._id}>
-                      {new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()} 
-                      (₹{batch.price})
-                    </option>
-                  ))}
-                </select>
-                {errors.batch && touched.batch && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <FaExclamationTriangle className="mr-1" size={12} />
-                    {errors.batch}
-                  </div>
-                )}
-              </div>
+          {!selectedUser ? (
+            <div className="text-center py-8">
+              <FaExclamationTriangle className="mx-auto text-4xl text-red-500 mb-4" />
+              <h3 className="text-xl font-semibold text-red-600">Customer Information Missing</h3>
+              <p className="text-gray-600 mb-4">No customer has been selected or created yet.</p>
+              <button
+                onClick={() => setCurrentStep(1)}
+                className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                Start Customer Lookup
+              </button>
             </div>
-
-          {/* User Details */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h4 className="font-semibold mb-3">Customer Information</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={bookingData.userDetails.name}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    userDetails: { ...prev.userDetails, name: e.target.value }
-                  }))}
-                  onBlur={() => handleFieldBlur('userName')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    errors.userName && touched.userName 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                />
-                {errors.userName && touched.userName && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <FaExclamationTriangle className="mr-1" size={12} />
-                    {errors.userName}
-                  </div>
-                )}
+          ) : (
+            <>
+              <div className="text-center mb-6">
+                <FaCalendar className="mx-auto text-4xl text-blue-500 mb-4" />
+                <h3 className="text-xl font-semibold">Booking Details</h3>
+                <p className="text-gray-600">Select trek, batch, and enter booking information</p>
+                <div className="text-sm text-gray-600 mt-2">
+                  Customer: <span className="font-semibold">{selectedUser.name}</span> ({selectedUser.phone})
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  value={bookingData.userDetails.email}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    userDetails: { ...prev.userDetails, email: e.target.value }
-                  }))}
-                  onBlur={() => handleFieldBlur('userEmail')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    errors.userEmail && touched.userEmail 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                />
-                {errors.userEmail && touched.userEmail && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <FaExclamationTriangle className="mr-1" size={12} />
-                    {errors.userEmail}
-                  </div>
-                )}
+              {/* Trek and Batch Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Trek *
+                  </label>
+                  <select
+                    value={selectedTrek}
+                    onChange={(e) => {
+                      setSelectedTrek(e.target.value);
+                      setSelectedBatch('');
+                    }}
+                    onBlur={() => handleFieldBlur('trek')}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                      errors.trek && touched.trek 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
+                  >
+                    <option value="">Select a trek</option>
+                    {treks.map(trek => (
+                      <option key={trek._id} value={trek._id}>
+                        {trek.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.trek && touched.trek && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <FaExclamationTriangle className="mr-1" size={12} />
+                      {errors.trek}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Batch *
+                  </label>
+                  <select
+                    value={selectedBatch}
+                    onChange={(e) => setSelectedBatch(e.target.value)}
+                    onBlur={() => handleFieldBlur('batch')}
+                    disabled={!selectedTrek}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-100 ${
+                      errors.batch && touched.batch 
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
+                  >
+                    <option value="">Select a batch</option>
+                    {batches.map(batch => (
+                      <option key={batch._id} value={batch._id}>
+                        {new Date(batch.startDate).toLocaleDateString()} - {new Date(batch.endDate).toLocaleDateString()} 
+                        (₹{batch.price})
+                      </option>
+                    ))}
+                  </select>
+                  {errors.batch && touched.batch && (
+                    <div className="flex items-center mt-1 text-red-600 text-sm">
+                      <FaExclamationTriangle className="mr-1" size={12} />
+                      {errors.batch}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone *
-                </label>
-                <input
-                  type="tel"
-                  value={bookingData.userDetails.phone}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    userDetails: { ...prev.userDetails, phone: e.target.value }
-                  }))}
-                  onBlur={() => handleFieldBlur('userPhone')}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    errors.userPhone && touched.userPhone 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:ring-blue-500'
-                  }`}
-                />
-                {errors.userPhone && touched.userPhone && (
-                  <div className="flex items-center mt-1 text-red-600 text-sm">
-                    <FaExclamationTriangle className="mr-1" size={12} />
-                    {errors.userPhone}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Emergency Contact */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h4 className="font-semibold mb-3">Emergency Contact</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={bookingData.emergencyContact.name}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    emergencyContact: { ...prev.emergencyContact, name: e.target.value }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  value={bookingData.emergencyContact.phone}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    emergencyContact: { ...prev.emergencyContact, phone: e.target.value }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Relation
-                </label>
-                <input
-                  type="text"
-                  value={bookingData.emergencyContact.relation}
-                  onChange={(e) => setBookingData(prev => ({
-                    ...prev,
-                    emergencyContact: { ...prev.emergencyContact, relation: e.target.value }
-                  }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Number of Participants */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Number of Participants *
-            </label>
-            <select
-              value={bookingData.numberOfParticipants}
-              onChange={handleNumberOfParticipantsChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                <option key={num} value={num}>{num}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Participant Details */}
-          <div className="space-y-4">
-            <h4 className="font-semibold">Participant Details</h4>
-            {bookingData.participantDetails.map((participant, index) => (
-              <div key={index} className="bg-gray-50 p-4 rounded-md">
-                <h5 className="font-medium mb-3">Participant {index + 1}</h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Customer Information */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h4 className="font-semibold mb-3">Customer Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Name *
                     </label>
                     <input
                       type="text"
-                      value={participant.name}
-                      onChange={(e) => handleParticipantChange(index, 'name', e.target.value)}
-                      onBlur={() => handleFieldBlur(`participant${index}Name`)}
+                      value={bookingData.userDetails.name}
+                      onChange={(e) => setBookingData(prev => ({
+                        ...prev,
+                        userDetails: { ...prev.userDetails, name: e.target.value }
+                      }))}
+                      onBlur={() => handleFieldBlur('userName')}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors[`participant${index}Name`] && touched[`participant${index}Name`]
+                        errors.userName && touched.userName 
                           ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-300 focus:ring-blue-500'
                       }`}
                     />
-                    {errors[`participant${index}Name`] && touched[`participant${index}Name`] && (
+                    {errors.userName && touched.userName && (
                       <div className="flex items-center mt-1 text-red-600 text-sm">
                         <FaExclamationTriangle className="mr-1" size={12} />
-                        {errors[`participant${index}Name`]}
+                        {errors.userName}
                       </div>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Age *
+                      Email *
                     </label>
                     <input
-                      type="number"
-                      value={participant.age}
-                      onChange={(e) => handleParticipantChange(index, 'age', e.target.value)}
-                      onBlur={() => handleFieldBlur(`participant${index}Age`)}
-                      min="1"
-                      max="120"
+                      type="email"
+                      value={bookingData.userDetails.email}
+                      onChange={(e) => setBookingData(prev => ({
+                        ...prev,
+                        userDetails: { ...prev.userDetails, email: e.target.value }
+                      }))}
+                      onBlur={() => handleFieldBlur('userEmail')}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors[`participant${index}Age`] && touched[`participant${index}Age`]
+                        errors.userEmail && touched.userEmail 
                           ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-300 focus:ring-blue-500'
                       }`}
                     />
-                    {errors[`participant${index}Age`] && touched[`participant${index}Age`] && (
+                    {errors.userEmail && touched.userEmail && (
                       <div className="flex items-center mt-1 text-red-600 text-sm">
                         <FaExclamationTriangle className="mr-1" size={12} />
-                        {errors[`participant${index}Age`]}
+                        {errors.userEmail}
                       </div>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Gender *
+                      Phone *
                     </label>
-                    <select
-                      value={participant.gender}
-                      onChange={(e) => handleParticipantChange(index, 'gender', e.target.value)}
-                      onBlur={() => handleFieldBlur(`participant${index}Gender`)}
+                    <input
+                      type="tel"
+                      value={bookingData.userDetails.phone}
+                      onChange={(e) => setBookingData(prev => ({
+                        ...prev,
+                        userDetails: { ...prev.userDetails, phone: e.target.value }
+                      }))}
+                      onBlur={() => handleFieldBlur('userPhone')}
                       className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors[`participant${index}Gender`] && touched[`participant${index}Gender`]
+                        errors.userPhone && touched.userPhone 
                           ? 'border-red-500 focus:ring-red-500' 
                           : 'border-gray-300 focus:ring-blue-500'
                       }`}
-                    >
-                      <option value="">Select gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {errors[`participant${index}Gender`] && touched[`participant${index}Gender`] && (
+                    />
+                    {errors.userPhone && touched.userPhone && (
                       <div className="flex items-center mt-1 text-red-600 text-sm">
                         <FaExclamationTriangle className="mr-1" size={12} />
-                        {errors[`participant${index}Gender`]}
+                        {errors.userPhone}
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
 
+              {/* Emergency Contact */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h4 className="font-semibold mb-3">Emergency Contact (Optional)</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Medical Conditions
+                      Name
                     </label>
                     <input
                       type="text"
-                      value={participant.medicalConditions || ''}
-                      onChange={(e) => handleParticipantChange(index, 'medicalConditions', e.target.value)}
-                      placeholder="Any medical conditions or allergies"
+                      value={bookingData.emergencyContact.name}
+                      onChange={(e) => setBookingData(prev => ({
+                        ...prev,
+                        emergencyContact: { ...prev.emergencyContact, name: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={bookingData.emergencyContact.phone}
+                      onChange={(e) => setBookingData(prev => ({
+                        ...prev,
+                        emergencyContact: { ...prev.emergencyContact, phone: e.target.value }
+                      }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Relationship
+                    </label>
+                    <input
+                      type="text"
+                      value={bookingData.emergencyContact.relationship}
+                      onChange={(e) => setBookingData(prev => ({
+                        ...prev,
+                        emergencyContact: { ...prev.emergencyContact, relationship: e.target.value }
+                      }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Payment Status */}
-          <div className="bg-gray-50 p-4 rounded-md">
-            <h4 className="font-semibold mb-3">Payment Status</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  value="payment_completed"
-                  checked={bookingData.paymentStatus === 'payment_completed'}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, paymentStatus: e.target.value }))}
-                  className="text-blue-500"
-                />
-                <span>Payment Completed</span>
-              </label>
-
-              <label className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  value="unpaid"
-                  checked={bookingData.paymentStatus === 'unpaid'}
-                  onChange={(e) => setBookingData(prev => ({ ...prev, paymentStatus: e.target.value }))}
-                  className="text-blue-500"
-                />
-                <span>Unpaid</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Additional Requests */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Additional Requests
-            </label>
-            <textarea
-              value={bookingData.additionalRequests}
-              onChange={(e) => setBookingData(prev => ({ ...prev, additionalRequests: e.target.value }))}
-              rows={3}
-              placeholder="Any special requests or additional information"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Total Price Display */}
-          {bookingData.totalPrice > 0 && (
-            <div className="bg-blue-50 p-4 rounded-md">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">Total Price:</span>
-                <span className="text-xl font-bold text-blue-600">
-                  ₹{bookingData.totalPrice.toLocaleString()}
-                </span>
+              {/* Number of Participants */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Participants *
+                </label>
+                <select
+                  value={bookingData.numberOfParticipants}
+                  onChange={handleNumberOfParticipantsChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                    <option key={num} value={num}>{num}</option>
+                  ))}
+                </select>
               </div>
-            </div>
-          )}
 
-          <div className="flex justify-center space-x-4 mt-6">
-            <button
-              onClick={() => setCurrentStep(currentStep - 1)}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Back
-            </button>
-            <button
-              onClick={handleCreateBooking}
-              disabled={loading || !selectedTrek || !selectedBatch || !bookingData.userDetails.name}
-              className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Creating Booking...' : 'Create Booking'}
-            </button>
-          </div>
+              {/* Participant Details */}
+              <div className="space-y-4">
+                <h4 className="font-semibold">Participant Details</h4>
+                {bookingData.participantDetails.map((participant, index) => (
+                  <div key={index} className="bg-gray-50 p-4 rounded-md">
+                    <h5 className="font-medium mb-3">Participant {index + 1}</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.name}
+                          onChange={(e) => handleParticipantChange(index, 'name', e.target.value)}
+                          onBlur={() => handleFieldBlur(`participant${index}Name`)}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                            errors[`participant${index}Name`] && touched[`participant${index}Name`]
+                              ? 'border-red-500 focus:ring-red-500' 
+                              : 'border-gray-300 focus:ring-blue-500'
+                          }`}
+                        />
+                        {errors[`participant${index}Name`] && touched[`participant${index}Name`] && (
+                          <div className="flex items-center mt-1 text-red-600 text-sm">
+                            <FaExclamationTriangle className="mr-1" size={12} />
+                            {errors[`participant${index}Name`]}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Age *
+                        </label>
+                        <input
+                          type="number"
+                          value={participant.age}
+                          onChange={(e) => handleParticipantChange(index, 'age', e.target.value)}
+                          onBlur={() => handleFieldBlur(`participant${index}Age`)}
+                          min="1"
+                          max="120"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                            errors[`participant${index}Age`] && touched[`participant${index}Age`]
+                              ? 'border-red-500 focus:ring-red-500' 
+                              : 'border-gray-300 focus:ring-blue-500'
+                          }`}
+                        />
+                        {errors[`participant${index}Age`] && touched[`participant${index}Age`] && (
+                          <div className="flex items-center mt-1 text-red-600 text-sm">
+                            <FaExclamationTriangle className="mr-1" size={12} />
+                            {errors[`participant${index}Age`]}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Gender *
+                        </label>
+                        <select
+                          value={participant.gender}
+                          onChange={(e) => handleParticipantChange(index, 'gender', e.target.value)}
+                          onBlur={() => handleFieldBlur(`participant${index}Gender`)}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                            errors[`participant${index}Gender`] && touched[`participant${index}Gender`]
+                              ? 'border-red-500 focus:ring-red-500' 
+                              : 'border-gray-300 focus:ring-blue-500'
+                          }`}
+                        >
+                          <option value="">Select gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        {errors[`participant${index}Gender`] && touched[`participant${index}Gender`] && (
+                          <div className="flex items-center mt-1 text-red-600 text-sm">
+                            <FaExclamationTriangle className="mr-1" size={12} />
+                            {errors[`participant${index}Gender`]}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Medical Conditions
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.medicalConditions || ''}
+                          onChange={(e) => handleParticipantChange(index, 'medicalConditions', e.target.value)}
+                          placeholder="Any medical conditions or allergies"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Special Requirements */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Special Requirements
+                </label>
+                <textarea
+                  value={bookingData.specialRequirements}
+                  onChange={(e) => setBookingData(prev => ({ ...prev, specialRequirements: e.target.value }))}
+                  rows={3}
+                  placeholder="Any special requests or additional information"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Payment Status */}
+              <div className="bg-gray-50 p-4 rounded-md">
+                <h4 className="font-semibold mb-3">Payment Status</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      value="payment_completed"
+                      checked={bookingData.paymentStatus === 'payment_completed'}
+                      onChange={(e) => setBookingData(prev => ({ ...prev, paymentStatus: e.target.value }))}
+                      className="text-blue-500"
+                    />
+                    <span>Payment Completed</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      value="payment_confirmed_partial"
+                      checked={bookingData.paymentStatus === 'payment_confirmed_partial'}
+                      onChange={(e) => setBookingData(prev => ({ ...prev, paymentStatus: e.target.value }))}
+                      className="text-blue-500"
+                    />
+                    <span>Partial Payment</span>
+                  </label>
+
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      value="unpaid"
+                      checked={bookingData.paymentStatus === 'unpaid'}
+                      onChange={(e) => setBookingData(prev => ({ ...prev, paymentStatus: e.target.value }))}
+                      className="text-blue-500"
+                    />
+                    <span>Unpaid</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Total Price Display */}
+              {bookingData.totalPrice > 0 && (
+                <div className="bg-blue-50 p-4 rounded-md">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Price:</span>
+                    <span className="text-xl font-bold text-blue-600">
+                      ₹{bookingData.totalPrice.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-center space-x-4 mt-6">
+                <button
+                  onClick={() => setCurrentStep(currentStep - 1)}
+                  className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleCreateBooking}
+                  disabled={loading || !selectedTrek || !selectedBatch || !selectedUser || !(selectedUser._id || selectedUser.id)}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {loading ? (
+                    <>
+                      <FaCalendar className="animate-spin" />
+                      <span>Creating Booking...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FaCalendar />
+                      <span>Create Booking</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </Modal>
