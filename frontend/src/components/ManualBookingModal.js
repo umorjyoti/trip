@@ -101,44 +101,7 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
     }
   }, [selectedBatch, selectedUser, bookingData.numberOfParticipants]);
 
-  // Sync user details when user is selected/created
-  useEffect(() => {
-    if (selectedUser && (selectedUser._id || selectedUser.id)) {
-      setBookingData(prev => ({
-        ...prev,
-        userDetails: {
-          name: selectedUser.name || '',
-          email: selectedUser.email || '',
-          phone: selectedUser.phone || ''
-        },
-        participantDetails: prev.participantDetails.map((participant, index) => ({
-          ...participant,
-          name: index === 0 ? selectedUser.name || '' : participant.name
-        }))
-      }));
-    }
-  }, [selectedUser]);
 
-  // Additional safety check: ensure user details are populated when reaching Step 3
-  useEffect(() => {
-    if (currentStep === 3 && selectedUser && (selectedUser._id || selectedUser.id)) {
-      // Check if userDetails are empty and populate them
-      if (!bookingData.userDetails.name || !bookingData.userDetails.email || !bookingData.userDetails.phone) {
-        setBookingData(prev => ({
-          ...prev,
-          userDetails: {
-            name: selectedUser.name || '',
-            email: selectedUser.email || '',
-            phone: selectedUser.phone || ''
-          },
-          participantDetails: prev.participantDetails.map((participant, index) => ({
-            ...participant,
-            name: index === 0 ? selectedUser.name || '' : participant.name
-          }))
-        }));
-      }
-    }
-  }, [currentStep, selectedUser, bookingData.userDetails.name, bookingData.userDetails.email, bookingData.userDetails.phone]);
 
   const fetchTreks = async () => {
     try {
@@ -150,6 +113,8 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
       toast.error('Failed to load treks');
     }
   };
+
+
 
   // Step 1: Phone validation and user lookup
   const handlePhoneValidation = async () => {
@@ -164,17 +129,12 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
       setUserValidationResult(result);
       
       if (result.exists) {
-        // User exists - set selected user and proceed to booking
-        const userObject = {
-          _id: result.user._id || result.user.id,
-          name: result.user.name,
-          email: result.user.email,
-          phone: result.user.phone
-        };
+        // User exists - set selected user and populate booking data immediately
+        const userObject = result.user;
         
         setSelectedUser(userObject);
         
-        // Immediately populate booking data with user details
+        // Directly populate booking data with user details
         setBookingData(prev => ({
           ...prev,
           userDetails: {
@@ -182,10 +142,12 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
             email: userObject.email || '',
             phone: userObject.phone || ''
           },
-          participantDetails: prev.participantDetails.map((participant, index) => ({
-            ...participant,
-            name: index === 0 ? userObject.name || '' : participant.name
-          }))
+          participantDetails: [{
+            name: userObject.name || '',
+            age: '',
+            gender: '',
+            medicalConditions: ''
+          }]
         }));
         
         setCurrentStep(3);
@@ -212,30 +174,28 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
 
     setUserCreating(true);
     try {
-      const user = await createUserForManualBooking(newUserData);
+      const response = await createUserForManualBooking(newUserData);
       
-      // Set the created user and proceed to booking
-      const userObject = {
-        _id: user._id || user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone
-      };
+      // Extract user data from the response
+      const user = response.user || response;
       
-      setSelectedUser(userObject);
+      // Set the created user
+      setSelectedUser(user);
       
-      // Immediately populate booking data with user details
+      // Directly populate booking data with user details from the response
       setBookingData(prev => ({
         ...prev,
         userDetails: {
-          name: userObject.name || '',
-          email: userObject.email || '',
-          phone: userObject.phone || ''
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone || ''
         },
-        participantDetails: prev.participantDetails.map((participant, index) => ({
-          ...participant,
-          name: index === 0 ? userObject.name || '' : participant.name
-        }))
+        participantDetails: [{
+          name: user.name || '',
+          age: '',
+          gender: '',
+          medicalConditions: ''
+        }]
       }));
       
       setCurrentStep(3);
@@ -758,10 +718,10 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
         </div>
       )}
 
-      {/* Step 3: Booking Details */}
-      {currentStep === 3 && (
-        <div className="space-y-6">
-          {!selectedUser ? (
+             {/* Step 3: Booking Details */}
+       {currentStep === 3 && (
+         <div className="space-y-6">
+                       {!selectedUser ? (
             <div className="text-center py-8">
               <FaExclamationTriangle className="mx-auto text-4xl text-red-500 mb-4" />
               <h3 className="text-xl font-semibold text-red-600">Customer Information Missing</h3>
@@ -850,89 +810,47 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
                 </div>
               </div>
 
-              {/* Customer Information */}
-              <div className="bg-gray-50 p-4 rounded-md">
-                <h4 className="font-semibold mb-3">Customer Information</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={bookingData.userDetails.name}
-                      onChange={(e) => setBookingData(prev => ({
-                        ...prev,
-                        userDetails: { ...prev.userDetails, name: e.target.value }
-                      }))}
-                      onBlur={() => handleFieldBlur('userName')}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.userName && touched.userName 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-300 focus:ring-blue-500'
-                      }`}
-                    />
-                    {errors.userName && touched.userName && (
-                      <div className="flex items-center mt-1 text-red-600 text-sm">
-                        <FaExclamationTriangle className="mr-1" size={12} />
-                        {errors.userName}
-                      </div>
-                    )}
-                  </div>
+                                            {/* Customer Information */}
+               <div className="bg-gray-50 p-4 rounded-md">
+                 <h4 className="font-semibold mb-3">Customer Information</h4>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Name *
+                     </label>
+                     <input
+                       type="text"
+                       value={bookingData.userDetails.name}
+                       disabled
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 cursor-not-allowed"
+                     />
+                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      value={bookingData.userDetails.email}
-                      onChange={(e) => setBookingData(prev => ({
-                        ...prev,
-                        userDetails: { ...prev.userDetails, email: e.target.value }
-                      }))}
-                      onBlur={() => handleFieldBlur('userEmail')}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.userEmail && touched.userEmail 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-300 focus:ring-blue-500'
-                      }`}
-                    />
-                    {errors.userEmail && touched.userEmail && (
-                      <div className="flex items-center mt-1 text-red-600 text-sm">
-                        <FaExclamationTriangle className="mr-1" size={12} />
-                        {errors.userEmail}
-                      </div>
-                    )}
-                  </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Email *
+                     </label>
+                     <input
+                       type="email"
+                       value={bookingData.userDetails.email}
+                       disabled
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 cursor-not-allowed"
+                     />
+                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone *
-                    </label>
-                    <input
-                      type="tel"
-                      value={bookingData.userDetails.phone}
-                      onChange={(e) => setBookingData(prev => ({
-                        ...prev,
-                        userDetails: { ...prev.userDetails, phone: e.target.value }
-                      }))}
-                      onBlur={() => handleFieldBlur('userPhone')}
-                      className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.userPhone && touched.userPhone 
-                          ? 'border-red-500 focus:ring-red-500' 
-                          : 'border-gray-300 focus:ring-blue-500'
-                      }`}
-                    />
-                    {errors.userPhone && touched.userPhone && (
-                      <div className="flex items-center mt-1 text-red-600 text-sm">
-                        <FaExclamationTriangle className="mr-1" size={12} />
-                        {errors.userPhone}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+                   <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Phone *
+                     </label>
+                     <input
+                       type="tel"
+                       value={bookingData.userDetails.phone}
+                       disabled
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
+                     />
+                   </div>
+                 </div>
+               </div>
 
               {/* Emergency Contact */}
               <div className="bg-gray-50 p-4 rounded-md">
@@ -968,136 +886,130 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Relationship
-                    </label>
-                    <input
-                      type="text"
-                      value={bookingData.emergencyContact.relationship}
-                      onChange={(e) => setBookingData(prev => ({
-                        ...prev,
-                        emergencyContact: { ...prev.emergencyContact, relationship: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                                     <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                       Relationship
+                     </label>
+                     <select
+                       value={bookingData.emergencyContact.relationship}
+                       onChange={(e) => setBookingData(prev => ({
+                         ...prev,
+                         emergencyContact: { ...prev.emergencyContact, relationship: e.target.value }
+                       }))}
+                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                     >
+                       <option value="">Select relationship</option>
+                       <option value="Spouse">Spouse</option>
+                       <option value="Parent">Parent</option>
+                       <option value="Child">Child</option>
+                       <option value="Sibling">Sibling</option>
+                       <option value="Friend">Friend</option>
+                       <option value="Relative">Relative</option>
+                       <option value="Colleague">Colleague</option>
+                       <option value="Other">Other</option>
+                     </select>
+                   </div>
                 </div>
               </div>
 
-              {/* Number of Participants */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Number of Participants *
-                </label>
-                <select
-                  value={bookingData.numberOfParticipants}
-                  onChange={handleNumberOfParticipantsChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                    <option key={num} value={num}>{num}</option>
-                  ))}
-                </select>
-              </div>
+
 
               {/* Participant Details */}
               <div className="space-y-4">
                 <h4 className="font-semibold">Participant Details</h4>
-                {bookingData.participantDetails.map((participant, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-md">
-                    <h5 className="font-medium mb-3">Participant {index + 1}</h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Name *
-                        </label>
-                        <input
-                          type="text"
-                          value={participant.name}
-                          onChange={(e) => handleParticipantChange(index, 'name', e.target.value)}
-                          onBlur={() => handleFieldBlur(`participant${index}Name`)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                            errors[`participant${index}Name`] && touched[`participant${index}Name`]
-                              ? 'border-red-500 focus:ring-red-500' 
-                              : 'border-gray-300 focus:ring-blue-500'
-                          }`}
-                        />
-                        {errors[`participant${index}Name`] && touched[`participant${index}Name`] && (
+                <div className="bg-gray-50 p-4 rounded-md">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingData.participantDetails[0]?.name || ''}
+                        onChange={(e) => handleParticipantChange(0, 'name', e.target.value)}
+                        onBlur={() => handleFieldBlur('participant0Name')}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                          errors.participant0Name && touched.participant0Name
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-blue-500'
+                        }`}
+                      />
+                      {errors.participant0Name && touched.participant0Name && (
+                        <div className="flex items-center mt-1 text-red-600 text-sm">
+                          <FaExclamationTriangle className="mr-1" size={12} />
+                          {errors.participant0Name}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Age *
+                      </label>
+                      <input
+                        type="number"
+                        value={bookingData.participantDetails[0]?.age || ''}
+                        onChange={(e) => handleParticipantChange(0, 'age', e.target.value)}
+                        onBlur={() => handleFieldBlur('participant0Age')}
+                        min="1"
+                        max="120"
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                          errors.participant0Age && touched.participant0Age
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-blue-500'
+                        }`}
+                      />
+                      {errors.participant0Age && touched.participant0Age && (
+                        <div className="flex items-center mt-1 text-red-600 text-sm">
+                          <FaExclamationTriangle className="mr-1" size={12} />
+                          {errors.participant0Age}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Gender *
+                      </label>
+                      <select
+                        value={bookingData.participantDetails[0]?.gender || ''}
+                        onChange={(e) => handleParticipantChange(0, 'gender', e.target.value)}
+                        onBlur={() => handleFieldBlur('participant0Gender')}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                          errors.participant0Gender && touched.participant0Gender
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-300 focus:ring-blue-500'
+                        }`}
+                      >
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      {errors.participant0Gender && touched.participant0Gender && (
+                        <div className="flex items-center mt-1 text-red-600 text-sm">
                           <div className="flex items-center mt-1 text-red-600 text-sm">
                             <FaExclamationTriangle className="mr-1" size={12} />
-                            {errors[`participant${index}Name`]}
+                            {errors.participant0Gender}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
+                    </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Age *
-                        </label>
-                        <input
-                          type="number"
-                          value={participant.age}
-                          onChange={(e) => handleParticipantChange(index, 'age', e.target.value)}
-                          onBlur={() => handleFieldBlur(`participant${index}Age`)}
-                          min="1"
-                          max="120"
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                            errors[`participant${index}Age`] && touched[`participant${index}Age`]
-                              ? 'border-red-500 focus:ring-red-500' 
-                              : 'border-gray-300 focus:ring-blue-500'
-                          }`}
-                        />
-                        {errors[`participant${index}Age`] && touched[`participant${index}Age`] && (
-                          <div className="flex items-center mt-1 text-red-600 text-sm">
-                            <FaExclamationTriangle className="mr-1" size={12} />
-                            {errors[`participant${index}Age`]}
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Gender *
-                        </label>
-                        <select
-                          value={participant.gender}
-                          onChange={(e) => handleParticipantChange(index, 'gender', e.target.value)}
-                          onBlur={() => handleFieldBlur(`participant${index}Gender`)}
-                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                            errors[`participant${index}Gender`] && touched[`participant${index}Gender`]
-                              ? 'border-red-500 focus:ring-red-500' 
-                              : 'border-gray-300 focus:ring-blue-500'
-                          }`}
-                        >
-                          <option value="">Select gender</option>
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Other">Other</option>
-                        </select>
-                        {errors[`participant${index}Gender`] && touched[`participant${index}Gender`] && (
-                          <div className="flex items-center mt-1 text-red-600 text-sm">
-                            <FaExclamationTriangle className="mr-1" size={12} />
-                            {errors[`participant${index}Gender`]}
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Medical Conditions
-                        </label>
-                        <input
-                          type="text"
-                          value={participant.medicalConditions || ''}
-                          onChange={(e) => handleParticipantChange(index, 'medicalConditions', e.target.value)}
-                          placeholder="Any medical conditions or allergies"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Medical Conditions
+                      </label>
+                      <input
+                        type="text"
+                        value={bookingData.participantDetails[0]?.medicalConditions || ''}
+                        onChange={(e) => handleParticipantChange(0, 'medicalConditions', e.target.value)}
+                        placeholder="Any medical conditions or allergies"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
 
               {/* Special Requirements */}
