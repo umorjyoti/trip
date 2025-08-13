@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { updateParticipantDetails, getTrekByIdForAdmin, getBookingById } from "../services/api";
+import { updateParticipantDetails, getTrekByIdForAdmin, getTrekForParticipantDetails, getBookingById } from "../services/api";
 import { toast } from "react-toastify";
 
 function ParticipantDetailsPage() {
@@ -237,9 +237,11 @@ function ParticipantDetailsPage() {
 
   useEffect(() => {
     const fetchTrekFields = async () => {
-      if (!trekId) return;
+      if (!trekId) {
+        return;
+      }
       try {
-        const trek = await getTrekByIdForAdmin(trekId);
+        const trek = await getTrekForParticipantDetails(trekId);
         setTrek(trek);
         if (Array.isArray(trek.participantFields)) {
           setTrekFields(trek.participantFields);
@@ -269,7 +271,9 @@ function ParticipantDetailsPage() {
           const foundBatch = trek.batches.find(b => b._id === batchId);
           setBatch(foundBatch);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error fetching trek data from location state trekId:', e);
+      }
     };
     fetchTrekFields();
     // eslint-disable-next-line
@@ -302,9 +306,41 @@ function ParticipantDetailsPage() {
             customFields: {}
           }));
         }
+
+        // If trekId is not available from location state, fetch trek data from the booking
+        if (!trekId && data && data.trek && data.trek._id) {
+          getTrekForParticipantDetails(data.trek._id).then(trekData => {
+            setTrek(trekData);
+            if (Array.isArray(trekData.participantFields)) {
+              setTrekFields(trekData.participantFields);
+              setParticipants(prev => prev.map(p => {
+                const newFields = {};
+                trekData.participantFields.forEach(f => {
+                  newFields[f.name] = "";
+                });
+                return { 
+                  ...p, 
+                  ...newFields
+                };
+              }));
+            }
+            if (Array.isArray(trekData.customFields)) {
+              setCustomFields(trekData.customFields);
+              setParticipants(prev => prev.map(p => ({
+                ...p,
+                customFields: trekData.customFields.reduce((acc, field) => {
+                  acc[field.fieldName] = "";
+                  return acc;
+                }, {})
+              })));
+            }
+          }).catch(e => {
+            console.error('Error fetching trek data:', e);
+          });
+        }
       });
     }
-  }, [bookingId, navigate]);
+  }, [bookingId, navigate, trekId]);
 
   const handleChange = (idx, e) => {
     const { name, value } = e.target;

@@ -2345,3 +2345,49 @@ exports.getBatchById = async (req, res) => {
   }
 };
 
+// Get trek data for participant details (safe for users with bookings)
+exports.getTrekForParticipantDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate MongoDB ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid trek ID format' });
+    }
+
+    // Check if user has any booking for this trek
+    const userBooking = await Booking.findOne({
+      trek: id,
+      user: req.user._id,
+      status: { $in: ['payment_completed', 'payment_confirmed_partial', 'confirmed'] }
+    });
+
+    if (!userBooking) {
+      return res.status(403).json({ 
+        message: 'You can only access participant details for treks you have booked' 
+      });
+    }
+
+    // Fetch only the necessary trek data for participant details
+    const trek = await Trek.findById(id).select('name customFields participantFields');
+    
+    if (!trek) {
+      return res.status(404).json({ message: 'Trek not found' });
+    }
+
+    // Return only the data needed for participant details
+    const response = {
+      _id: trek._id,
+      name: trek.name,
+      customFields: trek.customFields || [],
+      participantFields: trek.participantFields || []
+    };
+
+    console.log('Trek data for participant details:', response);
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting trek for participant details:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
