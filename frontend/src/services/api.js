@@ -152,6 +152,11 @@ export const getTrekByIdForAdmin = async (id) => {
   return response.data;
 };
 
+// Get trek data needed for participant details (safe for normal users)
+export const getTrekForParticipantDetails = async (id) => {
+  const response = await api.get(`/treks/${id}/participant-details`);
+  return response.data;
+};
 
 
 // Settings APIs

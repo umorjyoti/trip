@@ -41,6 +41,9 @@ router.patch('/:id/toggle-status', [protect, admin], trekController.toggleTrekSt
 // Performance route - must come before general ID route
 router.get('/:id/performance', [protect, admin], trekController.getTrekPerformance);
 
+// Get trek data for participant details (safe for users with bookings)
+router.get('/:id/participant-details', protect, trekController.getTrekForParticipantDetails);
+
 // Get trek by slug route - must come before general ID route
 router.get('/slug/:slug', trekController.getTrekBySlug);
 
