@@ -912,20 +912,7 @@ function BookingPage() {
 
               <div className="flex justify-end space-x-4">
                 {/* Debug button to test partial payment */}
-                {process.env.NODE_ENV === 'development' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      console.log('Debug: Trek partial payment config:', trek.partialPayment);
-                      console.log('Debug: Payment mode:', paymentMode);
-                      console.log('Debug: Frontend initial amount:', frontendInitialAmount);
-                      console.log('Debug: Calculate initial payment:', calculateInitialPayment());
-                    }}
-                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                  >
-                    Debug Partial Payment
-                  </button>
-                )}
+               
                 
                 <button
                   type="submit"
