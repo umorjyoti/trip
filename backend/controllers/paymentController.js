@@ -780,6 +780,8 @@ exports.handleWebhook = async (req, res) => {
     const { event, payload } = req.body;
     const signature = req.headers["x-razorpay-signature"];
 
+    console.log(`[WEBHOOK] Received ${event} event from Razorpay`);
+
     // Verify webhook signature
     const generatedSignature = crypto
       .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
@@ -787,33 +789,44 @@ exports.handleWebhook = async (req, res) => {
       .digest("hex");
 
     if (generatedSignature !== signature) {
+      console.error(`[WEBHOOK] Invalid signature for ${event} event`);
       return res.status(400).json({
         success: false,
         message: "Invalid webhook signature",
       });
     }
 
+    console.log(`[WEBHOOK] Signature verified for ${event} event`);
+
     // Handle different webhook events
     switch (event) {
       case "payment.authorized":
-        // Handle authorized payment
+        console.log(`[WEBHOOK] Payment authorized: ${payload.payment.entity.id}`);
+        // Payment is authorized but not yet captured
         break;
+
       case "payment.failed":
-        // Handle failed payment
+        console.log(`[WEBHOOK] Payment failed: ${payload.payment.entity.id}`);
+        await handlePaymentFailed(payload.payment.entity);
         break;
+
       case "payment.captured":
-        // Handle captured payment
+        console.log(`[WEBHOOK] Payment captured: ${payload.payment.entity.id}`);
+        await handlePaymentCaptured(payload.payment.entity);
         break;
+
       case "refund.processed":
-        // Handle refund
+        console.log(`[WEBHOOK] Refund processed: ${payload.refund.entity.id}`);
+        await handleRefundProcessed(payload.refund.entity);
         break;
+
       default:
-        console.log(`Unhandled webhook event: ${event}`);
+        console.log(`[WEBHOOK] Unhandled webhook event: ${event}`);
     }
 
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error("Error handling webhook:", error);
+    console.error(`[WEBHOOK] Error handling webhook:`, error);
     res.status(500).json({
       success: false,
       message: "Failed to handle webhook",
@@ -821,6 +834,241 @@ exports.handleWebhook = async (req, res) => {
     });
   }
 };
+
+/**
+ * Handle payment captured event from webhook
+ */
+async function handlePaymentCaptured(paymentEntity) {
+  try {
+    const paymentId = paymentEntity.id;
+    const orderId = paymentEntity.order_id;
+    const amount = paymentEntity.amount / 100; // Convert from paisa to rupees
+    const currency = paymentEntity.currency;
+    const method = paymentEntity.method;
+    const status = paymentEntity.status;
+
+    console.log(`[WEBHOOK] Processing captured payment: ${paymentId}, Amount: ₹${amount}`);
+
+    // Find booking by order ID (from notes)
+    const order = await razorpay.orders.fetch(orderId);
+    if (!order || !order.notes || !order.notes.bookingId) {
+      console.error(`[WEBHOOK] No booking ID found in order notes for payment: ${paymentId}`);
+      return;
+    }
+
+    const bookingId = order.notes.bookingId;
+    const userId = order.notes.userId;
+
+    console.log(`[WEBHOOK] Found booking: ${bookingId} for user: ${userId}`);
+
+    // Find and update the booking
+    const booking = await Booking.findById(bookingId)
+      .populate("trek")
+      .populate("user", "name email");
+
+    if (!booking) {
+      console.error(`[WEBHOOK] Booking not found: ${bookingId}`);
+      return;
+    }
+
+    // Check if payment is already processed
+    if (booking.paymentDetails && booking.paymentDetails.paymentId === paymentId) {
+      console.log(`[WEBHOOK] Payment ${paymentId} already processed for booking ${bookingId}`);
+      return;
+    }
+
+    // Update booking payment details
+    booking.paymentDetails = {
+      paymentId: paymentId,
+      orderId: orderId,
+      signature: "webhook_verified", // Since this is from webhook
+      paidAt: new Date(),
+      amount: amount,
+      currency: currency,
+      method: method,
+      status: status,
+    };
+
+    // Update booking status based on payment mode
+    if (booking.paymentMode === "partial") {
+      if (booking.partialPaymentDetails && booking.partialPaymentDetails.remainingAmount > 0) {
+        // This is a remaining balance payment
+        const remainingAmount = booking.partialPaymentDetails.remainingAmount;
+        if (amount >= remainingAmount) {
+          booking.status = "payment_completed";
+          booking.partialPaymentDetails.remainingAmount = 0;
+          console.log(`[WEBHOOK] Remaining balance payment completed for booking ${bookingId}`);
+        } else {
+          booking.status = "payment_confirmed_partial";
+          booking.partialPaymentDetails.remainingAmount = remainingAmount - amount;
+          console.log(`[WEBHOOK] Partial payment updated for booking ${bookingId}, remaining: ₹${booking.partialPaymentDetails.remainingAmount}`);
+        }
+      } else {
+        // This is the initial partial payment
+        const totalAmount = booking.totalPrice;
+        const initialPaymentAmount = amount;
+        const remainingAmount = totalAmount - initialPaymentAmount;
+
+        booking.status = "payment_confirmed_partial";
+        booking.partialPaymentDetails = {
+          initialPaymentAmount: initialPaymentAmount,
+          remainingAmount: remainingAmount,
+          initialPaymentDate: new Date(),
+        };
+
+        console.log(`[WEBHOOK] Initial partial payment processed for booking ${bookingId}, remaining: ₹${remainingAmount}`);
+      }
+    } else {
+      // Full payment
+      booking.status = "payment_completed";
+      console.log(`[WEBHOOK] Full payment completed for booking ${bookingId}`);
+    }
+
+    // Increment promo code used count if a promo code was used
+    if (booking.promoCodeDetails && booking.promoCodeDetails.code) {
+      try {
+        let promoCode;
+        if (booking.promoCodeDetails.promoCodeId) {
+          promoCode = await PromoCode.findById(booking.promoCodeDetails.promoCodeId);
+        }
+        if (!promoCode) {
+          promoCode = await PromoCode.findOne({ code: booking.promoCodeDetails.code });
+        }
+        if (promoCode) {
+          promoCode.usedCount += 1;
+          await promoCode.save();
+          console.log(`[WEBHOOK] Incremented used count for promo code: ${booking.promoCodeDetails.code}`);
+        }
+      } catch (promoError) {
+        console.error(`[WEBHOOK] Error updating promo code used count:`, promoError);
+      }
+    }
+
+    // Save the updated booking
+    await booking.save();
+    console.log(`[WEBHOOK] Booking ${bookingId} updated successfully with payment ${paymentId}`);
+
+    // Send confirmation emails
+    try {
+      if (booking.paymentMode === "partial" && booking.status === "payment_confirmed_partial") {
+        // Send partial payment confirmation
+        const batch = booking.trek?.batches?.find(
+          (b) => b._id.toString() === booking.batch?.toString()
+        );
+        await sendPartialPaymentConfirmationEmail(
+          booking,
+          booking.trek,
+          booking.user,
+          { id: paymentId, amount: amount, method: method },
+          batch
+        );
+        console.log(`[WEBHOOK] Partial payment confirmation email sent for booking ${bookingId}`);
+      } else if (booking.status === "payment_completed") {
+        // Send full payment confirmation
+        const invoiceBuffer = await generateInvoicePDF(
+          booking,
+          { id: paymentId, amount: amount, method: method }
+        );
+        await sendEmailWithAttachment({
+          to: booking.user.email,
+          subject: `💳 Payment Confirmed - ${booking.trek?.name || "Bengaluru Trekkers"}`,
+          text: `Dear ${booking.user.name},\n\n💳 Thank you for your payment! Your booking has been confirmed.\n\n📋 PAYMENT DETAILS:\nBooking ID: ${booking._id}\nTrek: ${booking.trek?.name || "N/A"}\nAmount Paid: ₹${amount}\nPayment Method: ${method}\nPayment ID: ${paymentId}\nPayment Date: ${new Date().toLocaleDateString()}\n\n🏔️ We look forward to an amazing trek with you!\n\nBest regards,\nThe Bengaluru Trekkers Team`,
+          attachmentBuffer: invoiceBuffer,
+          attachmentFilename: `Invoice-${booking._id}.pdf`
+        });
+        console.log(`[WEBHOOK] Payment confirmation email sent for booking ${bookingId}`);
+      }
+    } catch (emailError) {
+      console.error(`[WEBHOOK] Error sending confirmation email for booking ${bookingId}:`, emailError);
+      // Don't fail the webhook if email fails
+    }
+
+  } catch (error) {
+    console.error(`[WEBHOOK] Error processing payment captured event:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Handle payment failed event from webhook
+ */
+async function handlePaymentFailed(paymentEntity) {
+  try {
+    const paymentId = paymentEntity.id;
+    const orderId = paymentEntity.order_id;
+    const errorCode = paymentEntity.error_code;
+    const errorDescription = paymentEntity.error_description;
+
+    console.log(`[WEBHOOK] Processing failed payment: ${paymentId}, Error: ${errorCode} - ${errorDescription}`);
+
+    // Find booking by order ID
+    const order = await razorpay.orders.fetch(orderId);
+    if (!order || !order.notes || !order.notes.bookingId) {
+      console.error(`[WEBHOOK] No booking ID found in order notes for failed payment: ${paymentId}`);
+      return;
+    }
+
+    const bookingId = order.notes.bookingId;
+    console.log(`[WEBHOOK] Found booking for failed payment: ${bookingId}`);
+
+    // Update booking status to indicate payment failure
+    const booking = await Booking.findById(bookingId);
+    if (booking) {
+      booking.status = "pending_payment";
+      if (!booking.paymentDetails) {
+        booking.paymentDetails = {};
+      }
+      booking.paymentDetails.lastError = {
+        code: errorCode,
+        description: errorDescription,
+        timestamp: new Date(),
+      };
+      await booking.save();
+      console.log(`[WEBHOOK] Booking ${bookingId} marked as payment failed`);
+    }
+
+  } catch (error) {
+    console.error(`[WEBHOOK] Error processing payment failed event:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Handle refund processed event from webhook
+ */
+async function handleRefundProcessed(refundEntity) {
+  try {
+    const refundId = refundEntity.id;
+    const paymentId = refundEntity.payment_id;
+    const amount = refundEntity.amount / 100; // Convert from paisa to rupees
+    const status = refundEntity.status;
+
+    console.log(`[WEBHOOK] Processing refund: ${refundId}, Amount: ₹${amount}, Status: ${status}`);
+
+    // Find booking by payment ID
+    const booking = await Booking.findOne({
+      "paymentDetails.paymentId": paymentId
+    });
+
+    if (booking) {
+      if (!booking.paymentDetails) {
+        booking.paymentDetails = {};
+      }
+      booking.paymentDetails.refund = {
+        refundId: refundId,
+        amount: amount,
+        status: status,
+        processedAt: new Date(),
+      };
+      await booking.save();
+      console.log(`[WEBHOOK] Refund details updated for booking ${booking._id}`);
+    }
+
+  } catch (error) {
+    console.error(`[WEBHOOK] Error processing refund event:`, error);
+    throw error;
+  }
+}
 
 /**
  * Create order for remaining balance payment

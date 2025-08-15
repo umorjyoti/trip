@@ -299,30 +299,108 @@ function BookingPage() {
         handler: async function (response) {
           try {
             setVerifyingPayment(true);
-            // Razorpay closes the modal automatically; no need to call this.modal.hide()
-            // Verify payment using the API service
-            await verifyPayment({
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-              bookingId: booking._id,
-            });
-            toast.success('Payment successful! Please fill in participant details.');
-            setVerifyingPayment(false);
-            // Redirect to participant details page with necessary information
-            navigate(`/booking/${booking._id}/participant-details`, { 
-              state: { 
-                paymentStatus: 'success',
-                numberOfParticipants: formData.numberOfParticipants,
-                addOns: formData.addOns,
-                trekId: location?.state?.trekId || trek?._id,
-                batchId: selectedBatch._id
-              } 
-            });
+            
+            // Show success message immediately
+            toast.success('Payment submitted successfully! Processing your payment...');
+            
+            // Try to verify payment on backend (fallback)
+            try {
+              await verifyPayment({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                bookingId: booking._id,
+              });
+              
+              // Payment verified immediately
+              toast.success('Payment successful! Please fill in participant details.');
+              setVerifyingPayment(false);
+              
+              // Redirect to participant details page
+              navigate(`/booking/${booking._id}/participant-details`, { 
+                state: { 
+                  paymentStatus: 'success',
+                  numberOfParticipants: formData.numberOfParticipants,
+                  addOns: formData.addOns,
+                  trekId: location?.state?.trekId || trek?._id,
+                  batchId: selectedBatch._id
+                } 
+              });
+              return;
+              
+            } catch (verifyError) {
+              console.log('Payment verification failed, will rely on webhook:', verifyError.message);
+              
+              // Start polling for payment status
+              const pollPaymentStatus = async () => {
+                const maxAttempts = 40; // 2 minutes / 3 seconds
+                let attempts = 0;
+
+                const pollInterval = setInterval(async () => {
+                  attempts++;
+                  
+                  try {
+                    // Check if payment was processed via webhook
+                    const response = await fetch(`/api/bookings/${booking._id}`);
+                    const bookingData = await response.json();
+                    
+                    if (bookingData.success && bookingData.booking) {
+                      const updatedBooking = bookingData.booking;
+                      
+                      // Check if payment was completed via webhook
+                      if (updatedBooking.paymentDetails && 
+                          (updatedBooking.status === 'payment_completed' || 
+                           updatedBooking.status === 'payment_confirmed_partial')) {
+                        
+                        clearInterval(pollInterval);
+                        setVerifyingPayment(false);
+                        
+                        toast.success('Payment processed successfully! Please fill in participant details.');
+                        
+                        // Redirect to participant details page
+                        navigate(`/booking/${updatedBooking._id}/participant-details`, { 
+                          state: { 
+                            paymentStatus: 'success',
+                            numberOfParticipants: formData.numberOfParticipants,
+                            addOns: formData.addOns,
+                            trekId: location?.state?.trekId || trek?._id,
+                            batchId: selectedBatch._id
+                          } 
+                        });
+                        return;
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Error polling payment status:', error);
+                  }
+
+                  // Stop polling after max attempts
+                  if (attempts >= maxAttempts) {
+                    clearInterval(pollInterval);
+                    setVerifyingPayment(false);
+                    toast.warning('Payment is being processed. Please check your booking status in a few minutes and then proceed to participant details.');
+                    
+                    // Navigate to booking detail page
+                    navigate(`/booking-detail/${booking._id}`, { 
+                      state: { 
+                        paymentStatus: 'processing',
+                        message: 'Payment is being processed. Please check back in a few minutes.'
+                      } 
+                    });
+                  }
+                }, 3000);
+
+                return () => clearInterval(pollInterval);
+              };
+
+              // Start polling
+              pollPaymentStatus();
+            }
+            
           } catch (error) {
             setVerifyingPayment(false);
-            console.error('Payment verification error:', error);
-            toast.error(error.message || 'Payment verification failed. Please contact support.');
+            console.error('Payment processing error:', error);
+            toast.error('Payment processing failed. Please contact support.');
             navigate(`/booking-detail/${booking._id}`, { state: { paymentStatus: 'failure' } });
           }
         },

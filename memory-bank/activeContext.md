@@ -1,8 +1,41 @@
 # Active Context
 
-## Current Focus: Streamlined Manual Booking System Implementation
+## Current Focus: Razorpay Payment Validation Fix & Manual Booking System
 
 ### Recent Changes (Latest Session)
+
+#### 1. Fixed Razorpay Payment Validation Issue
+- **Problem**: Users were closing their browser before payment validation completed, causing:
+  - Validation API to not run completely
+  - Database records to not get updated  
+  - Users to see "payment failed" even though payment succeeded
+- **Root Cause**: Reliance on client-side payment validation that failed when browser closed
+- **Solution**: Implemented robust server-side webhook validation system
+- **Files Modified**:
+  - `backend/controllers/paymentController.js` - Implemented comprehensive webhook handlers for payment events
+  - `frontend/src/components/PaymentButton.js` - Enhanced with polling and webhook fallback
+  - `frontend/src/pages/BookingPage.js` - Updated payment flow with robust error handling
+  - `RAZORPAY_WEBHOOK_SETUP.md` - Comprehensive setup guide created
+
+#### 2. Webhook-Based Payment Validation System
+- **Architecture**: Server-side webhook processing independent of user's browser state
+- **Events Handled**:
+  - `payment.captured` - Payment successful, updates database, sends confirmation emails
+  - `payment.failed` - Payment failed, marks booking as pending payment
+  - `refund.processed` - Refund processed, updates booking with refund details
+- **Key Features**:
+  - HMAC SHA256 signature verification for security
+  - Automatic database updates via webhook processing
+  - Email notifications sent automatically
+  - Handles partial payments and remaining balance payments
+  - Promo code usage tracking
+- **Frontend Enhancements**:
+  - Immediate feedback: "Payment submitted successfully!"
+  - Fallback verification: Tries immediate verification first
+  - Polling fallback: Polls server every 3 seconds if immediate verification fails
+  - Graceful degradation: Relies on webhook processing for reliability
+
+#### 3. Previous: Streamlined Manual Booking System Implementation
 
 #### 1. Reworked Manual Booking Process for Streamlined Flow
 - **Problem**: The manual booking process was overly complex with multiple useEffect hooks and complex state management
@@ -52,6 +85,11 @@
 ### Current Status
 
 ✅ **Completed Features:**
+- **Razorpay Webhook System**: Complete server-side payment validation
+- **Robust Payment Flow**: Frontend with polling and webhook fallback
+- **Security**: HMAC signature verification for webhooks
+- **Email Automation**: Automatic payment confirmation emails
+- **Database Updates**: Reliable payment status updates via webhooks
 - Streamlined manual booking system with clean 3-step flow
 - User lookup by phone number with automatic creation if not found
 - `adminCreated: true` flag properly set in database for admin-created users
@@ -64,6 +102,9 @@
 - Clean, maintainable code structure
 
 🔄 **Ready for Testing:**
+- **Webhook System**: Configure in Razorpay dashboard and test with real payments
+- **Payment Flow**: Test payment completion with browser closure scenarios
+- **Email Notifications**: Verify automatic email sending
 - Streamlined manual booking creation flow
 - User validation and creation process
 - Payment status handling with proper enum values
@@ -72,20 +113,43 @@
 
 ### Next Steps
 
-1. **Test the streamlined manual booking flow**:
+1. **Configure Razorpay Webhooks**:
+   - Set `RAZORPAY_WEBHOOK_SECRET` in environment variables
+   - Configure webhook URL in Razorpay dashboard
+   - Test webhook endpoint accessibility
+
+2. **Test Payment Validation System**:
+   - Make test payment and close browser immediately
+   - Verify webhook processing in server logs
+   - Check database updates and email notifications
+   - Test partial payment scenarios
+
+3. **Deploy and Monitor**:
+   - Deploy webhook system to production
+   - Monitor webhook processing logs
+   - Track payment success rates
+   - Monitor email delivery
+
+4. **Test the streamlined manual booking flow**:
    - Test user lookup with existing phone numbers
    - Test user creation for new customers
    - Test booking creation with different payment statuses
    - Verify adminCreated flag is properly set
    - Verify admin remarks and tagging
 
-2. **Enhance manual booking features**:
+5. **Enhance manual booking features**:
    - Add bulk manual booking capability
    - Add booking templates for common scenarios
    - Add manual booking analytics and reporting
 
 ### Technical Notes
 
+- **Webhook System**: Server-side payment validation independent of user browser state
+- **Payment Flow**: Immediate feedback + polling + webhook fallback for maximum reliability
+- **Security**: HMAC SHA256 signature verification for all webhook requests
+- **Database Updates**: Automatic payment status updates via webhook processing
+- **Email Automation**: Payment confirmation emails sent automatically after webhook processing
+- **Error Handling**: Comprehensive error handling with graceful degradation
 - **Streamlined Flow**: Manual booking now follows exact same pattern as normal bookings
 - **State Management**: Simplified with clean, predictable state updates
 - **User Management**: New users automatically get `adminCreated: true` flag and verified status
