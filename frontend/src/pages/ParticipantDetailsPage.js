@@ -359,6 +359,15 @@ function ParticipantDetailsPage() {
       return;
     }
     
+    // Clear validation error for this field if it exists
+    if (errors[`participant_${idx}_${name}`]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`participant_${idx}_${name}`];
+        return newErrors;
+      });
+    }
+    
     setParticipants((prev) => {
       const updated = [...prev];
       updated[idx][name] = value;
@@ -367,6 +376,15 @@ function ParticipantDetailsPage() {
   };
 
   const handleCustomFieldChange = (idx, fieldName, value) => {
+    // Clear validation error for this field if it exists
+    if (errors[`participant_${idx}_custom_${fieldName}`]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[`participant_${idx}_custom_${fieldName}`];
+        return newErrors;
+      });
+    }
+    
     setParticipants(prev => {
       const updated = [...prev];
       updated[idx] = {
@@ -388,6 +406,15 @@ function ParticipantDetailsPage() {
     if (field === 'phone') {
       handleEmergencyContactPhoneChange(value);
       return;
+    }
+    
+    // Clear validation error for relation field if it exists
+    if (field === 'relation' && errors.emergency_contact_relation) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.emergency_contact_relation;
+        return newErrors;
+      });
     }
     
     setEmergencyContact(prev => ({
@@ -416,6 +443,20 @@ function ParticipantDetailsPage() {
       if (phoneError) {
         newErrors[`participant_${idx}_phone`] = phoneError;
       }
+
+      // Validate trek fields
+      trekFields.forEach(field => {
+        if (field.required && (!participant[field.name] || !participant[field.name].trim())) {
+          newErrors[`participant_${idx}_${field.name}`] = `${field.label || field.name} is required`;
+        }
+      });
+
+      // Validate custom fields
+      customFields.forEach(field => {
+        if (field.isRequired && (!participant.customFields?.[field.fieldName] || !participant.customFields[field.fieldName].toString().trim())) {
+          newErrors[`participant_${idx}_custom_${field.fieldName}`] = `${field.label || field.fieldName} is required`;
+        }
+      });
     });
     
     // Validate emergency contact
@@ -428,9 +469,49 @@ function ParticipantDetailsPage() {
     if (emergencyPhoneError) {
       newErrors.emergency_contact_phone = emergencyPhoneError;
     }
+
+    if (!emergencyContact.relation || !emergencyContact.relation.trim()) {
+      newErrors.emergency_contact_relation = 'Relation to participants is required';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Check if form is valid in real-time
+  const isFormValid = () => {
+    // Check if all participants have required fields filled
+    const participantsValid = participants.every((participant, idx) => {
+      // Check basic required fields
+      if (!participant.name?.trim() || !participant.email?.trim() || !participant.phone?.trim()) {
+        return false;
+      }
+      
+      // Check trek fields
+      const trekFieldsValid = trekFields.every(field => {
+        if (field.required) {
+          return participant[field.name]?.trim();
+        }
+        return true;
+      });
+      
+      // Check custom fields
+      const customFieldsValid = customFields.every(field => {
+        if (field.isRequired) {
+          return participant.customFields?.[field.fieldName]?.toString().trim();
+        }
+        return true;
+      });
+      
+      return trekFieldsValid && customFieldsValid;
+    });
+    
+    // Check emergency contact
+    const emergencyContactValid = emergencyContact.name?.trim() && 
+                                 emergencyContact.phone?.trim() && 
+                                 emergencyContact.relation?.trim();
+    
+    return participantsValid && emergencyContactValid;
   };
 
   const handleSubmit = async (e) => {
@@ -554,27 +635,38 @@ function ParticipantDetailsPage() {
               </div>
               {trekFields.map(field => (
                 <div key={field.name}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{field.label || field.name}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {field.label || field.name} {field.required && <span className="text-red-500">*</span>}
+                  </label>
                   <input
                     name={field.name}
                     value={p[field.name] || ""}
                     onChange={e => handleChange(idx, e)}
                     placeholder={field.label || field.name}
-                    className="border p-2 rounded w-full"
+                    className={`border p-2 rounded w-full ${
+                      errors[`participant_${idx}_${field.name}`] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'focus:border-emerald-500 focus:ring-emerald-500'
+                    }`}
                     type={field.type || "text"}
                     required={!!field.required}
                   />
+                  {errors[`participant_${idx}_${field.name}`] && (
+                    <p className="text-red-500 text-sm mt-1">{errors[`participant_${idx}_${field.name}`]}</p>
+                  )}
                 </div>
               ))}
               {customFields.map(field => (
                 <div key={field.fieldName}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{field.label || field.fieldName}</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {field.label || field.fieldName} {field.isRequired && <span className="text-red-500">*</span>}
+                  </label>
                   {field.fieldType === 'select' && Array.isArray(field.options) ? (
                     <select
                       value={p.customFields?.[field.fieldName] || ""}
                       onChange={e => handleCustomFieldChange(idx, field.fieldName, e.target.value)}
                       required={!!field.isRequired}
-                      className="border p-2 rounded w-full"
+                      className={`border p-2 rounded w-full ${
+                        errors[`participant_${idx}_custom_${field.fieldName}`] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'focus:border-emerald-500 focus:ring-emerald-500'
+                      }`}
                     >
                       <option value="">Select</option>
                       {field.options.map(opt => (
@@ -588,8 +680,13 @@ function ParticipantDetailsPage() {
                       onChange={e => handleCustomFieldChange(idx, field.fieldName, e.target.value)}
                       required={!!field.isRequired}
                       placeholder={field.label || field.fieldName}
-                      className="border p-2 rounded w-full"
+                      className={`border p-2 rounded w-full ${
+                        errors[`participant_${idx}_custom_${field.fieldName}`] ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'focus:border-emerald-500 focus:ring-emerald-500'
+                      }`}
                     />
+                  )}
+                  {errors[`participant_${idx}_custom_${field.fieldName}`] && (
+                    <p className="text-red-500 text-sm mt-1">{errors[`participant_${idx}_custom_${field.fieldName}`]}</p>
                   )}
                 </div>
               ))}
@@ -649,7 +746,9 @@ function ParticipantDetailsPage() {
                 value={emergencyContact.relation} 
                 onChange={e => handleEmergencyContactChange('relation', e.target.value)} 
                 required 
-                className="border p-2 rounded w-full"
+                className={`border p-2 rounded w-full ${
+                  errors.emergency_contact_relation ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'focus:border-emerald-500 focus:ring-emerald-500'
+                }`}
               >
                 <option value="">Select Relation</option>
                 <option value="Parent">Parent</option>
@@ -659,11 +758,22 @@ function ParticipantDetailsPage() {
                 <option value="Relative">Relative</option>
                 <option value="Other">Other</option>
               </select>
+              {errors.emergency_contact_relation && (
+                <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_relation}</p>
+              )}
             </div>
           </div>
         </div>
         
-        <button type="submit" disabled={loading} className="bg-emerald-600 text-white px-8 py-3 rounded shadow hover:bg-emerald-700 text-lg font-semibold">
+        <button 
+          type="submit" 
+          disabled={loading || !isFormValid()} 
+          className={`px-8 py-3 rounded shadow text-lg font-semibold ${
+            loading || !isFormValid() 
+              ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+              : 'bg-emerald-600 text-white hover:bg-emerald-700'
+          }`}
+        >
           {loading ? "Saving..." : "Continue to Preview"}
         </button>
       </form>
