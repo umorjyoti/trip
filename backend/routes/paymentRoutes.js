@@ -3,8 +3,8 @@ const router = express.Router();
 const paymentController = require('../controllers/paymentController');
 const { protect } = require('../middleware/authMiddleware');
 
-// Get Razorpay key (protected route)
-router.get('/get-key', protect, paymentController.getRazorpayKey);
+// Get Razorpay key (public route - needed before payment)
+router.get('/get-key', paymentController.getRazorpayKey);
 
 // Create a new Razorpay order
 router.post('/create-order', protect, paymentController.createOrder);
