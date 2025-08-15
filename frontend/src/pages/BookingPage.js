@@ -1074,7 +1074,7 @@ function BookingPage() {
                             {new Date(batch.endDate).toLocaleDateString()}
                           </p>
                           <p className="text-sm text-gray-500">
-                            {isFull ? "Full" : `${spotsLeft} spots left`}
+                            {isFull ? "Full" : spotsLeft < 10 ? `${spotsLeft} spots left` : "Limited slots available"}
                           </p>
                         </div>
                         <div className="flex items-center">
