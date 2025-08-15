@@ -341,7 +341,8 @@ function BookingPage() {
                   
                   try {
                     // Check if payment was processed via webhook
-                    const response = await fetch(`/api/bookings/${booking._id}`);
+                    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+                    const response = await fetch(`${backendUrl}/bookings/${booking._id}`);
                     const bookingData = await response.json();
                     
                     if (bookingData.success && bookingData.booking) {

@@ -13,7 +13,9 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
   useEffect(() => {
     const fetchRazorpayKey = async () => {
       try {
-        const response = await fetch('/api/payments/get-key');
+        // Use the correct backend URL
+        const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${backendUrl}/payments/get-key`);
         const data = await response.json();
         if (data.success) {
           setRazorpayKey(data.key);
@@ -56,7 +58,8 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
           
           try {
             // Check if payment was processed via webhook
-            const response = await fetch(`/api/bookings/${bookingId}`);
+            const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+            const response = await fetch(`${backendUrl}/api/bookings/${bookingId}`);
             const bookingData = await response.json();
             
             if (bookingData.success && bookingData.booking) {
