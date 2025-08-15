@@ -91,6 +91,10 @@ function BookingPage() {
         
         setTrek(data);
         
+        // Debug: Log trek data to see partial payment config
+        console.log('Trek data fetched:', data);
+        console.log('Trek partial payment config:', data.partialPayment);
+        
         // Set tax information from API response
         setTaxInfo({
           gstPercent: data.gstPercent || 0,
@@ -263,6 +267,18 @@ function BookingPage() {
         .filter(({ key, isEnabled }) => isEnabled && formData.addOns.includes(key))
         .map(({ _id, name, price }) => ({ _id, name, price }));
 
+      // Calculate initial payment amount for partial payments
+      let frontendInitialAmount = 0;
+      if (paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled) {
+        if (trek.partialPayment.amountType === 'percentage') {
+          frontendInitialAmount = Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100);
+        } else {
+          frontendInitialAmount = trek.partialPayment.amount * formData.numberOfParticipants;
+        }
+        // Ensure initial amount doesn't exceed total price
+        frontendInitialAmount = Math.min(frontendInitialAmount, calculateTotalPrice());
+      }
+
       const bookingData = {
         trekId: location?.state?.trekId || trek?._id,
         batchId: selectedBatch._id,
@@ -271,6 +287,7 @@ function BookingPage() {
         userDetails: formData.userDetails,
         totalPrice: calculateTotalPrice(),
         paymentMode: paymentMode,
+        frontendInitialAmount: frontendInitialAmount, // Add this for backend validation
         couponCode: appliedCoupon?.promoCode || null,
         discountAmount: appliedCoupon ? calculateBasePrice() * (appliedCoupon.promoCode.discountValue / 100) : 0,
         originalPrice: calculateBasePrice(),
@@ -279,10 +296,18 @@ function BookingPage() {
 
       const booking = await createBooking(bookingData);
       
+      // Debug: Log the booking response to see what we get
+      console.log('Booking created:', booking);
+      console.log('Booking keys:', Object.keys(booking));
+      console.log('Partial payment details:', booking.partialPaymentDetails);
+      console.log('Payment mode:', paymentMode);
+      console.log('Trek partial payment config:', trek.partialPayment);
+      console.log('Frontend initial amount:', frontendInitialAmount);
+      
       // Calculate payment amount based on payment mode
       let paymentAmount = booking.totalPrice;
-      if (paymentMode === 'partial' && booking.partialPaymentDetails) {
-        paymentAmount = booking.partialPaymentDetails.initialAmount;
+      if (paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled) {
+        paymentAmount = frontendInitialAmount;
       }
       
       // Create Razorpay order using the API service
@@ -341,9 +366,9 @@ function BookingPage() {
                   
                   try {
                     // Check if payment was processed via webhook
-                    const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-                    const response = await fetch(`${backendUrl}/bookings/${booking._id}`);
-                    const bookingData = await response.json();
+                    // Use the authenticated API service instead of raw fetch
+                    const { getBookingById } = await import('../services/api');
+                    const bookingData = await getBookingById(booking._id);
                     
                     if (bookingData.success && bookingData.booking) {
                       const updatedBooking = bookingData.booking;
@@ -440,6 +465,11 @@ function BookingPage() {
 
     } catch (error) {
       console.error("Error creating booking:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       toast.error(error.message || "Failed to create booking");
       setProcessingPayment(false);
       // Restore body scrolling on error
@@ -880,7 +910,23 @@ function BookingPage() {
                 )}
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-4">
+                {/* Debug button to test partial payment */}
+                {process.env.NODE_ENV === 'development' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.log('Debug: Trek partial payment config:', trek.partialPayment);
+                      console.log('Debug: Payment mode:', paymentMode);
+                      console.log('Debug: Frontend initial amount:', frontendInitialAmount);
+                      console.log('Debug: Calculate initial payment:', calculateInitialPayment());
+                    }}
+                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  >
+                    Debug Partial Payment
+                  </button>
+                )}
+                
                 <button
                   type="submit"
                   disabled={processingPayment || !agreeToTerms}

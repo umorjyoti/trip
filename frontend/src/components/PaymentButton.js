@@ -13,13 +13,10 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
   useEffect(() => {
     const fetchRazorpayKey = async () => {
       try {
-        // Use the correct backend URL
-        const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${backendUrl}/payments/get-key`);
-        const data = await response.json();
-        if (data.success) {
-          setRazorpayKey(data.key);
-        }
+        // Use the API service for consistency
+        const { getRazorpayKey } = await import('../services/api');
+        const key = await getRazorpayKey();
+        setRazorpayKey(key);
       } catch (error) {
         console.error('Error fetching Razorpay key:', error);
         toast.error('Failed to initialize payment system');
@@ -58,9 +55,9 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
           
           try {
             // Check if payment was processed via webhook
-            const backendUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-            const response = await fetch(`${backendUrl}/api/bookings/${bookingId}`);
-            const bookingData = await response.json();
+            // Use the authenticated API service instead of raw fetch
+            const { getBookingById } = await import('../services/api');
+            const bookingData = await getBookingById(bookingId);
             
             if (bookingData.success && bookingData.booking) {
               const booking = bookingData.booking;
