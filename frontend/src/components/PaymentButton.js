@@ -52,30 +52,29 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
 
         const pollInterval = setInterval(async () => {
           attempts++;
-          
+
           try {
-            // Check if payment was processed via webhook
+            // Check if payment was processed via webhook 
             // Use the authenticated API service instead of raw fetch
             const { getBookingById } = await import('../services/api');
-            const bookingData = await getBookingById(bookingId);
-            
-            if (bookingData.success && bookingData.booking) {
-              const booking = bookingData.booking;
-              
-              // Check if payment was completed via webhook
-              if (booking.paymentDetails && 
-                  (booking.status === 'payment_completed' || 
-                   booking.status === 'payment_confirmed_partial')) {
-                
-                clearInterval(pollInterval);
-                setPaymentProcessing(false);
-                setOrderId(null);
-                
-                toast.success('Payment processed successfully!');
-                onSuccess();
-                return;
-              }
+            const booking = await getBookingById(bookingId);
+
+
+            // Check if payment was completed via webhook
+            if (
+              booking.status === 'payment_completed' ||
+              booking.status === 'payment_confirmed_partial' ||
+              booking.status === 'confirmed') {
+
+              clearInterval(pollInterval);
+              setPaymentProcessing(false);
+              setOrderId(null);
+
+              toast.success('Payment processed successfully!');
+              onSuccess();
+              return;
             }
+
           } catch (error) {
             console.error('Error polling payment status:', error);
           }
@@ -113,7 +112,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
 
     try {
       setLoading(true);
-      
+
       // Create order on backend using API service
       let orderData;
       if (isRemainingBalance) {
@@ -121,7 +120,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
       } else {
         orderData = await createPaymentOrder(amount, bookingId);
       }
-      
+
       const order = orderData.order;
       const actualAmount = isRemainingBalance ? orderData.remainingAmount : amount;
 
@@ -140,10 +139,10 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
           try {
             setVerifyingPayment(true);
             setPaymentProcessing(true); // Start polling for payment status
-            
+
             // Show success message immediately
             toast.success('Payment submitted successfully! Processing your payment...');
-            
+
             // Try to verify payment on backend (fallback)
             try {
               const paymentData = await verifyPayment({
@@ -152,7 +151,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
                 razorpay_signature: response.razorpay_signature,
                 bookingId,
               });
-              
+
               if (paymentData.payment.status === 'captured') {
                 // Payment verified immediately - no need for polling
                 setPaymentProcessing(false);
@@ -165,10 +164,10 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
               console.log('Payment verification failed, will rely on webhook:', verifyError.message);
               // Continue with polling - webhook should handle this
             }
-            
+
             // If we reach here, payment is being processed via webhook
             // The polling useEffect will handle the rest
-            
+
           } catch (error) {
             console.error('Payment processing error:', error);
             setPaymentProcessing(false);
@@ -184,7 +183,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
           contact: ''
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             // If user dismisses modal, stop polling
             setPaymentProcessing(false);
             setOrderId(null);
@@ -197,7 +196,7 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
 
       const rzp = new window.Razorpay(options);
       rzp.open();
-      
+
     } catch (error) {
       console.error('Error creating payment order:', error);
       toast.error(error.message || 'Failed to create payment order');
@@ -210,11 +209,10 @@ function PaymentButton({ amount, bookingId, onSuccess, allowPartialPayment = fal
     <button
       onClick={handlePayment}
       disabled={loading || verifyingPayment || !razorpayKey || !scriptLoaded}
-      className={`px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
-        loading || verifyingPayment || !razorpayKey || !scriptLoaded
-          ? 'bg-gray-400 cursor-not-allowed'
-          : 'bg-green-600 hover:bg-green-700 active:bg-green-800'
-      }`}
+      className={`px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${loading || verifyingPayment || !razorpayKey || !scriptLoaded
+        ? 'bg-gray-400 cursor-not-allowed'
+        : 'bg-green-600 hover:bg-green-700 active:bg-green-800'
+        }`}
     >
       {loading ? (
         <span className="flex items-center">

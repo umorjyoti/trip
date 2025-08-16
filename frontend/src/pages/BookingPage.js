@@ -80,7 +80,7 @@ function BookingPage() {
         // Get trek ID from location state or fetch by slug
         const trekId = location?.state?.trekId;
         let data;
-        
+
         if (trekId) {
           data = await getTrekById(trekId);
         } else {
@@ -88,13 +88,13 @@ function BookingPage() {
           const { getTrekBySlug } = await import('../services/api');
           data = await getTrekBySlug(name);
         }
-        
+
         setTrek(data);
-        
+
         // Debug: Log trek data to see partial payment config
         console.log('Trek data fetched:', data);
         console.log('Trek partial payment config:', data.partialPayment);
-        
+
         // Set tax information from API response
         setTaxInfo({
           gstPercent: data.gstPercent || 0,
@@ -108,8 +108,8 @@ function BookingPage() {
         const availableBatch = selectedBatchId
           ? data.batches.find((batch) => batch._id === selectedBatchId)
           : data.batches.find(
-              (batch) => batch.currentParticipants < batch.maxParticipants
-            );
+            (batch) => batch.currentParticipants < batch.maxParticipants
+          );
 
         setSelectedBatch(availableBatch);
       } catch (err) {
@@ -193,7 +193,7 @@ function BookingPage() {
     try {
       // Calculate base price for order value
       const basePrice = calculateBasePrice();
-      
+
       // Validate coupon with order value
       const trekId = location?.state?.trekId || trek?._id;
       const response = await validateCoupon(couponCode, trekId, basePrice);
@@ -257,10 +257,10 @@ function BookingPage() {
 
     try {
       setProcessingPayment(true);
-      
+
       // Generate a unique session ID for this booking attempt
       const sessionId = `session_${Date.now()}_${currentUser._id}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // Map selected add-on IDs to { name, price } objects
       const validAddOns = trek.addOns
         .map((addOn, idx) => ({ ...addOn, key: getAddOnKey(addOn, idx) }))
@@ -295,7 +295,7 @@ function BookingPage() {
       };
 
       const booking = await createBooking(bookingData);
-      
+
       // Debug: Log the booking response to see what we get
       console.log('Booking created:', booking);
       console.log('Booking keys:', Object.keys(booking));
@@ -303,13 +303,13 @@ function BookingPage() {
       console.log('Payment mode:', paymentMode);
       console.log('Trek partial payment config:', trek.partialPayment);
       console.log('Frontend initial amount:', frontendInitialAmount);
-      
+
       // Calculate payment amount based on payment mode
       let paymentAmount = booking.totalPrice;
       if (paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled) {
         paymentAmount = frontendInitialAmount;
       }
-      
+
       // Create Razorpay order using the API service
       const { order } = await createPaymentOrder(paymentAmount, booking._id);
 
@@ -324,10 +324,10 @@ function BookingPage() {
         handler: async function (response) {
           try {
             setVerifyingPayment(true);
-            
+
             // Show success message immediately
             toast.success('Payment submitted successfully! Processing your payment...');
-            
+
             // Try to verify payment on backend (fallback)
             try {
               await verifyPayment({
@@ -336,26 +336,26 @@ function BookingPage() {
                 razorpay_signature: response.razorpay_signature,
                 bookingId: booking._id,
               });
-              
+
               // Payment verified immediately
               toast.success('Payment successful! Please fill in participant details.');
               setVerifyingPayment(false);
-              
+
               // Redirect to participant details page
-              navigate(`/booking/${booking._id}/participant-details`, { 
-                state: { 
+              navigate(`/booking/${booking._id}/participant-details`, {
+                state: {
                   paymentStatus: 'success',
                   numberOfParticipants: formData.numberOfParticipants,
                   addOns: formData.addOns,
                   trekId: location?.state?.trekId || trek?._id,
                   batchId: selectedBatch._id
-                } 
+                }
               });
               return;
-              
+
             } catch (verifyError) {
               console.log('Payment verification failed, will rely on webhook:', verifyError.message);
-              
+
               // Start polling for payment status
               const pollPaymentStatus = async () => {
                 const maxAttempts = 40; // 2 minutes / 3 seconds
@@ -363,35 +363,38 @@ function BookingPage() {
 
                 const pollInterval = setInterval(async () => {
                   attempts++;
-                  
+
                   try {
                     // Check if payment was processed via webhook
                     // Use the authenticated API service instead of raw fetch
                     const { getBookingById } = await import('../services/api');
                     const bookingData = await getBookingById(booking._id);
-                    
+
+                    console.log('Booking data:', bookingData);
+
                     if (bookingData.success && bookingData.booking) {
                       const updatedBooking = bookingData.booking;
-                      
+
                       // Check if payment was completed via webhook
-                      if (updatedBooking.paymentDetails && 
-                          (updatedBooking.status === 'payment_completed' || 
-                           updatedBooking.status === 'payment_confirmed_partial')) {
-                        
+                      if (
+                        updatedBooking.status === 'payment_completed' ||
+                        updatedBooking.status === 'payment_confirmed_partial' ||
+                        updatedBooking.status === 'confirmed') {
+
                         clearInterval(pollInterval);
                         setVerifyingPayment(false);
-                        
+
                         toast.success('Payment processed successfully! Please fill in participant details.');
-                        
+
                         // Redirect to participant details page
-                        navigate(`/booking/${updatedBooking._id}/participant-details`, { 
-                          state: { 
+                        navigate(`/booking/${updatedBooking._id}/participant-details`, {
+                          state: {
                             paymentStatus: 'success',
                             numberOfParticipants: formData.numberOfParticipants,
                             addOns: formData.addOns,
                             trekId: location?.state?.trekId || trek?._id,
                             batchId: selectedBatch._id
-                          } 
+                          }
                         });
                         return;
                       }
@@ -405,13 +408,13 @@ function BookingPage() {
                     clearInterval(pollInterval);
                     setVerifyingPayment(false);
                     toast.warning('Payment is being processed. Please check your booking status in a few minutes and then proceed to participant details.');
-                    
+
                     // Navigate to booking detail page
-                    navigate(`/booking-detail/${booking._id}`, { 
-                      state: { 
+                    navigate(`/booking-detail/${booking._id}`, {
+                      state: {
                         paymentStatus: 'processing',
                         message: 'Payment is being processed. Please check back in a few minutes.'
-                      } 
+                      }
                     });
                   }
                 }, 3000);
@@ -422,7 +425,7 @@ function BookingPage() {
               // Start polling
               pollPaymentStatus();
             }
-            
+
           } catch (error) {
             setVerifyingPayment(false);
             console.error('Payment processing error:', error);
@@ -431,7 +434,7 @@ function BookingPage() {
           }
         },
         modal: {
-          ondismiss: function() {
+          ondismiss: function () {
             toast.info('Payment cancelled. You can try again.');
             // Restore body scrolling when payment is dismissed
             document.body.style.overflow = 'auto';
@@ -509,7 +512,7 @@ function BookingPage() {
 
   const calculateInitialPayment = () => {
     if (!trek.partialPayment || !trek.partialPayment.enabled) return 0;
-    
+
     if (trek.partialPayment.amountType === 'percentage') {
       return Math.round((calculateTotalPrice() * trek.partialPayment.amount) / 100);
     } else {
@@ -532,7 +535,7 @@ function BookingPage() {
       <Modal
         title="Preparing Payment"
         isOpen={processingPayment}
-        onClose={() => {}} // No close functionality during payment processing
+        onClose={() => { }} // No close functionality during payment processing
         size="small"
       >
         <div className="flex flex-col items-center space-y-4 py-8">
@@ -848,7 +851,7 @@ function BookingPage() {
                         <span className="text-gray-500 ml-2">- Pay the complete amount now</span>
                       </label>
                     </div>
-                    
+
                     <div className="flex items-center">
                       <input
                         type="radio"
@@ -883,18 +886,18 @@ function BookingPage() {
                   />
                   <label htmlFor="agreeToTerms" className="ml-2 block text-sm text-gray-900">
                     I agree to the{' '}
-                    <a 
-                      href="/terms" 
-                      target="_blank" 
+                    <a
+                      href="/terms"
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-emerald-600 hover:text-emerald-500 underline"
                     >
                       Terms & Conditions
                     </a>
                     {' '}and{' '}
-                    <a 
-                      href="/privacy" 
-                      target="_blank" 
+                    <a
+                      href="/privacy"
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-emerald-600 hover:text-emerald-500 underline"
                     >
@@ -912,14 +915,13 @@ function BookingPage() {
 
               <div className="flex justify-end space-x-4">
                 {/* Debug button to test partial payment */}
-               
-                
+
+
                 <button
                   type="submit"
                   disabled={processingPayment || !agreeToTerms}
-                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${
-                    processingPayment || !agreeToTerms ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  className={`inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 ${processingPayment || !agreeToTerms ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                 >
                   {processingPayment ? (
                     <>
@@ -1011,7 +1013,7 @@ function BookingPage() {
                     ₹{calculateTotalPrice().toFixed(2)}
                   </dd>
                 </div>
-                
+
                 {/* Partial Payment Breakdown */}
                 {paymentMode === 'partial' && trek.partialPayment && trek.partialPayment.enabled && (
                   <>
@@ -1062,9 +1064,8 @@ function BookingPage() {
                   return (
                     <div
                       key={batch._id}
-                      className={`px-4 py-4 sm:px-6 cursor-pointer hover:bg-gray-50 ${
-                        isSelected ? "bg-emerald-50" : ""
-                      }`}
+                      className={`px-4 py-4 sm:px-6 cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-emerald-50" : ""
+                        }`}
                       onClick={() => !isFull && handleBatchSelect(batch)}
                     >
                       <div className="flex items-center justify-between">
