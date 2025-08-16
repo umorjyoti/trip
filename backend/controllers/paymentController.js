@@ -619,7 +619,7 @@ font-size: 28px;
 <div class="payment-container">
 <div class="section-title"  style="color: white !important;" >💳 Payment Confirmed!</div>
 <p  style="color: white !important;" >Thank you for your payment! Your booking has been confirmed.</p>
-<div class="amount">₹${payment.amount / 100}</div>
+<div class="amount">₹${payment.amount}</div>
 </div>
 
 <div class="section">
@@ -629,7 +629,7 @@ font-size: 28px;
 <li><strong>Trek:</strong> ${trek?.name || "N/A"}</li>
 <li><strong>Participants:</strong> ${booking.numberOfParticipants
             }</li>
-<li><strong>Amount Paid:</strong> ₹${payment.amount / 100}</li>
+<li><strong>Amount Paid:</strong> ₹${payment.amount}</li>
 <li><strong>Payment Method:</strong> ${payment.method}</li>
 <li><strong>Payment ID:</strong> ${payment.id}</li>
 <li><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</li>
