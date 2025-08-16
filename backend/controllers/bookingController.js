@@ -1105,6 +1105,12 @@ const cancelParticipant = async (req, res) => {
     let effectiveRefundType = refundType || 'auto';
     if (!req.user.isAdmin) effectiveRefundType = 'auto';
     if (effectiveRefundType === 'custom' && req.user.isAdmin && typeof customRefundAmount === 'number') {
+      // Validate custom refund amount - cannot exceed participant's share
+      if (customRefundAmount > perPrice) {
+        return res.status(400).json({ 
+          message: `Custom refund amount (₹${customRefundAmount}) cannot exceed participant's share (₹${perPrice})` 
+        });
+      }
       refundAmount = customRefundAmount;
     } else {
       refundAmount = batch ? getRefundAmount(perPrice, batch.startDate, now, effectiveRefundType) : perPrice;
@@ -2321,6 +2327,12 @@ const calculateRefund = async (req, res) => {
         let participantRefund = 0;
         
         if (refundType === 'custom' && customRefundAmount) {
+          // Validate custom refund amount - cannot exceed total price
+          if (customRefundAmount > booking.totalPrice) {
+            return res.status(400).json({ 
+              message: `Custom refund amount (₹${customRefundAmount}) cannot exceed booking amount (₹${booking.totalPrice})` 
+            });
+          }
           participantRefund = customRefundAmount / selectedParticipants.length;
         } else {
           participantRefund = getRefundAmount(perPrice, batch.startDate, new Date(), refundType);
@@ -2331,6 +2343,12 @@ const calculateRefund = async (req, res) => {
     } else {
       // Calculate refund for entire booking
       if (refundType === 'custom' && customRefundAmount) {
+        // Validate custom refund amount - cannot exceed total price
+        if (customRefundAmount > booking.totalPrice) {
+          return res.status(400).json({ 
+            message: `Custom refund amount (₹${customRefundAmount}) cannot exceed booking amount (₹${booking.totalPrice})` 
+          });
+        }
         totalRefund = customRefundAmount;
       } else {
         totalRefund = getRefundAmount(booking.totalPrice, batch.startDate, new Date(), refundType);

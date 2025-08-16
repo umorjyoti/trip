@@ -29,6 +29,13 @@ exports.cancelBooking = async (req, res) => {
     // Get the batch from trek
     const batch = booking.trek?.batches?.find(b => b._id.toString() === booking.batch?.toString());
 
+    // Validate refund amount - cannot refund more than the booking amount
+    if (refundAmount > booking.totalPrice) {
+      return res.status(400).json({ 
+        message: `Refund amount (₹${refundAmount}) cannot exceed booking amount (₹${booking.totalPrice})` 
+      });
+    }
+
     if (cancellationType === 'individual' && selectedParticipants && selectedParticipants.length > 0) {
       // Cancel individual participants
       for (const participantId of selectedParticipants) {
@@ -47,7 +54,9 @@ exports.cancelBooking = async (req, res) => {
         let participantRefund = 0;
         
         if (refundType === 'custom' && customRefundAmount) {
-          participantRefund = customRefundAmount / selectedParticipants.length;
+          // Validate custom refund amount per participant
+          const maxRefundPerParticipant = Math.min(perPrice, customRefundAmount / selectedParticipants.length);
+          participantRefund = maxRefundPerParticipant;
         } else {
           participantRefund = batch ? getRefundAmount(perPrice, batch.startDate, new Date(), refundType) : perPrice;
         }
@@ -104,6 +113,13 @@ exports.cancelBooking = async (req, res) => {
 
       // Process refund for entire booking
       if (refundAmount > 0 && paymentId) {
+        // Validate refund amount again before processing
+        if (refundAmount > booking.totalPrice) {
+          return res.status(400).json({ 
+            message: `Refund amount (₹${refundAmount}) cannot exceed booking amount (₹${booking.totalPrice})` 
+          });
+        }
+        
         booking.refundStatus = 'processing';
         const razorpayRes = await refundPayment(paymentId, refundAmount * 100);
         if (razorpayRes.success) {

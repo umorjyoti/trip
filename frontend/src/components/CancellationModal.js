@@ -61,6 +61,10 @@ const CancellationModal = ({
 
   // Calculate total refund for selected participants
   const calculateTotalRefund = () => {
+    if (refundType === 'custom') {
+      return customRefundAmount || 0;
+    }
+    
     if (cancellationType === 'entire') {
       const policy = getCancellationPolicyDescription(bookingData?.batch?.startDate);
       return calculateRefund(bookingData?.totalPrice, bookingData?.batch?.startDate, refundType);
@@ -76,6 +80,13 @@ const CancellationModal = ({
       }, 0);
     }
   };
+
+  // Recalculate total refund when custom refund amount changes
+  useEffect(() => {
+    if (refundType === 'custom') {
+      // totalRefund will be updated automatically through the calculateTotalRefund function
+    }
+  }, [customRefundAmount, refundType]);
 
   // Handle participant selection
   const handleParticipantToggle = (participantId) => {
@@ -355,12 +366,30 @@ const CancellationModal = ({
             <input
               type="number"
               value={customRefundAmount}
-              onChange={(e) => setCustomRefundAmount(parseFloat(e.target.value) || 0)}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value) || 0;
+                const maxAmount = cancellationType === 'entire' ? 
+                  bookingData.totalPrice : 
+                  (bookingData.totalPrice / bookingData.participantDetails.length) * selectedParticipants.length;
+                
+                if (value > maxAmount) {
+                  setCustomRefundAmount(maxAmount);
+                } else {
+                  setCustomRefundAmount(value);
+                }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter refund amount"
               min="0"
-              max={cancellationType === 'entire' ? bookingData.totalPrice : bookingData.totalPrice / bookingData.participantDetails.length * selectedParticipants.length}
+              max={cancellationType === 'entire' ? 
+                bookingData.totalPrice : 
+                (bookingData.totalPrice / bookingData.participantDetails.length) * selectedParticipants.length}
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Max refund: ₹{cancellationType === 'entire' ? 
+                bookingData.totalPrice : 
+                (bookingData.totalPrice / bookingData.participantDetails.length) * selectedParticipants.length}
+            </p>
           </div>
         )}
 
@@ -384,7 +413,22 @@ const CancellationModal = ({
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Total Refund:</span>
+              <span className="text-gray-600">Policy-based Refund:</span>
+              <span className="font-medium text-blue-600">
+                ₹{(() => {
+                  if (refundType === 'custom') return 'N/A';
+                  return calculateRefund(
+                    cancellationType === 'entire' ? 
+                      bookingData.totalPrice : 
+                      (bookingData.totalPrice / bookingData.participantDetails.length) * selectedParticipants.length,
+                    bookingData.trek?.batches?.find(b => b._id === bookingData.batch)?.startDate,
+                    refundType
+                  ).toFixed(2);
+                })()}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Actual Refund:</span>
               <span className="font-bold text-green-600 text-lg">₹{totalRefund.toFixed(2)}</span>
             </div>
           </div>

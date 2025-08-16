@@ -510,20 +510,39 @@ function RequestResponseModal({ isOpen, onClose, booking, onSuccess, batchDetail
                   <input
                     type="number"
                     value={customRefundAmount}
-                    onChange={(e) => setCustomRefundAmount(Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = Number(e.target.value);
+                      const maxAmount = booking.totalPrice;
+                      if (value > maxAmount) {
+                        setCustomRefundAmount(maxAmount);
+                      } else {
+                        setCustomRefundAmount(value);
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter refund amount"
                     min="0"
                     max={booking.totalPrice}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Max refund: ₹{booking.totalPrice}
+                  </p>
                 </div>
               )}
 
               {/* Total Refund Display */}
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">Total Refund:</span>
-                  <span className="text-lg font-bold text-green-600">₹{refundCalculation.totalRefund}</span>
+                <div className="space-y-2">
+                  {refundType !== 'custom' && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Policy-based Refund:</span>
+                      <span className="text-md font-medium text-blue-600">₹{refundCalculation.totalRefund}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Actual Refund:</span>
+                    <span className="text-lg font-bold text-green-600">₹{refundCalculation.totalRefund}</span>
+                  </div>
                 </div>
               </div>
 
