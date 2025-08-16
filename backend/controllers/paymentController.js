@@ -429,9 +429,11 @@ async function handlePaymentCaptured(paymentEntity) {
         const initialPaymentAmount = amount;
         const remainingAmount = totalAmount - initialPaymentAmount;
 
+        console.log(`[WEBHOOK] Partial payment calculation: totalAmount=${totalAmount}, initialPaymentAmount=${initialPaymentAmount}, remainingAmount=${remainingAmount}`);
+
         booking.status = "payment_confirmed_partial";
         booking.partialPaymentDetails = {
-          initialPaymentAmount: initialPaymentAmount,
+          initialAmount: initialPaymentAmount,
           remainingAmount: remainingAmount,
           initialPaymentDate: new Date(),
         };
@@ -475,11 +477,15 @@ async function handlePaymentCaptured(paymentEntity) {
         const batch = booking.trek?.batches?.find(
           (b) => b._id.toString() === booking.batch?.toString()
         );
+        const paymentData = { id: paymentId, amount: amount, method: method };
+        console.log(`[WEBHOOK] Sending partial payment email with payment data:`, paymentData);
+        console.log(`[WEBHOOK] Booking partialPaymentDetails:`, booking.partialPaymentDetails);
+        
         await sendPartialPaymentConfirmationEmail(
           booking,
           booking.trek,
           booking.user,
-          { id: paymentId, amount: amount, method: method },
+          paymentData,
           batch
         );
         console.log(`[WEBHOOK] Partial payment confirmation email sent for booking ${bookingId}`);
@@ -502,7 +508,7 @@ async function handlePaymentCaptured(paymentEntity) {
           text: `Dear ${user.name
             },\n\n💳 Thank you for your payment! Your booking has been confirmed.\n\n📋 INVOICE DETAILS:\nBooking ID: ${booking._id
             }\nTrek: ${trek?.name || "N/A"}\nParticipants: ${booking.numberOfParticipants
-            }\nAmount Paid: ₹${payment.amount / 100}\nPayment Method: ${payment.method
+            }\nAmount Paid: ₹${payment.amount?.toFixed(2) || "0.00"}\nPayment Method: ${payment.method
             }\nPayment ID: ${payment.id
             }\nPayment Date: ${new Date().toLocaleDateString()}\n\n📝 NEXT STEPS:\n1. Please complete your participant details to finalize your booking\n2. You will receive a final confirmation email once all details are submitted\n3. Our team will contact you with further instructions\n\n❓ NEED HELP?\nIf you have any questions, please don't hesitate to contact us.\n\n🏔️ We look forward to an amazing trek with you!\n\nBest regards,\nThe Trek Team\nYour Adventure Awaits!\n\n---\nThis is an automated message. Please do not reply to this email.\nFor support, contact us through our website or mobile app.`,
           html: `

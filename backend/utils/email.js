@@ -411,7 +411,7 @@ Dear ${user.name},
 Booking ID: ${booking._id}
 Trek: ${trek?.name || "N/A"}
 Participants: ${booking.numberOfParticipants}
-Amount Paid: ₹${payment.amount / 100}
+Amount Paid: ₹${payment.amount?.toFixed(2) || "0.00"}
 Payment Method: ${payment.method}
 Payment ID: ${payment.id}
 Payment Date: ${new Date().toLocaleDateString()}
@@ -549,7 +549,7 @@ For support, contact us through our website or mobile app.
         <div class="payment-container">
             <div class="section-title" style="color: white !important;">💳 Payment Confirmed!</div>
             <p style="color: white !important;" >Thank you for your payment! Your booking has been confirmed.</p>
-            <div class="amount">₹${payment.amount / 100}</div>
+            <div class="amount">₹${payment.amount?.toFixed(2) || "0.00"}</div>
         </div>
 
         <div class="section">
@@ -560,7 +560,7 @@ For support, contact us through our website or mobile app.
                 <li><strong>Participants:</strong> ${
                   booking.numberOfParticipants
                 }</li>
-                <li><strong>Amount Paid:</strong> ₹${payment.amount / 100}</li>
+                <li><strong>Amount Paid:</strong> ₹${payment.amount?.toFixed(2) || "0.00"}</li>
                 <li><strong>Payment Method:</strong> ${payment.method}</li>
                 <li><strong>Payment ID:</strong> ${payment.id}</li>
                 <li><strong>Payment Date:</strong> ${new Date().toLocaleDateString()}</li>
@@ -602,6 +602,8 @@ For support, contact us through our website or mobile app.
 </html>
   `;
 
+  console.log(`[EMAIL] Final email content - Initial Payment: ₹${payment.amount?.toFixed(2) || "0.00"}, Remaining Balance: ₹${booking.partialPaymentDetails?.remainingAmount?.toFixed(2) || "0.00"}`);
+  
   await sendEmail({
     to: user.email,
     subject: emailSubject,
@@ -2684,6 +2686,12 @@ const sendPartialPaymentConfirmationEmail = async (
   payment,
   batch
 ) => {
+  console.log(`[EMAIL] sendPartialPaymentConfirmationEmail called with:`, {
+    paymentAmount: payment.amount,
+    bookingPartialDetails: booking.partialPaymentDetails,
+    isRemainingBalance: booking.status === "payment_confirmed_partial" && booking.partialPaymentDetails?.remainingAmount === 0
+  });
+  
   const isRemainingBalance =
     booking.status === "payment_confirmed_partial" &&
     booking.partialPaymentDetails?.remainingAmount === 0;
@@ -2716,13 +2724,13 @@ ${
     ? `
 ✅ Payment Complete!
 Total Amount: ₹${booking.totalPrice?.toFixed(2) || "0.00"}
-Final Payment: ₹${payment.amount / 100}
+Final Payment: ₹${payment.amount?.toFixed(2) || "0.00"}
 Payment Method: ${payment.method}
 Payment ID: ${payment.id}
 `
     : `
 💰 Partial Payment Received
-Initial Payment: ₹${payment.amount / 100}
+Initial Payment: ₹${payment.amount?.toFixed(2) || "0.00"}
 Remaining Balance: ₹${
         booking.partialPaymentDetails?.remainingAmount?.toFixed(2) || "0.00"
       }
@@ -2942,7 +2950,7 @@ For support, contact us through our website or mobile app.
                 ? "Your booking is now fully confirmed!"
                 : "Thank you for your partial payment!"
             }</p>
-            <div class="amount">₹${payment.amount / 100}</div>
+            <div class="amount">₹${payment.amount?.toFixed(2) || "0.00"}</div>
             <p>${
               isRemainingBalance
                 ? "Total Payment Complete"
@@ -2981,14 +2989,14 @@ For support, contact us through our website or mobile app.
                   booking.totalPrice?.toFixed(2) || "0.00"
                 }</li>
                 <li><strong>Final Payment:</strong> ₹${
-                  payment.amount / 100
+                  payment.amount?.toFixed(2) || "0.00"
                 }</li>
                 <li><strong>Payment Method:</strong> ${payment.method}</li>
                 <li><strong>Payment ID:</strong> ${payment.id}</li>
                 `
                     : `
                 <li><strong>Initial Payment:</strong> ₹${
-                  payment.amount / 100
+                  payment.amount?.toFixed(2) || "0.00"
                 }</li>
                 <li><strong>Remaining Balance:</strong> ₹${
                   booking.partialPaymentDetails?.remainingAmount?.toFixed(2) ||
