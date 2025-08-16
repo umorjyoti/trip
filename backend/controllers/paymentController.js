@@ -292,7 +292,7 @@ async function handlePaymentCaptured(paymentEntity) {
           console.log(`[WEBHOOK] Remaining balance payment completed for booking ${bookingId}`);
         } else {
           booking.status = "payment_confirmed_partial";
-          booking.partialPaymentDetails.remainingAmount = remainingAmount - amount;
+          booking.partialPaymentDetails.remainingAmount = remainingAmount;
           console.log(`[WEBHOOK] Partial payment updated for booking ${bookingId}, remaining: ₹${booking.partialPaymentDetails.remainingAmount}`);
         }
       } else {
