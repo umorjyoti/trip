@@ -82,7 +82,6 @@ exports.verifyPayment = async (req, res) => {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      bookingId,
     } = req.body;
 
     // Verify signature
@@ -98,151 +97,24 @@ exports.verifyPayment = async (req, res) => {
       });
     }
 
-    // Get payment details from Razorpay
+    // Get payment details from Razorpay for verification
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
 
-    // Update booking status if signature is valid
-    if (bookingId) {
-      const booking = await Booking.findById(bookingId)
-        .populate("trek")
-        .populate("user", "name email");
-
-      if (booking) {
-        const paidAmount = payment.amount / 100; // Convert from paisa to rupees
-
-        // Handle partial payment logic
-        if (
-          booking.paymentMode === "partial" &&
-          booking.partialPaymentDetails
-        ) {
-          const { initialAmount, remainingAmount } =
-            booking.partialPaymentDetails;
-
-          // Check if this is a remaining balance payment
-          if (
-            booking.status === "payment_confirmed_partial" &&
-            paidAmount >= remainingAmount
-          ) {
-            // Remaining balance payment completed
-            booking.partialPaymentDetails.finalPaymentDate = new Date();
-            booking.partialPaymentDetails.remainingAmount = 0;
-
-            // Check if participant details are available
-            if (
-              booking.participantDetails &&
-              booking.participantDetails.length > 0
-            ) {
-              booking.status = "confirmed";
-            } else {
-              booking.status = "payment_completed";
-            }
-          } else if (paidAmount >= initialAmount) {
-            // Initial partial payment completed
-            booking.status = "payment_confirmed_partial";
-            booking.partialPaymentDetails.remainingAmount = remainingAmount;
-          } else {
-            // Partial payment but not enough for initial amount
-            booking.status = "pending_payment";
-            booking.partialPaymentDetails.remainingAmount =
-              remainingAmount + (initialAmount - paidAmount);
-          }
-        } else {
-          // Full payment
-          booking.status = "payment_completed";
-        }
-
-        booking.paymentDetails = {
-          paymentId: razorpay_payment_id,
-          orderId: razorpay_order_id,
-          signature: razorpay_signature,
-          paidAt: new Date(),
-          amount: paidAmount,
-          currency: payment.currency,
-          method: payment.method,
-          status: payment.status,
-        };
-
-        // Increment promo code used count if a promo code was used
-        if (booking.promoCodeDetails && booking.promoCodeDetails.code) {
-          try {
-            let promoCode;
-            // Try to find by ID first, then by code
-            if (booking.promoCodeDetails.promoCodeId) {
-              promoCode = await PromoCode.findById(
-                booking.promoCodeDetails.promoCodeId
-              );
-            }
-            if (!promoCode) {
-              promoCode = await PromoCode.findOne({
-                code: booking.promoCodeDetails.code,
-              });
-            }
-            if (promoCode) {
-              promoCode.usedCount += 1;
-              await promoCode.save();
-              console.log(
-                `Incremented used count for promo code: ${booking.promoCodeDetails.code}`
-              );
-            }
-          } catch (promoError) {
-            console.error("Error updating promo code used count:", promoError);
-            // Don't fail the payment verification if promo code update fails
-          }
-        }
-
-        await booking.save();
-
-        // Send confirmation email if booking status becomes confirmed
-        if (booking.status === "confirmed") {
-          try {
-            const batch = booking.trek?.batches?.find(
-              (b) => b._id.toString() === booking.batch?.toString()
-            );
-            const participants = booking.participantDetails || [];
-
-            console.log(
-              "Sending booking confirmation email to all participants for remaining balance payment"
-            );
-            await sendConfirmationEmailToAllParticipants(
-              booking,
-              booking.trek,
-              booking.user,
-              participants,
-              batch,
-              booking.additionalRequests,
-              payment
-            );
-            console.log(
-              "Booking confirmation emails sent successfully to all participants"
-            );
-          } catch (bookingEmailError) {
-            console.error(
-              "Error sending booking confirmation emails to all participants:",
-              bookingEmailError
-            );
-          }
-        }
-
-        // Remove all email sending logic from here - emails will be sent via webhook only
-        // This prevents duplicate emails from being sent
-
-        res.status(200).json({
-          success: true,
-          message: "Payment verified successfully",
-          booking,
-        });
-      } else {
-        res.status(404).json({
-          success: false,
-          message: "Booking not found",
-        });
+    // Return verification result only
+    res.status(200).json({
+      success: true,
+      message: "Payment signature verified successfully",
+      payment: {
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        amount: payment.amount / 100, // Convert from paisa to rupees
+        currency: payment.currency,
+        method: payment.method,
+        status: payment.status,
+        verifiedAt: new Date()
       }
-    } else {
-      res.status(400).json({
-        success: false,
-        message: "Invalid payment signature",
-      });
-    }
+    });
+
   } catch (error) {
     console.error("Error verifying payment:", error);
     res.status(500).json({
