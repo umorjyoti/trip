@@ -1,8 +1,25 @@
 # Active Context
 
-## Current Focus: Razorpay Payment Validation Fix & Manual Booking System
+## Current Focus: Payment Confirmation Email Duplication Fix & Manual Booking System
 
 ### Recent Changes (Latest Session)
+
+#### 1. Fixed Payment Confirmation Email Duplication Issue
+- **Problem**: Users were receiving TWO payment confirmation emails:
+  - One from client-side `verifyPayment` function
+  - Another from server-side webhook `handleWebhook` function
+- **Root Cause**: Email sending logic was duplicated between client-side verification and webhook processing
+- **Solution**: Removed all email sending from `verifyPayment` function, keeping only webhook-based email sending
+- **Files Modified**:
+  - `backend/controllers/paymentController.js` - Removed duplicate email sending logic from verifyPayment function
+  - Email sending now ONLY happens via webhook for reliability and consistency
+- **Benefits**:
+  - No more duplicate emails
+  - Consistent email format and content
+  - Reliable email delivery via webhook processing
+  - Better user experience
+
+#### 2. Previous: Razorpay Payment Validation Fix & Manual Booking System
 
 #### 1. Fixed Razorpay Payment Validation Issue
 - **Problem**: Users were closing their browser before payment validation completed, causing:
@@ -85,11 +102,12 @@
 ### Current Status
 
 ✅ **Completed Features:**
+- **Payment Email Duplication Fix**: Removed duplicate email sending, now only webhook-based
 - **Razorpay Webhook System**: Complete server-side payment validation
 - **Robust Payment Flow**: Frontend with polling and webhook fallback
 - **Security**: HMAC signature verification for webhooks
-- **Email Automation**: Automatic payment confirmation emails
-- **Database Updates**: Reliable payment status updates via webhooks
+- **Email Automation**: Automatic payment confirmation emails via webhook only
+- **Database Updates**: Reliable payment status updates via webhook processing
 - Streamlined manual booking system with clean 3-step flow
 - User lookup by phone number with automatic creation if not found
 - `adminCreated: true` flag properly set in database for admin-created users
@@ -102,9 +120,10 @@
 - Clean, maintainable code structure
 
 🔄 **Ready for Testing:**
+- **Payment Email System**: Test that only one email is sent per payment via webhook
 - **Webhook System**: Configure in Razorpay dashboard and test with real payments
 - **Payment Flow**: Test payment completion with browser closure scenarios
-- **Email Notifications**: Verify automatic email sending
+- **Email Notifications**: Verify automatic email sending via webhook only
 - Streamlined manual booking creation flow
 - User validation and creation process
 - Payment status handling with proper enum values
@@ -113,37 +132,43 @@
 
 ### Next Steps
 
-1. **Configure Razorpay Webhooks**:
+1. **Test Payment Email System**:
+   - Make test payment and verify only ONE confirmation email is sent
+   - Check that email format is consistent and professional
+   - Verify webhook processing in server logs
+
+2. **Configure Razorpay Webhooks**:
    - Set `RAZORPAY_WEBHOOK_SECRET` in environment variables
    - Configure webhook URL in Razorpay dashboard
    - Test webhook endpoint accessibility
 
-2. **Test Payment Validation System**:
+3. **Test Payment Validation System**:
    - Make test payment and close browser immediately
    - Verify webhook processing in server logs
    - Check database updates and email notifications
    - Test partial payment scenarios
 
-3. **Deploy and Monitor**:
+4. **Deploy and Monitor**:
    - Deploy webhook system to production
    - Monitor webhook processing logs
    - Track payment success rates
    - Monitor email delivery
 
-4. **Test the streamlined manual booking flow**:
+5. **Test the streamlined manual booking flow**:
    - Test user lookup with existing phone numbers
    - Test user creation for new customers
    - Test booking creation with different payment statuses
    - Verify adminCreated flag is properly set
    - Verify admin remarks and tagging
 
-5. **Enhance manual booking features**:
+6. **Enhance manual booking features**:
    - Add bulk manual booking capability
    - Add booking templates for common scenarios
    - Add manual booking analytics and reporting
 
 ### Technical Notes
 
+- **Email System**: Now ONLY sends payment confirmation emails via webhook for consistency
 - **Webhook System**: Server-side payment validation independent of user browser state
 - **Payment Flow**: Immediate feedback + polling + webhook fallback for maximum reliability
 - **Security**: HMAC SHA256 signature verification for all webhook requests
