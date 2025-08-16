@@ -490,6 +490,8 @@ async function handlePaymentCaptured(paymentEntity) {
           { id: paymentId, amount: amount, method: method }
         );
 
+        const payment = { id: paymentId, amount: amount, method: method };
+
         const trek = booking.trek;
         const user = booking.user;
 
