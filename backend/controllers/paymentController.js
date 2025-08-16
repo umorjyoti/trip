@@ -287,9 +287,17 @@ async function handlePaymentCaptured(paymentEntity) {
         // This is a remaining balance payment
         const remainingAmount = booking.partialPaymentDetails.remainingAmount;
         if (amount >= remainingAmount) {
-          booking.status = "payment_completed";
+          // Check if participant details are already present
+          if (booking.participantDetails && booking.participantDetails.length > 0) {
+            // Participant details are present, move directly to confirmed status
+            booking.status = "confirmed";
+            console.log(`[WEBHOOK] Remaining balance payment completed for booking ${bookingId}. Participant details present, status moved to confirmed.`);
+          } else {
+            // No participant details yet, keep as payment_completed
+            booking.status = "payment_completed";
+            console.log(`[WEBHOOK] Remaining balance payment completed for booking ${bookingId}. No participant details yet.`);
+          }
           booking.partialPaymentDetails.remainingAmount = 0;
-          console.log(`[WEBHOOK] Remaining balance payment completed for booking ${bookingId}`);
         } else {
           booking.status = "payment_confirmed_partial";
           booking.partialPaymentDetails.remainingAmount = remainingAmount;
@@ -314,8 +322,16 @@ async function handlePaymentCaptured(paymentEntity) {
       }
     } else {
       // Full payment
-      booking.status = "payment_completed";
-      console.log(`[WEBHOOK] Full payment completed for booking ${bookingId}`);
+      // Check if participant details are already present
+      if (booking.participantDetails && booking.participantDetails.length > 0) {
+        // Participant details are present, move directly to confirmed status
+        booking.status = "confirmed";
+        console.log(`[WEBHOOK] Full payment completed for booking ${bookingId}. Participant details present, status moved to confirmed.`);
+      } else {
+        // No participant details yet, keep as payment_completed
+        booking.status = "payment_completed";
+        console.log(`[WEBHOOK] Full payment completed for booking ${bookingId}. No participant details yet.`);
+      }
     }
 
     // Increment promo code used count if a promo code was used
@@ -551,6 +567,26 @@ For support, contact us through our website or mobile app.
           attachmentFilename: `Invoice-${booking._id}.pdf`,
         });
         console.log(`[WEBHOOK] Payment confirmation email sent for booking ${bookingId}`);
+      } else if (booking.status === "confirmed") {
+        // Send confirmation email to all participants since participant details are present
+        try {
+          const batch = booking.trek?.batches?.find(
+            (b) => b._id.toString() === booking.batch?.toString()
+          );
+          
+          await sendConfirmationEmailToAllParticipants(
+            booking,
+            booking.trek,
+            booking.user,
+            booking.participantDetails,
+            batch,
+            booking.additionalRequests
+          );
+          console.log(`[WEBHOOK] Confirmation email sent to all participants for booking ${bookingId}`);
+        } catch (confirmationEmailError) {
+          console.error(`[WEBHOOK] Error sending confirmation email to participants for booking ${bookingId}:`, confirmationEmailError);
+          // Don't fail the webhook if confirmation email fails
+        }
       }
     } catch (emailError) {
       console.error(`[WEBHOOK] Error sending confirmation email for booking ${bookingId}:`, emailError);
