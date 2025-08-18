@@ -40,6 +40,7 @@ const TrekPerformance = () => {
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [showRequestResponseModal, setShowRequestResponseModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
+  const [activeTab, setActiveTab] = useState('upcoming');
 
   useEffect(() => {
     fetchPerformanceData();
@@ -253,6 +254,36 @@ const TrekPerformance = () => {
     }
   };
 
+  const categorizeBatches = (batches) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming = [];
+    const past = [];
+    const current = [];
+
+    batches.forEach(batch => {
+      const startDate = new Date(batch.startDate);
+      const endDate = new Date(batch.endDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (endDate < today) {
+        past.push(batch);
+      } else if (startDate <= today && today <= endDate) {
+        current.push(batch);
+      } else {
+        upcoming.push(batch);
+      }
+    });
+
+    return { 
+      upcoming: upcoming.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)),
+      past: past.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)),
+      current: current.sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+    };
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -314,6 +345,16 @@ const TrekPerformance = () => {
         <div className="px-6 py-5 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Batch Performance</h2>
         </div>
+        
+        {/* Tab Navigation */}
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex justify-center sm:justify-start border-b border-gray-200">
+            <button onClick={() => setActiveTab('upcoming')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'upcoming' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500'}`}>Upcoming ({categorizeBatches(performanceData.batches).upcoming.length})</button>
+            <button onClick={() => setActiveTab('current')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'current' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500'}`}>Current ({categorizeBatches(performanceData.batches).current.length})</button>
+            <button onClick={() => setActiveTab('past')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'past' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500'}`}>Past ({categorizeBatches(performanceData.batches).past.length})</button>
+          </div>
+        </div>
+        
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -336,35 +377,43 @@ const TrekPerformance = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {performanceData.batches.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((batch) => (
-                <tr 
-                  key={batch._id} 
-                  onClick={() => handleBatchClick(batch)}
-                  className={`cursor-pointer hover:bg-gray-50 ${selectedBatch?._id === batch._id ? 'bg-blue-50' : ''}`}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(batch.startDate)} - {formatDate(batch.endDate)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {batch.currentParticipants} / {batch.maxParticipants}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(batch.revenue)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {Math.round((batch.currentParticipants / batch.maxParticipants) * 100)}%
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      batch.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      batch.status === 'ongoing' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {batch.status.charAt(0).toUpperCase() + batch.status.slice(1)}
-                    </span>
+              {categorizeBatches(performanceData.batches)[activeTab].length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    No {activeTab} batches found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                categorizeBatches(performanceData.batches)[activeTab].map((batch) => (
+                  <tr 
+                    key={batch._id} 
+                    onClick={() => handleBatchClick(batch)}
+                    className={`cursor-pointer hover:bg-gray-50 ${selectedBatch?._id === batch._id ? 'bg-blue-50' : ''}`}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatDate(batch.startDate)} - {formatDate(batch.endDate)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {batch.currentParticipants} / {batch.maxParticipants}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(batch.revenue)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {Math.round((batch.currentParticipants / batch.maxParticipants) * 100)}%
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        activeTab === 'past' ? 'bg-green-100 text-green-800' :
+                        activeTab === 'current' ? 'bg-blue-100 text-blue-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {activeTab === 'past' ? 'Completed' : activeTab === 'current' ? 'Ongoing' : 'Upcoming'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

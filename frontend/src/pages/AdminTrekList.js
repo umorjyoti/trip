@@ -29,6 +29,7 @@ function AdminTrekList() {
   const [newBatchData, setNewBatchData] = useState({ startDate: '', endDate: '', price: '', maxParticipants: 10 });
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchDeleteModal, setBatchDeleteModal] = useState({ isOpen: false, trekId: null, batchId: null, batchInfo: null });
+  const [activeTab, setActiveTab] = useState('upcoming');
   const DIFFICULTY_OPTIONS = ['Easy', 'Moderate', 'Difficult', 'Very Difficult'];
   const [regions, setRegions] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
@@ -281,6 +282,36 @@ function AdminTrekList() {
     }
   };
 
+  const categorizeBatches = (batches) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const upcoming = [];
+    const past = [];
+    const current = [];
+
+    batches.forEach(batch => {
+      const startDate = new Date(batch.startDate);
+      const endDate = new Date(batch.endDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (endDate < today) {
+        past.push(batch);
+      } else if (startDate <= today && today <= endDate) {
+        current.push(batch);
+      } else {
+        upcoming.push(batch);
+      }
+    });
+
+    return { 
+      upcoming: upcoming.sort((a, b) => new Date(a.startDate) - new Date(b.startDate)),
+      past: past.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)),
+      current: current.sort((a, b) => new Date(a.startDate) - new Date(b.startDate))
+    };
+  };
+
   const handleBatchUpdated = () => {
     fetchTreks(); // Refresh the treks data when a batch is updated
   };
@@ -490,139 +521,158 @@ function AdminTrekList() {
                     </div>
 
                     {/* Expanded Batch Information */}
-                    {expandedTreks.has(trek._id) && (
-                      <div className="mt-4 border-t pt-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {/* Add New Batch Card */}
-                          {editingBatchId === null && (
-                            <div className="bg-white border border-dashed border-emerald-400 rounded-lg p-4 flex flex-col items-center justify-center shadow min-h-[220px]">
-                              <h4 className="text-sm font-semibold mb-2">Add New Batch</h4>
-                              <input type="date" name="startDate" value={newBatchData.startDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                              <input type="date" name="endDate" value={newBatchData.endDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                              <input type="number" name="price" value={newBatchData.price} onChange={handleNewBatchChange} placeholder="Price" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                              <input type="number" name="maxParticipants" value={newBatchData.maxParticipants} onChange={handleNewBatchChange} placeholder="Max Slots" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                              <button onClick={() => addNewBatch(trek._id)} className="w-full py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium mt-2" disabled={batchLoading}>Add</button>
-                            </div>
-                          )}
-                          {/* Batch Cards */}
-                          {trek.batches && trek.batches.length > 0 && [...trek.batches].sort((a, b) => new Date(a.startDate) - new Date(b.startDate)).map((batch) => (
-                            <div
-                              key={batch._id}
-                              className={`bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative border-2 border-transparent ${
-                                editingBatchId === batch._id 
-                                  ? 'cursor-default' 
-                                  : 'cursor-pointer hover:border-emerald-500'
-                              } ${
-                                (() => {
-                                  const reservedSlots = batch.reservedSlots || 0;
-                                  return (batch.maxParticipants - (batch.actualCurrentParticipants || batch.currentParticipants || 0) - reservedSlots) <= 0;
-                                })() 
-                                  ? 'border-red-300 bg-red-50' 
-                                  : ''
-                              }`}
-                              onClick={() => {
-                                if (editingBatchId !== batch._id) {
-                                  navigate(`/admin/treks/${trek._id}/performance?batchId=${batch._id}`);
-                                }
-                              }}
-                            >
-                              {/* Icon container with reserved space */}
-                              <div className="absolute top-2 right-2 z-50 flex space-x-1">
-                                <button 
-                                  onClick={e => { 
-                                    e.preventDefault();
-                                    e.stopPropagation(); 
-                                    startEditingBatch(batch); 
-                                  }} 
-                                  className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                                  type="button"
-                                  title="Edit Batch"
-                                >
-                                  <FaEdit className="w-4 h-4 text-blue-600" />
-                                </button>
-                                <button 
-                                  onClick={e => { 
-                                    e.preventDefault();
-                                    e.stopPropagation(); 
-                                    openBatchDeleteModal(trek._id, batch._id, {
-                                      startDate: batch.startDate,
-                                      endDate: batch.endDate,
-                                      price: batch.price
-                                    }); 
-                                  }} 
-                                  className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
-                                  type="button"
-                                  title="Delete Batch"
-                                >
-                                  <FaTrash className="w-4 h-4 text-red-600" />
-                                </button>
+                    {expandedTreks.has(trek._id) && (() => {
+                      const categorized = categorizeBatches(trek.batches || []);
+                      return (
+                        <div className="mt-4 border-t pt-4">
+                          <div className="flex justify-center sm:justify-start border-b mb-4">
+                            <button onClick={() => setActiveTab('upcoming')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'upcoming' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500'}`}>Upcoming ({categorized.upcoming.length})</button>
+                            <button onClick={() => setActiveTab('current')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'current' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500'}`}>Current ({categorized.current.length})</button>
+                            <button onClick={() => setActiveTab('past')} className={`px-4 py-2 text-sm font-medium ${activeTab === 'past' ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-gray-500'}`}>Past ({categorized.past.length})</button>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {/* Add New Batch Card - only in upcoming */}
+                            {activeTab === 'upcoming' && editingBatchId === null && (
+                              <div className="bg-white border border-dashed border-emerald-400 rounded-lg p-4 flex flex-col items-center justify-center shadow min-h-[220px]">
+                                <h4 className="text-sm font-semibold mb-2">Add New Batch</h4>
+                                <input type="date" name="startDate" value={newBatchData.startDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                <input type="date" name="endDate" value={newBatchData.endDate} onChange={handleNewBatchChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                <input type="number" name="price" value={newBatchData.price} onChange={handleNewBatchChange} placeholder="Price" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                <input type="number" name="maxParticipants" value={newBatchData.maxParticipants} onChange={handleNewBatchChange} placeholder="Max Slots" className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                <button onClick={() => addNewBatch(trek._id)} className="w-full py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium mt-2" disabled={batchLoading}>Add</button>
                               </div>
-                              <div className="pt-8"> {/* Add top padding to avoid overlap */}
-                                {editingBatchId === batch._id ? (
-                                  <>
-                                    <input type="date" name="startDate" value={batchEditData.startDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                                    <input type="date" name="endDate" value={batchEditData.endDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                                    <input type="number" name="price" value={batchEditData.price} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                                    <input type="number" name="maxParticipants" value={batchEditData.maxParticipants} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
-                                    <div className="flex space-x-2 mt-2">
-                                      <button 
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          saveBatchEdit(trek._id, batch._id);
-                                        }} 
-                                        className="flex-1 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" 
-                                        disabled={batchLoading}
-                                        type="button"
-                                      >
-                                        Save
-                                      </button>
-                                      <button 
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          cancelEditingBatch();
-                                        }} 
-                                        className="flex-1 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-gray-500"
-                                        type="button"
-                                      >
-                                        Cancel
-                                      </button>
-                                      <button 
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          openBatchDeleteModal(trek._id, batch._id, {
-                                            startDate: batch.startDate,
-                                            endDate: batch.endDate,
-                                            price: batch.price
-                                          });
-                                        }} 
-                                        className="flex-1 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-500" 
-                                        disabled={batchLoading}
-                                        type="button"
-                                      >
-                                        Delete
-                                      </button>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{new Date(batch.startDate).toLocaleDateString('en-GB')} - {new Date(batch.endDate).toLocaleDateString('en-GB')}</h4>
-                                    <div className="text-xs text-gray-500 mb-2">Price: <span className="font-semibold">₹{batch.price}</span></div>
-                                    <BatchStatusManager 
-                                      batch={batch} 
-                                      trekId={trek._id} 
-                                      onBatchUpdated={handleBatchUpdated}
-                                    />
-                                  </>
-                                )}
+                            )}
+
+                            {/* No Batches Message */}
+                            {categorized[activeTab].length === 0 && (activeTab !== 'upcoming' || editingBatchId !== null) && (
+                              <div className="col-span-full text-center text-gray-500 py-4">
+                                No {activeTab} batches found.
                               </div>
-                            </div>
-                          ))}
+                            )}
+
+                            {/* Batch Cards */}
+                            {categorized[activeTab].map((batch) => (
+                              <div
+                                key={batch._id}
+                                className={`bg-gray-50 rounded-lg p-4 shadow flex flex-col justify-between min-h-[220px] relative border-2 border-transparent ${
+                                  editingBatchId === batch._id 
+                                    ? 'cursor-default' 
+                                    : 'cursor-pointer hover:border-emerald-500'
+                                } ${
+                                  (() => {
+                                    const reservedSlots = batch.reservedSlots || 0;
+                                    return (batch.maxParticipants - (batch.actualCurrentParticipants || batch.currentParticipants || 0) - reservedSlots) <= 0;
+                                  })() 
+                                    ? 'border-red-300 bg-red-50' 
+                                    : ''
+                                }`}
+                                onClick={() => {
+                                  if (editingBatchId !== batch._id) {
+                                    navigate(`/admin/treks/${trek._id}/performance?batchId=${batch._id}`);
+                                  }
+                                }}
+                              >
+                                {/* Icon container with reserved space */}
+                                <div className="absolute top-2 right-2 z-50 flex space-x-1">
+                                  <button 
+                                    onClick={e => { 
+                                      e.preventDefault();
+                                      e.stopPropagation(); 
+                                      startEditingBatch(batch); 
+                                    }} 
+                                    className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                                    type="button"
+                                    title="Edit Batch"
+                                    disabled={activeTab === 'past'}
+                                  >
+                                    <FaEdit className="w-4 h-4 text-blue-600" />
+                                  </button>
+                                  <button 
+                                    onClick={e => { 
+                                      e.preventDefault();
+                                      e.stopPropagation(); 
+                                      openBatchDeleteModal(trek._id, batch._id, {
+                                        startDate: batch.startDate,
+                                        endDate: batch.endDate,
+                                        price: batch.price
+                                      }); 
+                                    }} 
+                                    className="p-2 rounded-full hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors"
+                                    type="button"
+                                    title="Delete Batch"
+                                    disabled={activeTab === 'past'}
+                                  >
+                                    <FaTrash className="w-4 h-4 text-red-600" />
+                                  </button>
+                                </div>
+                                <div className="pt-8"> {/* Add top padding to avoid overlap */}
+                                  {editingBatchId === batch._id ? (
+                                    <>
+                                      <input type="date" name="startDate" value={batchEditData.startDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                      <input type="date" name="endDate" value={batchEditData.endDate} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                      <input type="number" name="price" value={batchEditData.price} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                      <input type="number" name="maxParticipants" value={batchEditData.maxParticipants} onChange={handleBatchEditChange} className="mb-2 border px-2 py-1 rounded text-sm w-full" />
+                                      <div className="flex space-x-2 mt-2">
+                                        <button 
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            saveBatchEdit(trek._id, batch._id);
+                                          }} 
+                                          className="flex-1 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                                          disabled={batchLoading}
+                                          type="button"
+                                        >
+                                          Save
+                                        </button>
+                                        <button 
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            cancelEditingBatch();
+                                          }} 
+                                          className="flex-1 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-gray-500"
+                                          type="button"
+                                        >
+                                          Cancel
+                                        </button>
+                                        <button 
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            openBatchDeleteModal(trek._id, batch._id, {
+                                              startDate: batch.startDate,
+                                              endDate: batch.endDate,
+                                              price: batch.price
+                                            });
+                                          }} 
+                                          className="flex-1 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-500" 
+                                          disabled={batchLoading}
+                                          type="button"
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <h4 className="text-sm font-semibold text-gray-900 mb-1 truncate">{new Date(batch.startDate).toLocaleDateString('en-GB')} - {new Date(batch.endDate).toLocaleDateString('en-GB')}</h4>
+                                      <div className="text-xs text-gray-500 mb-2">Price: <span className="font-semibold">₹{batch.price}</span></div>
+                                      <BatchStatusManager 
+                                        batch={batch} 
+                                        trekId={trek._id} 
+                                        onBatchUpdated={handleBatchUpdated}
+                                      />
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )
+                    })()}
 
                     {/* Custom Trek Link and Email Buttons */}
                     {trek.isCustom && (
