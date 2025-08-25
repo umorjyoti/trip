@@ -235,8 +235,8 @@ exports.getTrekById = async (req, res) => {
         batchStartDate.setHours(0, 0, 0, 0);
         
         return (
-          // Batch hasn't started yet
-          batchStartDate > currentDate &&
+          // Batch hasn't started yet or starts today
+          batchStartDate >= currentDate &&
           // Has available spots
           batch.availableSpots > 0
         );
@@ -307,8 +307,8 @@ exports.getTrekBySlug = async (req, res) => {
       batchStartDate.setHours(0, 0, 0, 0);
       
       return (
-        // Batch hasn't started yet
-        batchStartDate > currentDate &&
+        // Batch hasn't started yet or starts today
+        batchStartDate >= currentDate &&
         // Has available spots
         batch.currentParticipants < batch.maxParticipants
       );
@@ -418,8 +418,8 @@ exports.getTrekByCustomToken = async (req, res) => {
       batchStartDate.setHours(0, 0, 0, 0);
       
       return (
-        // Batch hasn't started yet
-        batchStartDate > currentDate &&
+        // Batch hasn't started yet or starts today
+        batchStartDate >= currentDate &&
         // Has available spots
         batch.availableSpots > 0
       );
