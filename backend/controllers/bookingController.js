@@ -2732,6 +2732,14 @@ const createManualBooking = async (req, res) => {
         bookingStatus = 'pending';
     }
 
+    // Ensure participantDetails is always an array
+    let normalizedParticipantDetails = [];
+    if (Array.isArray(participantDetails)) {
+      normalizedParticipantDetails = participantDetails;
+    } else if (participantDetails && typeof participantDetails === 'object') {
+      normalizedParticipantDetails = [participantDetails];
+    }
+
     // Create the booking
     const booking = new Booking({
       user: userId.toString(),
@@ -2740,7 +2748,7 @@ const createManualBooking = async (req, res) => {
       numberOfParticipants,
       userDetails,
       emergencyContact,
-      participantDetails: participantDetails || [],
+      participantDetails: normalizedParticipantDetails,
       totalPrice,
       status: bookingStatus,
       paymentMode,

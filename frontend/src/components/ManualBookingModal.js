@@ -95,11 +95,11 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
       if (batch) {
         setBookingData(prev => ({
           ...prev,
-          totalPrice: batch.price * bookingData.numberOfParticipants
+          totalPrice: batch.price * prev.participantDetails.length
         }));
       }
     }
-  }, [selectedBatch, selectedUser, bookingData.numberOfParticipants]);
+  }, [selectedBatch, selectedUser, bookingData.participantDetails.length]);
 
 
 
@@ -271,6 +271,40 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
         prev.participantDetails[index] || { name: '', age: '', gender: '', medicalConditions: '' }
       )
     }));
+  };
+
+  const handleAddParticipant = () => {
+    setBookingData(prev => ({
+      ...prev,
+      participantDetails: [...prev.participantDetails, { name: '', age: '', gender: '', medicalConditions: '' }]
+    }));
+    setErrors(prev => ({ ...prev, [`participant${bookingData.participantDetails.length}Name`]: '' }));
+    setTouched(prev => ({ ...prev, [`participant${bookingData.participantDetails.length}Name`]: true }));
+  };
+
+  const handleRemoveParticipant = (index) => {
+    setBookingData(prev => {
+      const newParticipantDetails = prev.participantDetails.filter((_, i) => i !== index);
+      // Update errors and touched for removed participants
+      const newErrors = { ...errors };
+      const newTouched = { ...touched };
+      Object.keys(newErrors).forEach(key => {
+        if (key.startsWith('participant') && parseInt(key.slice(-1)) > index) {
+          delete newErrors[key];
+        }
+      });
+      Object.keys(newTouched).forEach(key => {
+        if (key.startsWith('participant') && parseInt(key.slice(-1)) > index) {
+          delete newTouched[key];
+        }
+      });
+      return {
+        ...prev,
+        participantDetails: newParticipantDetails,
+        errors: newErrors,
+        touched: newTouched
+      };
+    });
   };
 
   const resetModal = () => {
@@ -918,97 +952,111 @@ const ManualBookingModal = ({ isOpen, onClose, onSuccess }) => {
               <div className="space-y-4">
                 <h4 className="font-semibold">Participant Details</h4>
                 <div className="bg-gray-50 p-4 rounded-md">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={bookingData.participantDetails[0]?.name || ''}
-                        onChange={(e) => handleParticipantChange(0, 'name', e.target.value)}
-                        onBlur={() => handleFieldBlur('participant0Name')}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                          errors.participant0Name && touched.participant0Name
-                            ? 'border-red-500 focus:ring-red-500' 
-                            : 'border-gray-300 focus:ring-blue-500'
-                        }`}
-                      />
-                      {errors.participant0Name && touched.participant0Name && (
-                        <div className="flex items-center mt-1 text-red-600 text-sm">
-                          <FaExclamationTriangle className="mr-1" size={12} />
-                          {errors.participant0Name}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Age *
-                      </label>
-                      <input
-                        type="number"
-                        value={bookingData.participantDetails[0]?.age || ''}
-                        onChange={(e) => handleParticipantChange(0, 'age', e.target.value)}
-                        onBlur={() => handleFieldBlur('participant0Age')}
-                        min="1"
-                        max="120"
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                          errors.participant0Age && touched.participant0Age
-                            ? 'border-red-500 focus:ring-red-500' 
-                            : 'border-gray-300 focus:ring-blue-500'
-                        }`}
-                      />
-                      {errors.participant0Age && touched.participant0Age && (
-                        <div className="flex items-center mt-1 text-red-600 text-sm">
-                          <FaExclamationTriangle className="mr-1" size={12} />
-                          {errors.participant0Age}
-                        </div>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Gender *
-                      </label>
-                      <select
-                        value={bookingData.participantDetails[0]?.gender || ''}
-                        onChange={(e) => handleParticipantChange(0, 'gender', e.target.value)}
-                        onBlur={() => handleFieldBlur('participant0Gender')}
-                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                          errors.participant0Gender && touched.participant0Gender
-                            ? 'border-red-500 focus:ring-red-500' 
-                            : 'border-gray-300 focus:ring-blue-500'
-                        }`}
-                      >
-                        <option value="">Select gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
-                      {errors.participant0Gender && touched.participant0Gender && (
-                        <div className="flex items-center mt-1 text-red-600 text-sm">
+                  {bookingData.participantDetails.map((participant, idx) => (
+                    <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 border-b pb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Name *
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.name || ''}
+                          onChange={(e) => handleParticipantChange(idx, 'name', e.target.value)}
+                          onBlur={() => handleFieldBlur(`participant${idx}Name`)}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                            errors[`participant${idx}Name`] && touched[`participant${idx}Name`]
+                              ? 'border-red-500 focus:ring-red-500'
+                              : 'border-gray-300 focus:ring-blue-500'
+                          }`}
+                        />
+                        {errors[`participant${idx}Name`] && touched[`participant${idx}Name`] && (
                           <div className="flex items-center mt-1 text-red-600 text-sm">
                             <FaExclamationTriangle className="mr-1" size={12} />
-                            {errors.participant0Gender}
+                            {errors[`participant${idx}Name`]}
                           </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Age *
+                        </label>
+                        <input
+                          type="number"
+                          value={participant.age || ''}
+                          onChange={(e) => handleParticipantChange(idx, 'age', e.target.value)}
+                          onBlur={() => handleFieldBlur(`participant${idx}Age`)}
+                          min="1"
+                          max="120"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                            errors[`participant${idx}Age`] && touched[`participant${idx}Age`]
+                              ? 'border-red-500 focus:ring-red-500'
+                              : 'border-gray-300 focus:ring-blue-500'
+                          }`}
+                        />
+                        {errors[`participant${idx}Age`] && touched[`participant${idx}Age`] && (
+                          <div className="flex items-center mt-1 text-red-600 text-sm">
+                            <FaExclamationTriangle className="mr-1" size={12} />
+                            {errors[`participant${idx}Age`]}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Gender *
+                        </label>
+                        <select
+                          value={participant.gender || ''}
+                          onChange={(e) => handleParticipantChange(idx, 'gender', e.target.value)}
+                          onBlur={() => handleFieldBlur(`participant${idx}Gender`)}
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                            errors[`participant${idx}Gender`] && touched[`participant${idx}Gender`]
+                              ? 'border-red-500 focus:ring-red-500'
+                              : 'border-gray-300 focus:ring-blue-500'
+                          }`}
+                        >
+                          <option value="">Select gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                        </select>
+                        {errors[`participant${idx}Gender`] && touched[`participant${idx}Gender`] && (
+                          <div className="flex items-center mt-1 text-red-600 text-sm">
+                            <FaExclamationTriangle className="mr-1" size={12} />
+                            {errors[`participant${idx}Gender`]}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Medical Conditions
+                        </label>
+                        <input
+                          type="text"
+                          value={participant.medicalConditions || ''}
+                          onChange={(e) => handleParticipantChange(idx, 'medicalConditions', e.target.value)}
+                          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 border-gray-300 focus:ring-blue-500"
+                        />
+                      </div>
+                      {bookingData.participantDetails.length > 1 && (
+                        <div className="col-span-2 flex justify-end">
+                          <button
+                            type="button"
+                            className="text-red-600 hover:text-red-800 text-sm mt-2"
+                            onClick={() => handleRemoveParticipant(idx)}
+                          >
+                            Remove Participant
+                          </button>
                         </div>
                       )}
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Medical Conditions
-                      </label>
-                      <input
-                        type="text"
-                        value={bookingData.participantDetails[0]?.medicalConditions || ''}
-                        onChange={(e) => handleParticipantChange(0, 'medicalConditions', e.target.value)}
-                        placeholder="Any medical conditions or allergies"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="mt-2 px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                    onClick={handleAddParticipant}
+                  >
+                    + Add Participant
+                  </button>
                 </div>
               </div>
 
