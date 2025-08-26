@@ -814,7 +814,7 @@ async function handlePaymentFailed(paymentEntity) {
 
     // Update booking status to indicate payment failure
     const booking = await Booking.findById(bookingId);
-    if (booking) {
+    if (booking.status === "pending_payment") {
       booking.status = "pending_payment";
       if (!booking.paymentDetails) {
         booking.paymentDetails = {};
